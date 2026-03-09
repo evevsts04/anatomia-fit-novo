@@ -13,12 +13,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG (CONFIGURAÇÃO PARA PUBLICAÇÃO) ---
 const manualConfig = {
-  apiKey: "COLE_AQUI_A_SUA_API_KEY",
-  authDomain: "COLE_AQUI_O_SEU_AUTH_DOMAIN",
-  projectId: "COLE_AQUI_O_SEU_PROJECT_ID",
-  storageBucket: "COLE_AQUI_O_SEU_STORAGE_BUCKET",
-  messagingSenderId: "COLE_AQUI_O_SEU_MESSAGING_SENDER_ID",
-  appId: "COLE_AQUI_O_SEU_APP_ID"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
