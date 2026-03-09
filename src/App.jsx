@@ -12,13 +12,13 @@ import {
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG (CONFIGURAÇÃO PARA PUBLICAÇÃO) ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
-  authDomain: "anatomiafitnovo.firebaseapp.com",
-  projectId: "anatomiafitnovo",
-  storageBucket: "anatomiafitnovo.firebasestorage.app",
-  messagingSenderId: "81113017284",
-  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
+const manualConfig = {
+  apiKey: "AIzaSyAgJaSl-KRp-ei0ZoMwbOx8G-RZ5BrMJCg",
+  authDomain: "anatomiafit.firebaseapp.com",
+  projectId: "anatomiafit",
+  storageBucket: "anatomiafit.firebasestorage.app",
+  messagingSenderId: "627620141777",
+  appId: "1:627620141777:web:4490aec5ca990d700843f0"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -308,7 +308,7 @@ export default function App() {
       <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-lime-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
 
-      <div className="max-w-md w-full bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 text-center z-10">
+      <div className="max-w-md w-full bg-white p-8 rounded-4xl shadow-xl shadow-gray-200/50 text-center z-10">
         <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <Lock size={40} className="text-orange-500" />
         </div>
@@ -344,14 +344,14 @@ export default function App() {
             </div>
             <h1 className="text-4xl font-extrabold mb-4 leading-tight">Welcome to<br/><span className="text-orange-500">Fitness app!</span></h1>
             <p className="text-gray-500 mb-12 text-lg">Acompanhe treinos, saúde e nutrição de forma simples e vibrante.</p>
-            <button onClick={()=>setOnboardingStep(1)} className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 py-5 rounded-[2rem] font-black text-xl flex justify-center items-center gap-2 shadow-lg shadow-yellow-400/30 transition-transform active:scale-95">
+            <button onClick={()=>setOnboardingStep(1)} className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 py-5 rounded-4xl font-black text-xl flex justify-center items-center gap-2 shadow-lg shadow-yellow-400/30 transition-transform active:scale-95">
               Start! <ArrowRightCircle size={24} />
             </button>
           </div>
         )}
 
         {onboardingStep === 1 && (
-          <div className="w-full max-w-sm bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50">
+          <div className="w-full max-w-sm bg-white p-8 rounded-4xl shadow-xl shadow-gray-200/50">
             <h2 className="text-2xl font-bold mb-6 text-center">Qual é o seu nome?</h2>
             <input type="text" id="userName" name="userName" value={userProfile.name} onChange={e=>setUserProfile({...userProfile, name: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 text-center text-lg mb-6 focus:ring-2 focus:ring-orange-500 outline-none font-bold" placeholder="O seu nome..." />
             <button onClick={()=>setOnboardingStep(2)} disabled={!userProfile.name} className="w-full bg-orange-500 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-orange-500/30">Próximo</button>
@@ -359,7 +359,7 @@ export default function App() {
         )}
 
         {onboardingStep === 2 && (
-          <div className="w-full max-w-sm bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50">
+          <div className="w-full max-w-sm bg-white p-8 rounded-4xl shadow-xl shadow-gray-200/50">
              <h2 className="text-2xl font-bold mb-6 text-center">Suas Medidas</h2>
              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-gray-50 p-4 rounded-2xl text-center">
@@ -382,7 +382,7 @@ export default function App() {
     <div className="flex h-screen bg-gray-50 text-gray-900 font-sans selection:bg-orange-500/30 overflow-hidden">
       
       {/* SIDEBAR DESKTOP */}
-      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-100 p-6 z-40 rounded-r-[2rem] shadow-2xl shadow-gray-200/40">
+      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-100 p-6 z-40 rounded-r-4xl shadow-2xl shadow-gray-200/40">
         <div className="flex items-center gap-3 mb-12 pl-2">
           <div className="bg-orange-500 p-2 rounded-xl text-white"><Activity size={24} /></div>
           <span className="font-extrabold text-2xl tracking-tight">AnatomiaFit</span>
@@ -416,14 +416,14 @@ export default function App() {
 
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x">
                 {generateWeekDays().map((d, i) => (
-                  <div key={i} className={`snap-center flex flex-col items-center justify-center min-w-[4.5rem] py-4 rounded-[1.5rem] transition-all cursor-pointer ${d.isToday ? 'bg-gray-900 text-white shadow-xl shadow-gray-900/20 scale-105' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}>
+                  <div key={i} className={`snap-center flex flex-col items-center justify-center min-w-18 py-4 rounded-3xl transition-all cursor-pointer ${d.isToday ? 'bg-gray-900 text-white shadow-xl shadow-gray-900/20 scale-105' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}>
                     <span className="text-xs font-bold uppercase tracking-wider mb-1">{d.dayStr}</span>
                     <span className={`text-xl font-black ${d.isToday ? 'text-white' : 'text-gray-900'}`}>{d.dateNum}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="bg-orange-500 rounded-[2rem] p-6 shadow-2xl shadow-orange-500/40 text-white relative overflow-hidden flex items-center justify-between">
+              <div className="bg-orange-500 rounded-4xl p-6 shadow-2xl shadow-orange-500/40 text-white relative overflow-hidden flex items-center justify-between">
                 <div className="absolute -right-10 -top-10 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl"></div>
                 <div className="z-10">
                   <div className="flex items-center gap-2 mb-2 bg-orange-600/50 w-fit px-3 py-1.5 rounded-xl backdrop-blur-sm">
@@ -446,7 +446,7 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-blue-500 rounded-[2rem] p-5 shadow-xl shadow-blue-500/30 text-white flex flex-col justify-between cursor-pointer transition-transform active:scale-95" onClick={()=>setWaterGlasses(p=>p+1)}>
+                <div className="bg-blue-500 rounded-4xl p-5 shadow-xl shadow-blue-500/30 text-white flex flex-col justify-between cursor-pointer transition-transform active:scale-95" onClick={()=>setWaterGlasses(p=>p+1)}>
                   <div className="flex justify-between items-start mb-4">
                      <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md"><Droplets size={24} /></div>
                      <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-lg">Toque</span>
@@ -489,7 +489,7 @@ export default function App() {
                  {(workouts[activeWorkoutDay]?.exercises || []).map(ex => {
                    const progressPercent = ex.isCompleted ? 100 : Math.min(100, Math.max(0, (ex.progress || 0) * 20)); 
                    return (
-                   <div key={ex.id} className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+                   <div key={ex.id} className="bg-white rounded-4xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">
                      <div className="flex items-center justify-between mb-4">
                        <div>
                          <h3 className="font-black text-lg text-gray-900">{ex.name}</h3>
@@ -524,14 +524,14 @@ export default function App() {
                  )})}
                </div>
 
-               <button onClick={handleCompleteWorkout} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black text-lg mt-4 shadow-xl shadow-gray-900/20 active:scale-95 transition-transform">Complete Workout</button>
+               <button onClick={handleCompleteWorkout} className="w-full py-5 bg-gray-900 text-white rounded-4xl font-black text-lg mt-4 shadow-xl shadow-gray-900/20 active:scale-95 transition-transform">Complete Workout</button>
              </div>
           )}
 
           {activeTab === 'nutricao' && (
              <div className="space-y-6 animate-fadeIn">
                
-               <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+               <div className="bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
                  <div className="flex justify-between items-end mb-6">
                    <div>
                      <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Calories</p>
@@ -566,7 +566,7 @@ export default function App() {
                  </div>
                </div>
 
-               <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 mt-4">
+               <div className="bg-white p-5 rounded-4xl shadow-sm border border-gray-100 mt-4">
                  <h3 className="font-black text-lg text-gray-900 mb-4 flex items-center gap-2"><Sparkles className="text-yellow-500" size={20}/> Log Food</h3>
                  <div className="flex gap-2 mb-4">
                    <select value={selectedMealId} onChange={e=>setSelectedMealId(e.target.value)} className="bg-gray-50 p-3 rounded-2xl outline-none border border-gray-100 font-bold text-gray-700 flex-1">{meals.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>
@@ -584,7 +584,7 @@ export default function App() {
              <div className="space-y-6 animate-fadeIn">
                 <h1 className="text-3xl font-extrabold text-gray-900">Profile</h1>
                 
-                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 relative">
+                <div className="bg-white p-6 rounded-4xl shadow-sm border border-gray-100 relative">
                   <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mb-4">
                     <UserCircle size={48} className="text-orange-500" />
                   </div>
@@ -592,12 +592,12 @@ export default function App() {
                   <p className="text-gray-500 font-medium">Account: {user.email}</p>
                 </div>
 
-                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+                <div className="bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
                   <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">Weight (kg)</label>
                   <input type="number" id="profileWeight" name="profileWeight" value={userProfile.weight} onChange={e=>{setUserProfile({...userProfile, weight:e.target.value}); saveToCloud();}} className="w-full bg-gray-50 p-4 rounded-2xl mt-2 outline-none font-black text-xl text-gray-900 focus:ring-2 focus:ring-orange-500" />
                 </div>
                 
-                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+                <div className="bg-white p-6 rounded-4xl shadow-sm border border-gray-100">
                   <label className="text-xs text-gray-400 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Gemini API Key</label>
                   <input type="password" id="geminiKey" name="geminiKey" value={userProfile.geminiApiKey} onChange={e=>{setUserProfile({...userProfile, geminiApiKey:e.target.value}); saveToCloud();}} placeholder="Sua chave API aqui..." className="w-full bg-gray-50 p-4 rounded-2xl mt-2 outline-none font-medium text-gray-900 focus:ring-2 focus:ring-blue-500" />
                 </div>
@@ -610,7 +610,7 @@ export default function App() {
         </div>
       </main>
       
-      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around p-3 z-50 rounded-t-[2rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] pb-safe">
+      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-100 flex justify-around p-3 z-50 rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] pb-safe">
         <MobileNavButton a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={24}/>} c="orange" />
         <MobileNavButton a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={24}/>} c="lime" />
         <MobileNavButton a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={24}/>} c="blue" />
