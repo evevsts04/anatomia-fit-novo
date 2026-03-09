@@ -34,11 +34,14 @@ import {
 } from 'lucide-react';
 
 // --- Configuração Firebase ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'fit-ai-pro-v2';
+const firebaseConfig = {
+  apiKey: "AIzaSyAgJaSl-KRp-ei0ZoMwbOx8G-RZ5BrMJCg",
+  authDomain: "anatomiafit.firebaseapp.com",
+  projectId: "anatomiafit",
+  storageBucket: "anatomiafit.firebasestorage.app",
+  messagingSenderId: "627620141777",
+  appId: "1:627620141777:web:c36cfafac1f15b2e0843f0"
+};
 
 // --- Componentes de UI ---
 const Card = ({ children, className = "" }) => (
