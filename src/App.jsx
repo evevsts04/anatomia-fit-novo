@@ -101,6 +101,8 @@ export default function App() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiPasswordAttempt, setApiPasswordAttempt] = useState('');
   const [isApiAuthPending, setIsApiAuthPending] = useState(false);
+  const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
+  const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
   // IA
   const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: 'Olá! Registe as suas refeições aqui.' }]);
@@ -250,6 +252,7 @@ export default function App() {
   // Sincroniza a chave API guardada com o campo de texto localmente
   useEffect(() => {
     setTempApiKey(userProfile.geminiApiKey || '');
+    setIsApiKeyUnlocked(!userProfile.geminiApiKey);
   }, [userProfile.geminiApiKey]);
 
   const saveToCloud = async (overrideData = null) => {
@@ -303,16 +306,14 @@ export default function App() {
     }
   };
 
-  const verifyPasswordAndSaveKey = async () => {
+  const handleUnlockApiKey = async () => {
     if (user?.email) {
       try {
         setIsApiAuthPending(true);
         await signInWithEmailAndPassword(auth, user.email, apiPasswordAttempt);
-        const upProf = {...userProfile, geminiApiKey: tempApiKey};
-        setUserProfile(upProf);
-        saveToCloud({ userProfile: upProf });
+        setIsApiKeyUnlocked(true);
+        setShowUnlockPrompt(false);
         setApiPasswordAttempt('');
-        alert("Chave API salva com sucesso!");
       } catch (error) {
         alert("Senha incorreta!");
       } finally {
@@ -320,15 +321,21 @@ export default function App() {
       }
     } else {
       if (apiPasswordAttempt === 'admin' || apiPasswordAttempt === '123456') {
-        const upProf = {...userProfile, geminiApiKey: tempApiKey};
-        setUserProfile(upProf);
-        saveToCloud({ userProfile: upProf });
+        setIsApiKeyUnlocked(true);
+        setShowUnlockPrompt(false);
         setApiPasswordAttempt('');
-        alert("Chave API salva com sucesso! (Modo Local)");
       } else {
         alert("Modo Local: Use a senha 'admin' ou '123456'");
       }
     }
+  };
+
+  const handleSaveApiKey = () => {
+     const upProf = {...userProfile, geminiApiKey: tempApiKey.trim()};
+     setUserProfile(upProf);
+     saveToCloud({ userProfile: upProf });
+     setIsApiKeyUnlocked(false);
+     alert("Chave API salva e bloqueada com sucesso!");
   };
 
   const handleCompleteWorkout = () => {
@@ -377,13 +384,27 @@ export default function App() {
 
   // --- IA Functions ---
   const callGemini = async (prompt, schema = null) => {
-    if (!userProfile.geminiApiKey) throw new Error("Sem API Key.");
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userProfile.geminiApiKey}`, {
+    if (!userProfile.geminiApiKey) throw new Error("Sem API Key configurada.");
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userProfile.geminiApiKey.trim()}`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(schema && {generationConfig: {responseMimeType: "application/json", responseSchema: schema}}) })
     });
+    
     const data = await res.json();
-    return schema ? JSON.parse(data.candidates[0].content.parts[0].text) : data.candidates[0].content.parts[0].text;
+    
+    if (!res.ok) {
+      console.error("Gemini API Error:", data);
+      throw new Error(data.error?.message || "Falha na chamada da API.");
+    }
+    
+    let textOutput = data.candidates[0].content.parts[0].text;
+    
+    if (schema) {
+      // Limpeza de possíveis formatações markdown indevidas que a IA possa enviar
+      textOutput = textOutput.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+      return JSON.parse(textOutput);
+    }
+    return textOutput;
   };
 
   const handleGenerateDeepInsight = async () => {
@@ -1050,45 +1071,75 @@ export default function App() {
                 </div>
 
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Sistema</h3>
-                  <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center mb-2"><Key size={14}/> Gemini API Key</label>
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
                   
-                  <div className="relative mt-2">
-                    <input 
-                      type={showApiKey ? "text" : "password"} 
-                      value={tempApiKey} 
-                      onChange={e => setTempApiKey(e.target.value)} 
-                      placeholder="Cole a sua chave aqui..." 
-                      className="w-full bg-zinc-950 p-4 pr-12 rounded-2xl outline-none font-medium text-emerald-400 border border-zinc-800 focus:border-emerald-500 transition-colors" 
-                    />
-                    <button 
-                      onClick={() => setShowApiKey(!showApiKey)} 
-                      className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300 transition-colors"
-                    >
-                      {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-2 font-bold mb-4">A chave fica guardada apenas no seu ambiente.</p>
+                  {!isApiKeyUnlocked ? (
+                    <div className="space-y-4">
+                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Chave API Atual</label>
+                      <div className="w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-zinc-500 text-center tracking-widest">
+                        ••••••••••••••••••••••••••••••••
+                      </div>
+                      
+                      {!showUnlockPrompt ? (
+                        <button 
+                          onClick={() => setShowUnlockPrompt(true)}
+                          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors"
+                        >
+                          Desbloquear para Editar
+                        </button>
+                      ) : (
+                        <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 animate-fadeIn mt-4">
+                           <p className="text-xs text-zinc-400 mb-3 font-bold">Confirme a sua senha para desbloquear:</p>
+                           <div className="flex flex-col sm:flex-row gap-2">
+                             <input 
+                               type="password" 
+                               value={apiPasswordAttempt} 
+                               onChange={e => setApiPasswordAttempt(e.target.value)} 
+                               placeholder="Sua senha..." 
+                               className="bg-zinc-900 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-emerald-500"
+                             />
+                             <button 
+                               onClick={handleUnlockApiKey}
+                               disabled={isApiAuthPending || !apiPasswordAttempt}
+                               className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center"
+                             >
+                               {isApiAuthPending ? <Loader2 size={18} className="animate-spin" /> : "Validar"}
+                             </button>
+                           </div>
+                           <button onClick={() => {setShowUnlockPrompt(false); setApiPasswordAttempt('');}} className="w-full mt-3 text-xs text-zinc-500 hover:text-zinc-300">Cancelar</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-fadeIn">
+                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Configurar Chave</label>
+                      <div className="relative">
+                        <input 
+                          type={showApiKey ? "text" : "password"} 
+                          value={tempApiKey} 
+                          onChange={e => setTempApiKey(e.target.value)} 
+                          placeholder="Cole a sua chave aqui..." 
+                          className="w-full bg-zinc-950 p-4 pr-12 rounded-2xl outline-none font-medium text-emerald-400 border border-emerald-900/50 focus:border-emerald-500 transition-colors" 
+                        />
+                        <button 
+                          onClick={() => setShowApiKey(!showApiKey)} 
+                          className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                          {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 font-bold mb-4">Ao salvar, a chave será ocultada e bloqueada para edições acidentais.</p>
 
-                  {tempApiKey !== (userProfile.geminiApiKey || '') && (
-                    <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 animate-fadeIn">
-                       <p className="text-xs text-zinc-400 mb-3 font-bold">Confirme a sua senha para salvar a alteração:</p>
-                       <div className="flex flex-col sm:flex-row gap-2">
-                         <input 
-                           type="password" 
-                           value={apiPasswordAttempt} 
-                           onChange={e => setApiPasswordAttempt(e.target.value)} 
-                           placeholder="Senha da conta..." 
-                           className="bg-zinc-900 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-emerald-500"
-                         />
-                         <button 
-                           onClick={verifyPasswordAndSaveKey}
-                           disabled={isApiAuthPending || !apiPasswordAttempt}
-                           className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center"
-                         >
-                           {isApiAuthPending ? <Loader2 size={18} className="animate-spin" /> : "Salvar"}
-                         </button>
-                       </div>
+                      <button 
+                        onClick={handleSaveApiKey}
+                        disabled={!tempApiKey}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Save size={18}/> Salvar e Bloquear
+                      </button>
+                      {userProfile.geminiApiKey && (
+                         <button onClick={() => {setIsApiKeyUnlocked(false); setTempApiKey(userProfile.geminiApiKey); setShowUnlockPrompt(false);}} className="w-full text-xs text-zinc-500 hover:text-zinc-300 mt-2">Cancelar Edição</button>
+                      )}
                     </div>
                   )}
                 </div>
