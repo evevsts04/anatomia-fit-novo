@@ -210,7 +210,7 @@ export default function App() {
   const [workouts, setWorkouts] = useState({});
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [dailyLogs, setDailyLogs] = useState([]); 
-  const [nutritionLogs, setNutritionLogs] = useState([]); // NOVO ESTADO: Histórico de Nutrição
+  const [nutritionLogs, setNutritionLogs] = useState([]); 
   const [activeWorkoutDay, setActiveWorkoutDay] = useState('Pull');
   const [isGapMode, setIsGapMode] = useState(false);
   const [gapDuration, setGapDuration] = useState(45);
@@ -234,7 +234,7 @@ export default function App() {
   // Controle Feed Nutrição
   const [editingNutritionId, setEditingNutritionId] = useState(null);
   const [editNutritionData, setEditNutritionData] = useState(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // ESTADO P/ BOTÃO DE EXCLUIR
 
   // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
@@ -274,39 +274,40 @@ export default function App() {
     return '0';
   }, [userProfile.weight, userProfile.height]);
 
+  // --- NOVA ESTRUTURA COM REGRAS RÍGIDAS DE GRUPAMENTOS ---
   const generateAIPlan = () => {
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
-          formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12), // Costas
-          formatEx(getEx('e40'), 3, 15), // Posterior de Ombro
-          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12) // Bíceps
+          formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12), // 3 Costas
+          formatEx(getEx('e40'), 3, 15), // 1 Posterior de Ombro
+          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12) // 2 Bíceps
       ]},
       'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ 
-          formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // Quad
-          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), // Posterior
-          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15) // Panturrilha
+          formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // 3 Quad
+          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), // 2 Posterior
+          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15) // 2 Panturrilha
       ]},
       'Push': { name: 'Treino Push', isLegs: false, exercises: [ 
-          formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), // Peito
-          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), // Ombros
-          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) // Tríceps
+          formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), // 3 Peito
+          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), // 2 Ombros
+          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) // 2 Tríceps
       ]},
       'Legs 2': { name: 'Legs Posterior', isLegs: true, exercises: [ 
-          formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), // Quad
-          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), // Posterior
-          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15) // Panturrilha
+          formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), // 3 Quad
+          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), // 2 Posterior
+          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15) // 2 Panturrilha
       ]},
       'Upper': { name: 'Upper Body', isLegs: false, exercises: [ 
-          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), // Costas
-          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), // Peito
-          formatEx(getEx('e36'), 3, 12), // Ombro
-          formatEx(getEx('e47'), 3, 12), // Bíceps
-          formatEx(getEx('e57'), 3, 12)  // Tríceps
+          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), // 2 Costas
+          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), // 2 Peito
+          formatEx(getEx('e36'), 3, 12), // 1 Ombro
+          formatEx(getEx('e47'), 3, 12), // 1 Bíceps
+          formatEx(getEx('e57'), 3, 12)  // 1 Tríceps
       ]},
       'Lower': { name: 'Lower Body', isLegs: true, exercises: [ 
-          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // Quad
-          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), // Posterior
-          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15) // Panturrilha
+          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // 3 Quad
+          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), // 2 Posterior
+          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15) // 2 Panturrilha
       ]}
     };
     setWorkouts(p);
@@ -342,12 +343,11 @@ export default function App() {
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
-        if (d.measurements) setMeasurements({ cintura: '', ...d.measurements }); // Garante a chave cintura
+        if (d.measurements) setMeasurements({ cintura: '', ...d.measurements }); 
         if (d.weightHistory) setWeightHistory(d.weightHistory);
         if (d.userProfile) {
           let prof = d.userProfile;
           
-          // Reset Diário dos Treinos (Se virou a meia-noite)
           if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
              let updWorkouts = { ...(d.workouts || workouts) };
              let modified = false;
@@ -362,7 +362,6 @@ export default function App() {
              setUserProfile(prof);
              if (modified) {
                setWorkouts(updWorkouts);
-               // Dispara save em background para atualizar a data no servidor
                setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), { userProfile: prof, workouts: updWorkouts }, { merge: true });
              }
           } else {
@@ -499,7 +498,7 @@ export default function App() {
            reps: ex.reps,
            weight: ex.weight
         });
-        ex.isCompleted = false; // Reset for next time
+        ex.isCompleted = false; 
       });
     }
 
@@ -650,7 +649,7 @@ export default function App() {
     }
   };
 
-  // --- NOVO: GERAR TREINO COM IA ---
+  // --- GERAR TREINO COM IA: REGRAS APLICADAS ---
   const handleGenerateAIWorkout = async () => {
     if (!userProfile.geminiApiKey) {
       alert("Configure a chave da API Gemini na aba Perfil para gerar treinos personalizados.");
@@ -666,13 +665,14 @@ export default function App() {
       Aqui está a lista de TODOS os exercícios disponíveis no banco de dados:
       ${dbContext}
 
-      REGRAS DE DIVISÃO OBRIGATÓRIAS (Siga rigorosamente a quantidade e os grupos musculares de acordo com o nome do treino):
-      - Se for "Treino Pull": selecione EXATAMENTE 3 exercícios de Costas, 1 de Posterior de Ombro e 2 de Bíceps.
-      - Se for "Treino Push": selecione EXATAMENTE 3 exercícios de Peito, 2 de Ombros e 2 de Tríceps.
-      - Se for "Legs" (Quadríceps, Posterior ou Lower): selecione EXATAMENTE 3 exercícios para Quadríceps, 2 para Posterior da Coxa e 2 para Panturrilhas.
-      - Se for "Upper Body": selecione EXATAMENTE 2 exercícios para Costas, 2 para Peito, 1 para Ombro, 1 para Bíceps e 1 para Tríceps.
+      REGRAS OBRIGATÓRIAS DE DIVISÃO:
+      - Dia "Pull" (ou Treino Pull): Exatamente 3 exercícios de Costas, 1 de Ombros (focado em posterior), 2 de Braços (focado em Bíceps).
+      - Dia "Push" (ou Treino Push): Exatamente 3 exercícios de Peito, 2 de Ombros, 2 de Braços (focado em Tríceps).
+      - Dias "Legs" ou "Lower": Exatamente 3 exercícios para Quadríceps (Pernas), 2 para Posterior (Pernas) e 2 para Panturrilha (Pernas).
+      - Dia "Upper": Exatamente 2 de Costas, 2 de Peito, 1 de Ombros, 1 de Braços (Bíceps) e 1 de Braços (Tríceps).
 
-      IMPORTANTE: Retorne APENAS um JSON contendo a propriedade "exercises" com a lista de IDs selecionados na ordem correta dos grupos. Exemplo: {"exercises": ["e1", "e3", "e9", "e14"]}`;
+      Sempre selecione os melhores exercícios e ordene a lista de forma que os exercícios do mesmo grupo muscular fiquem juntos (ex: todos de peito, seguidos de ombro, etc.).
+      IMPORTANTE: Retorne APENAS um JSON com a propriedade "exercises" contendo a lista de IDs. Ex: {"exercises": ["e1", "e3", "e32", "e36", "e57", "e59"]}`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
@@ -723,11 +723,11 @@ export default function App() {
          break;
        }
     }
-    if (!lastWorkedDate) return '#10b981'; // Verde
+    if (!lastWorkedDate) return '#10b981'; 
     const diffHours = (now - lastWorkedDate) / (1000 * 60 * 60);
-    if (diffHours < 24) return '#ef4444'; // Vermelho
-    if (diffHours < 72) return '#eab308'; // Amarelo
-    return '#10b981'; // Verde
+    if (diffHours < 24) return '#ef4444'; 
+    if (diffHours < 72) return '#eab308'; 
+    return '#10b981'; 
   };
 
   const getCalendarDays = () => {
@@ -921,10 +921,8 @@ export default function App() {
                           {showBackAnatomy ? (
                             <>
                               <path d="M 65 80 L 135 80 L 120 160 L 80 160 Z" fill={getFatigueColor(['Costas'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Triceps (Costas) */}
                               <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
                               <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
-                              
                               <path d="M 75 160 L 125 160 L 130 210 L 100 220 L 70 210 Z" fill={getFatigueColor(['Glúteo', 'GAP', 'Pernas'])} stroke="#18181b" strokeWidth="2"/>
                               <rect x="70" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
                               <rect x="104" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
@@ -935,10 +933,8 @@ export default function App() {
                             <>
                               <path d="M 65 80 L 135 80 L 130 120 L 100 130 L 70 120 Z" fill={getFatigueColor(['Peito'])} stroke="#18181b" strokeWidth="2"/>
                               <path d="M 75 125 L 125 125 L 120 180 L 80 180 Z" fill={getFatigueColor(['GAP'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Bíceps (Frente) */}
                               <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
                               <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
-                              
                               <rect x="25" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(10 33 150)" />
                               <rect x="159" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(-10 167 150)" />
                               <rect x="70" y="185" width="28" height="90" rx="10" fill={getFatigueColor(['Pernas', 'GAP'])} stroke="#18181b" strokeWidth="2" />
@@ -1151,7 +1147,7 @@ export default function App() {
                        return (
                          <React.Fragment key={ex.id || index}>
                            {showHeader && (
-                             <div className="mt-8 mb-2 flex items-center gap-3 animate-fadeIn">
+                             <div className="mt-8 mb-4 flex items-center gap-3 animate-fadeIn">
                                <div className="h-px flex-1 bg-linear-to-r from-transparent to-zinc-800"></div>
                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
                                <div className="h-px flex-1 bg-linear-to-l from-transparent to-zinc-800"></div>
