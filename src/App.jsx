@@ -4,7 +4,7 @@ import {
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
   Smile, Frown, Lock, Flame, ArrowRightCircle, LogOut, Key, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, ActivitySquare, AlertTriangle, 
-  CalendarDays, Eye, EyeOff, Trash2, Cpu
+  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -15,12 +15,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
-  authDomain: "anatomiafit-96b5b.firebaseapp.com",
-  projectId: "anatomiafit-96b5b",
-  storageBucket: "anatomiafit-96b5b.firebasestorage.app",
-  messagingSenderId: "786814321049",
-  appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -191,9 +191,6 @@ export default function App() {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-           // Modificamos a inicialização anônima para evitar conflitos se o usuário estiver na tela de login
-           // await signInAnonymously(auth); 
         }
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
@@ -223,7 +220,6 @@ export default function App() {
           setUserProfile(d.userProfile);
           if (d.userProfile.onboardingCompleted) {
             setAppScreen('main');
-            // Check update frequency (7 days)
             if (d.userProfile.lastMeasureUpdate) {
                const daysSince = (Date.now() - d.userProfile.lastMeasureUpdate) / (1000 * 60 * 60 * 24);
                if (daysSince >= 7) setShowMeasureAlert(true);
@@ -279,7 +275,6 @@ export default function App() {
       }
     } catch (error) {
       console.error("Auth Error Full:", error);
-      // Tratamento específico de erros para ajudar a depurar
       if (error.code === 'auth/admin-restricted-operation') {
         setAuthErrorMsg('Operação restrita. Verifique se a sua API Key do Firebase está correta e se a ativação E-mail/Senha está correta.');
       } else if (error.code === 'auth/invalid-credential') {
@@ -386,7 +381,6 @@ export default function App() {
   const callGemini = async (prompt, schema = null) => {
     if (!userProfile.geminiApiKey) throw new Error("Sem API Key configurada.");
     
-    // Atualizamos para o modelo mais estável e universal (gemini-2.5-flash)
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userProfile.geminiApiKey.trim()}`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(schema && {generationConfig: {responseMimeType: "application/json", responseSchema: schema}}) })
@@ -403,7 +397,6 @@ export default function App() {
     if (!textOutput) throw new Error("Resposta vazia da IA.");
     
     if (schema) {
-      // Limpeza de possíveis formatações markdown indevidas que a IA possa enviar
       textOutput = textOutput.replace(/```json\n?/g, '').replace(/```/g, '').trim();
       return JSON.parse(textOutput);
     }
@@ -430,10 +423,29 @@ export default function App() {
     if (!userProfile.geminiApiKey) return setAnatomyTipState(p => ({ ...p, [exId]: 'error' }));
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
     try {
-      const res = await callGemini(`Resuma o exercício "${exName}" para leitura rápida no treino. Retorne JSON: {"target": "Músculo principal (ex: Peitoral)", "auxiliary": "Músculo auxiliar (ex: Tríceps)", "execution": "Instrução direta (máx 2 linhas)", "tips": "Dica de ouro e curta"}.`,
-        { type: "OBJECT", properties: { target:{type:"STRING"}, auxiliary:{type:"STRING"}, execution:{type:"STRING"}, tips:{type:"STRING"} } }
-      );
-      setAnatomyTips(p => ({ ...p, [exId]: res })); setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+      const schema = { 
+        type: "OBJECT", 
+        properties: { 
+          intro: { type: "STRING" }, 
+          musclesTarget: { type: "STRING" }, 
+          musclesAux: { type: "STRING" }, 
+          musclesStability: { type: "STRING" }, 
+          executionSteps: { type: "ARRAY", items: { type: "STRING" } }, 
+          safetyTips: { type: "ARRAY", items: { type: "STRING" } }, 
+          mistakes: { type: "ARRAY", items: { type: "STRING" } }, 
+          geminiTip: { type: "STRING" } 
+        } 
+      };
+      const res = await callGemini(`Crie um "Guia Rápido" premium para o exercício "${exName}". O foco é o aluno ter resultados sem se lesionar. 
+      Retorne estritamente o JSON preenchido: 
+      - intro: 1 frase explicativa/motivacional. 
+      - executionSteps: 3 a 4 passos práticos formatados como 'Tópico: Explicação' (ex: "Base: Pés firmes..."). 
+      - safetyTips: 2 a 3 dicas de proteção articular ou respiração. 
+      - mistakes: 2 a 4 erros muito comuns e perigosos. 
+      - geminiTip: A dica final de ouro. Em português do Brasil.`, schema);
+      
+      setAnatomyTips(p => ({ ...p, [exId]: res })); 
+      setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
     } catch (error) { 
       console.error(error);
       setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
@@ -477,7 +489,6 @@ export default function App() {
       Selecione de 4 a 7 exercícios apropriados para compor uma ficha de treino completa e equilibrada focada neste dia/grupo muscular.
       IMPORTANTE: Retorne APENAS um JSON contendo a propriedade "exercises" com a lista de IDs selecionados. Exemplo: {"exercises": ["e1", "e3", "e9", "e14"]}`;
 
-      // Corrigido para OBJECT em vez de ARRAY na raiz
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
       const resultIds = resultData.exercises || [];
@@ -948,23 +959,76 @@ export default function App() {
                           <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
                        </div>
 
-                       {/* Dicas IA */}
-                       {expandedDesc[ex.id] && anatomyTips[ex.id] && (
+                       {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
+                       {expandedDesc[ex.id] && (
                          <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
                            {anatomyTipState[ex.id] === 'loading' ? (
-                              <div className="flex items-center gap-3 text-emerald-500 font-medium py-4 justify-center"><Loader2 size={20} className="animate-spin"/> Analisando Biomecânica...</div>
-                           ) : (
-                             <div className="animate-fadeIn">
-                               <div className="grid grid-cols-2 gap-3 mb-4">
-                                 <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Foco Principal</span><span className="font-bold text-white">{anatomyTips[ex.id].target}</span></div>
-                                 <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Músculo Auxiliar</span><span className="font-bold text-zinc-400">{anatomyTips[ex.id].auxiliary || "N/A"}</span></div>
+                              <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                           ) : anatomyTips[ex.id] ? (
+                             <div className="animate-fadeIn space-y-5">
+                               <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
+                                 <Dumbbell size={18} className="text-emerald-500"/>
+                                 <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
                                </div>
-                               <p className="mb-4 leading-relaxed text-zinc-400"><strong className="text-zinc-300">Execução: </strong>{anatomyTips[ex.id].execution}</p>
-                               <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 text-emerald-400 flex items-start gap-3">
-                                 <Sparkles size={20} className="shrink-0 mt-0.5" />
-                                 <p className="font-medium leading-snug">"{anatomyTips[ex.id].tips}"</p>
+                               
+                               <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
+
+                               <div>
+                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
+                                 </div>
+                               </div>
+
+                               <div>
+                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
+                                 <ul className="space-y-3 mt-3">
+                                   {anatomyTips[ex.id].executionSteps?.map((step, i) => {
+                                      const parts = step.split(':');
+                                      if(parts.length > 1) {
+                                         const boldPart = parts.shift() + ':';
+                                         return (
+                                           <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
+                                             <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                             <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
+                                           </li>
+                                         );
+                                      }
+                                      return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                   })}
+                                 </ul>
+                               </div>
+
+                               <div>
+                                 <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
+                                 <ul className="space-y-2 text-zinc-400">
+                                   {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
+                                     <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
+                                   ))}
+                                 </ul>
+                               </div>
+
+                               <div>
+                                 <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
+                                 <ul className="space-y-2 text-zinc-400">
+                                   {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
+                                      <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
+                                   ))}
+                                 </ul>
+                               </div>
+
+                               <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
+                                 <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                                 <div>
+                                    <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
+                                    <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                 </div>
                                </div>
                              </div>
+                           ) : (
+                              <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
                            )}
                          </div>
                        )}
