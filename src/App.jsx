@@ -4,7 +4,7 @@ import {
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
   Smile, Frown, Lock, Flame, ArrowRightCircle, LogOut, Key, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, ActivitySquare, AlertTriangle, 
-  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2
+  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -34,43 +34,133 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- DB EXERCÍCIOS ---
+// --- DB EXERCÍCIOS (EXPANDIDO - 100 EXERCÍCIOS) ---
 const EXERCISE_DB = [
-  { id: 'e1', name: 'Supino Halteres', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e2', name: 'Crucifixo Halteres', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e3', name: 'Supino Reto', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e4', name: 'Crossover', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e5', name: 'Puxada Anterior', target: 'Grande Dorsal', group: 'Costas' },
-  { id: 'e6', name: 'Remada Curvada', target: 'Dorsal e Romboides', group: 'Costas' },
-  { id: 'e7', name: 'Remada Sentada', target: 'Costas (Média)', group: 'Costas' },
-  { id: 'e8', name: 'Crucifixo Invertido', target: 'Deltoide Posterior', group: 'Costas' },
-  { id: 'e9', name: 'Desenvolvimento', target: 'Deltoide Anterior', group: 'Ombros' },
-  { id: 'e10', name: 'Elevação Lateral', target: 'Deltoide Lateral', group: 'Ombros' },
-  { id: 'e11', name: 'Elevação Frontal', target: 'Deltoide Anterior', group: 'Ombros' },
-  { id: 'e12', name: 'Rosca Direta', target: 'Bíceps Braquial', group: 'Braços' },
-  { id: 'e13', name: 'Rosca Concentrada', target: 'Braquial', group: 'Braços' },
-  { id: 'e14', name: 'Puxador Tríceps', target: 'Tríceps', group: 'Braços' },
-  { id: 'e15', name: 'Tríceps Testa', target: 'Tríceps', group: 'Braços' },
-  { id: 'e16', name: 'Agachamento Livre', target: 'Quadríceps/Glúteos', group: 'Pernas' },
-  { id: 'e17', name: 'Leg Press', target: 'Quadríceps', group: 'Pernas' },
-  { id: 'e18', name: 'Cadeira Extensora', target: 'Quadríceps', group: 'Pernas' },
-  { id: 'e19', name: 'Mesa Flexora', target: 'Isquiotibiais', group: 'Pernas' },
-  { id: 'e20', name: 'Panturrilha em Pé', target: 'Gastrocnêmio', group: 'Pernas' },
-  { id: 'e21', name: 'Levantamento Terra', target: 'Posterior/Costas', group: 'Pernas' },
+  // --- PEITO ---
+  { id: 'e1', name: 'Supino Reto (Barra)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e2', name: 'Supino Reto (Halteres)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e3', name: 'Supino Inclinado (Barra)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e4', name: 'Supino Inclinado (Halteres)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e5', name: 'Supino Declinado (Barra)', target: 'Peitoral Inferior', group: 'Peito' },
+  { id: 'e6', name: 'Crucifixo Reto (Halteres)', target: 'Peitoral (Isolado)', group: 'Peito' },
+  { id: 'e7', name: 'Crucifixo Inclinado (Halteres)', target: 'Peitoral Superior (Isolado)', group: 'Peito' },
+  { id: 'e8', name: 'Crossover (Polia Alta)', target: 'Peitoral Inferior/Médio', group: 'Peito' },
+  { id: 'e9', name: 'Crossover (Polia Média)', target: 'Peitoral Maior/Miolo', group: 'Peito' },
+  { id: 'e10', name: 'Crossover (Polia Baixa)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e11', name: 'Voador (Peck Deck)', target: 'Peitoral (Isolado)', group: 'Peito' },
+  { id: 'e12', name: 'Flexão de Braços (Padrão)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e13', name: 'Flexão Declinada (Pés Elevados)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e14', name: 'Mergulho nas Paralelas', target: 'Peitoral Inferior/Tríceps', group: 'Peito' },
+  { id: 'e15', name: 'Supino Articulado (Máquina)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e16', name: 'Pullover (Halter)', target: 'Peitoral/Dorsal', group: 'Peito' },
+
+  // --- COSTAS ---
+  { id: 'e17', name: 'Barra Fixa (Pronada)', target: 'Grande Dorsal', group: 'Costas' },
+  { id: 'e18', name: 'Barra Fixa (Supinada)', target: 'Dorsal/Bíceps', group: 'Costas' },
+  { id: 'e19', name: 'Puxada Anterior (Pronada)', target: 'Dorsal (Largura)', group: 'Costas' },
+  { id: 'e20', name: 'Puxada Anterior (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
+  { id: 'e21', name: 'Puxada com Triângulo', target: 'Dorsal (Miolo)', group: 'Costas' },
+  { id: 'e22', name: 'Remada Curvada (Barra)', target: 'Dorsal e Romboides', group: 'Costas' },
+  { id: 'e23', name: 'Remada Curvada (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
+  { id: 'e24', name: 'Remada Unilateral (Serrote)', target: 'Dorsal Unilateral', group: 'Costas' },
+  { id: 'e25', name: 'Remada Cavalinho (Barra T)', target: 'Espessura das Costas', group: 'Costas' },
+  { id: 'e26', name: 'Remada Sentada (Triângulo)', target: 'Costas (Média/Miolo)', group: 'Costas' },
+  { id: 'e27', name: 'Remada Sentada (Barra Aberta)', target: 'Dorsal Posterior', group: 'Costas' },
+  { id: 'e28', name: 'Pulldown (Polia Alta/Corda)', target: 'Grande Dorsal (Isolado)', group: 'Costas' },
+  { id: 'e29', name: 'Levantamento Terra', target: 'Costas Completas/Lombar', group: 'Costas' },
+  { id: 'e30', name: 'Extensão Lombar (Banco)', target: 'Lombar', group: 'Costas' },
+  { id: 'e31', name: 'Remada Articulada (Máquina)', target: 'Dorsal Maior', group: 'Costas' },
+
+  // --- OMBROS ---
+  { id: 'e32', name: 'Desenvolvimento (Barra)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
+  { id: 'e33', name: 'Desenvolvimento (Halteres)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
+  { id: 'e34', name: 'Desenvolvimento Arnold', target: 'Deltoide Completo', group: 'Ombros' },
+  { id: 'e35', name: 'Desenvolvimento (Máquina)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e36', name: 'Elevação Lateral (Halteres)', target: 'Deltoide Lateral', group: 'Ombros' },
+  { id: 'e37', name: 'Elevação Lateral (Polia)', target: 'Deltoide Lateral (Tensão Contínua)', group: 'Ombros' },
+  { id: 'e38', name: 'Elevação Frontal (Halteres)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e39', name: 'Elevação Frontal (Barra/Polia)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e40', name: 'Crucifixo Invertido (Halteres)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e41', name: 'Crucifixo Invertido (Polia)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e42', name: 'Crucifixo Invertido (Máquina)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e43', name: 'Remada Alta (Barra)', target: 'Deltoide Lateral/Trapézio', group: 'Ombros' },
+  { id: 'e44', name: 'Remada Alta (Polia)', target: 'Deltoide Lateral', group: 'Ombros' },
+  { id: 'e45', name: 'Encolhimento (Barra)', target: 'Trapézio', group: 'Ombros' },
+  { id: 'e46', name: 'Encolhimento (Halteres)', target: 'Trapézio', group: 'Ombros' },
+
+  // --- BRAÇOS (BÍCEPS, TRÍCEPS E ANTEBRAÇO) ---
+  { id: 'e47', name: 'Rosca Direta (Barra Reta)', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e48', name: 'Rosca Direta (Barra W)', target: 'Bíceps (Cabeça Longa)', group: 'Braços' },
+  { id: 'e49', name: 'Rosca Alternada (Halteres)', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e50', name: 'Rosca Martelo (Halteres)', target: 'Braquial/Antebraço', group: 'Braços' },
+  { id: 'e51', name: 'Rosca Martelo (Corda/Polia)', target: 'Braquial', group: 'Braços' },
+  { id: 'e52', name: 'Rosca Scott (Máquina/Barra)', target: 'Bíceps Braquial (Isolado)', group: 'Braços' },
+  { id: 'e53', name: 'Rosca Concentrada (Halter)', target: 'Pico do Bíceps', group: 'Braços' },
+  { id: 'e54', name: 'Rosca na Polia Baixa', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e55', name: 'Rosca Inversa (Barra/Polia)', target: 'Antebraço/Braquiorradial', group: 'Braços' },
+  { id: 'e56', name: 'Flexão de Punho (Barra/Halter)', target: 'Antebraço', group: 'Braços' },
+  { id: 'e57', name: 'Tríceps Pulley (Barra Reta)', target: 'Tríceps (Cabeça Lateral)', group: 'Braços' },
+  { id: 'e58', name: 'Tríceps Pulley (Corda)', target: 'Tríceps (Cabeça Longa)', group: 'Braços' },
+  { id: 'e59', name: 'Tríceps Testa (Barra W)', target: 'Tríceps Completo', group: 'Braços' },
+  { id: 'e60', name: 'Tríceps Testa (Halteres)', target: 'Tríceps Completo', group: 'Braços' },
+  { id: 'e61', name: 'Tríceps Francês (Halter Unilateral)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
+  { id: 'e62', name: 'Tríceps Francês (Corda/Polia)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
+  { id: 'e63', name: 'Tríceps Coice (Halter/Polia)', target: 'Tríceps (Isolado)', group: 'Braços' },
+  { id: 'e64', name: 'Mergulho em Máquina', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'e65', name: 'Repulsão entre Bancos', target: 'Tríceps', group: 'Braços' },
+  { id: 'e66', name: 'Supino Fechado', target: 'Tríceps/Peitoral Miolo', group: 'Braços' },
+
+  // --- PERNAS (QUADRÍCEPS, POSTERIOR E PANTURRILHA) ---
+  { id: 'e67', name: 'Agachamento Livre (Barra)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e68', name: 'Agachamento Frontal', target: 'Quadríceps (Foco Alto)', group: 'Pernas' },
+  { id: 'e69', name: 'Agachamento Hack', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e70', name: 'Agachamento Búlgaro', target: 'Quadríceps/Glúteos Unilateral', group: 'Pernas' },
+  { id: 'e71', name: 'Leg Press 45°', target: 'Quadríceps/Posterior', group: 'Pernas' },
+  { id: 'e72', name: 'Leg Press Horizontal', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e73', name: 'Cadeira Extensora', target: 'Quadríceps (Isolado)', group: 'Pernas' },
+  { id: 'e74', name: 'Sissy Squat (Máquina)', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e75', name: 'Passada/Avanço (Halteres)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e76', name: 'Afundo (No Lugar)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e77', name: 'Mesa Flexora', target: 'Isquiotibiais (Posterior)', group: 'Pernas' },
+  { id: 'e78', name: 'Cadeira Flexora', target: 'Isquiotibiais', group: 'Pernas' },
+  { id: 'e79', name: 'Flexora em Pé (Unilateral)', target: 'Isquiotibiais Unilateral', group: 'Pernas' },
+  { id: 'e80', name: 'Stiff (Barra/Halteres)', target: 'Posterior/Glúteos', group: 'Pernas' },
+  { id: 'e81', name: 'Levantamento Terra Romeno', target: 'Posterior da Coxa', group: 'Pernas' },
+  { id: 'e82', name: 'Bom Dia (Good Morning)', target: 'Posterior/Lombar', group: 'Pernas' },
+  { id: 'e83', name: 'Panturrilha em Pé (Máquina)', target: 'Gastrocnêmio', group: 'Pernas' },
+  { id: 'e84', name: 'Panturrilha Sentado (Máquina)', target: 'Sóleo', group: 'Pernas' },
+  { id: 'e85', name: 'Panturrilha no Leg Press', target: 'Gastrocnêmio', group: 'Pernas' },
+  { id: 'e86', name: 'Panturrilha Livre (Degrau/Unilateral)', target: 'Gastrocnêmio', group: 'Pernas' },
+
+  // --- GAP (GLÚTEOS E ABDÔMEN/CORE) ---
+  { id: 'e87', name: 'Elevação Pélvica (Barra)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e88', name: 'Elevação Pélvica (Máquina)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e89', name: 'Cadeira Abdutora', target: 'Glúteo Médio', group: 'GAP' },
+  { id: 'e90', name: 'Cadeira Adutora', target: 'Adutores da Coxa', group: 'GAP' },
+  { id: 'e91', name: 'Glúteo na Polia (Cabo)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e92', name: 'Glúteo 4 Apoios (Caneleira)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e93', name: 'Agachamento Sumô (Halter)', target: 'Glúteo/Adutores', group: 'GAP' },
+  { id: 'e94', name: 'Abdominal Supra (Solo)', target: 'Reto Abdominal', group: 'GAP' },
+  { id: 'e95', name: 'Abdominal Infra (Elevação Pernas)', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'e96', name: 'Abdominal Supra (Polia)', target: 'Reto Abdominal (Com Carga)', group: 'GAP' },
+  { id: 'e97', name: 'Abdominal Oblíquo (Polia/Halter)', target: 'Oblíquos', group: 'GAP' },
+  { id: 'e98', name: 'Prancha Isométrica', target: 'Core/Estabilização', group: 'GAP' },
+  { id: 'e99', name: 'Roda Abdominal (Rolinho)', target: 'Core Completo', group: 'GAP' },
+  { id: 'e100', name: 'Elevação de Pernas em Suspensão', target: 'Abdômen Infra/Core', group: 'GAP' }
 ];
 
 const INITIAL_MEALS = [
-  { id: 'm1', name: 'Café da Manhã', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm2', name: 'Lanche Manhã', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm3', name: 'Almoço', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm4', name: 'Lanche Tarde', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm5', name: 'Pré-Treino', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm6', name: 'Jantar', calories: 0, protein: 0, carbs: 0, fats: 0 },
-  { id: 'm7', name: 'Ceia', calories: 0, protein: 0, carbs: 0, fats: 0 },
+  { id: 'm1', name: 'Café da Manhã' },
+  { id: 'm2', name: 'Lanche Manhã' },
+  { id: 'm3', name: 'Almoço' },
+  { id: 'm4', name: 'Lanche Tarde' },
+  { id: 'm5', name: 'Pré-Treino' },
+  { id: 'm6', name: 'Jantar' },
+  { id: 'm7', name: 'Ceia' },
 ];
 const WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2', 'Upper', 'Lower'];
 
-// Funções utilitárias movidas para fora do componente para maior segurança de escopo
+// Funções utilitárias
 const getEx = (id) => EXERCISE_DB.find(e => e.id === id);
 const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
 
@@ -81,6 +171,9 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [appScreen, setAppScreen] = useState('loading'); 
 
+  // Variável temporal para Reset 24h
+  const todayStr = new Date().toLocaleDateString('pt-BR');
+
   // Navegação
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
@@ -89,14 +182,12 @@ export default function App() {
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
 
-  // Autenticação
+  // Autenticação e Config
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authErrorMsg, setAuthErrorMsg] = useState('');
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-
-  // Estados de Configuração de Chave API
   const [tempApiKey, setTempApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiPasswordAttempt, setApiPasswordAttempt] = useState('');
@@ -104,7 +195,7 @@ export default function App() {
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
-  // IA
+  // IA Geral
   const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: 'Olá! Registe as suas refeições aqui.' }]);
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
@@ -115,36 +206,47 @@ export default function App() {
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
 
-  // Dados
+  // Dados Essenciais
   const [workouts, setWorkouts] = useState({});
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [dailyLogs, setDailyLogs] = useState([]); 
+  const [nutritionLogs, setNutritionLogs] = useState([]); // NOVO ESTADO: Histórico de Nutrição
   const [activeWorkoutDay, setActiveWorkoutDay] = useState('Pull');
   const [isGapMode, setIsGapMode] = useState(false);
   const [gapDuration, setGapDuration] = useState(45);
   
   const [userProfile, setUserProfile] = useState({ 
     name: '', age: '', gender: 'M', height: '', weight: '', goal: 'Hipertrofia', 
-    onboardingCompleted: false, geminiApiKey: '', lastMeasureUpdate: null
+    onboardingCompleted: false, geminiApiKey: '', lastMeasureUpdate: null, lastLoginDate: todayStr
   });
   
-  const [measurements, setMeasurements] = useState({ peito: '', bracos: '', antebraco: '', quadril: '', costas: '', pernas: '', gluteo: '', panturrilha: '' });
-  const [weightHistory, setWeightHistory] = useState([]); // {date, weight}
-  const [meals, setMeals] = useState(INITIAL_MEALS);
+  const [measurements, setMeasurements] = useState({ peito: '', bracos: '', antebraco: '', quadril: '', costas: '', pernas: '', cintura: '', panturrilha: '' });
+  const [weightHistory, setWeightHistory] = useState([]); 
   
-  // UI & Cronômetro
+  // UI & Cronômetro & Nutrição Feed
   const [expandedDesc, setExpandedDesc] = useState({});
   const [exerciseModal, setExerciseModal] = useState({ active: false, mode: 'swap', targetExId: null, filterGroup: null });
   const [timerInterval, setTimerInterval] = useState(90);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [resetPassAttempt, setResetPassAttempt] = useState('');
+  
+  // Controle Feed Nutrição
+  const [editingNutritionId, setEditingNutritionId] = useState(null);
+  const [editNutritionData, setEditNutritionData] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-  // Cálculos Derivados
-  const todayStr = new Date().toLocaleDateString('pt-BR');
-  const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, calories: 0, workout: null };
-  const waterTarget = Number(userProfile.weight) * 35 || 2500; // 35ml per kg
-  const totals = meals.reduce((acc, m) => ({ calories: acc.calories + (Number(m.calories)||0), protein: acc.protein + (Number(m.protein)||0), carbs: acc.carbs + (Number(m.carbs)||0), fats: acc.fats + (Number(m.fats)||0) }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+  // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
+  const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
+  const waterTarget = Number(userProfile.weight) * 35 || 2500; 
+
+  const todayNutrition = nutritionLogs.filter(log => log.date === todayStr);
+  const totals = todayNutrition.reduce((acc, log) => ({ 
+    calories: acc.calories + (Number(log.calories)||0), 
+    protein: acc.protein + (Number(log.protein)||0), 
+    carbs: acc.carbs + (Number(log.carbs)||0), 
+    fats: acc.fats + (Number(log.fats)||0) 
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
   const aiGoals = useMemo(() => {
     const w = Number(userProfile.weight) || 70;
@@ -152,7 +254,7 @@ export default function App() {
     const a = Number(userProfile.age) || 25;
     let bmr = (10 * w) + (6.25 * h) - (5 * a);
     bmr = userProfile.gender === 'M' ? bmr + 5 : bmr - 161;
-    let tdee = bmr * 1.55; // Atividade moderada base
+    let tdee = bmr * 1.55; 
     
     if (userProfile.goal === 'Hipertrofia') tdee += 400;
     if (userProfile.goal === 'Definição') tdee -= 400;
@@ -174,12 +276,38 @@ export default function App() {
 
   const generateAIPlan = () => {
     const p = {
-      'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ formatEx(getEx('e5'), 4, 10), formatEx(getEx('e6'), 3, 10), formatEx(getEx('e12'), 4, 10) ]},
-      'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ formatEx(getEx('e16'), 4, 8), formatEx(getEx('e17'), 3, 12), formatEx(getEx('e19'), 4, 12) ]},
-      'Push': { name: 'Treino Push', isLegs: false, exercises: [ formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e9'), 4, 10) ]},
-      'Legs 2': { name: 'Legs Posterior', isLegs: true, exercises: [ formatEx(getEx('e21'), 4, 8), formatEx(getEx('e17'), 3, 12), formatEx(getEx('e19'), 4, 12) ]},
-      'Upper': { name: 'Upper Body', isLegs: false, exercises: [ formatEx(getEx('e1'), 3, 10), formatEx(getEx('e5'), 3, 10), formatEx(getEx('e14'), 3, 12) ]},
-      'Lower': { name: 'Lower Body', isLegs: true, exercises: [ formatEx(getEx('e16'), 3, 10), formatEx(getEx('e21'), 3, 10), formatEx(getEx('e18'), 3, 15) ]}
+      'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
+          formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12), // Costas
+          formatEx(getEx('e40'), 3, 15), // Posterior de Ombro
+          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12) // Bíceps
+      ]},
+      'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ 
+          formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // Quad
+          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), // Posterior
+          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15) // Panturrilha
+      ]},
+      'Push': { name: 'Treino Push', isLegs: false, exercises: [ 
+          formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), // Peito
+          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), // Ombros
+          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) // Tríceps
+      ]},
+      'Legs 2': { name: 'Legs Posterior', isLegs: true, exercises: [ 
+          formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), // Quad
+          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), // Posterior
+          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15) // Panturrilha
+      ]},
+      'Upper': { name: 'Upper Body', isLegs: false, exercises: [ 
+          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), // Costas
+          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), // Peito
+          formatEx(getEx('e36'), 3, 12), // Ombro
+          formatEx(getEx('e47'), 3, 12), // Bíceps
+          formatEx(getEx('e57'), 3, 12)  // Tríceps
+      ]},
+      'Lower': { name: 'Lower Body', isLegs: true, exercises: [ 
+          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // Quad
+          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), // Posterior
+          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15) // Panturrilha
+      ]}
     };
     setWorkouts(p);
   };
@@ -211,17 +339,40 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         if (d.workouts) setWorkouts(d.workouts);
-        if (d.meals) setMeals(d.meals);
+        if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
-        if (d.measurements) setMeasurements(d.measurements);
+        if (d.measurements) setMeasurements({ cintura: '', ...d.measurements }); // Garante a chave cintura
         if (d.weightHistory) setWeightHistory(d.weightHistory);
         if (d.userProfile) {
-          setUserProfile(d.userProfile);
-          if (d.userProfile.onboardingCompleted) {
+          let prof = d.userProfile;
+          
+          // Reset Diário dos Treinos (Se virou a meia-noite)
+          if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
+             let updWorkouts = { ...(d.workouts || workouts) };
+             let modified = false;
+             Object.keys(updWorkouts).forEach(day => {
+               if (updWorkouts[day].exercises) {
+                 updWorkouts[day].exercises.forEach(ex => {
+                   if (ex.isCompleted) { ex.isCompleted = false; modified = true; }
+                 });
+               }
+             });
+             prof.lastLoginDate = todayStr;
+             setUserProfile(prof);
+             if (modified) {
+               setWorkouts(updWorkouts);
+               // Dispara save em background para atualizar a data no servidor
+               setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), { userProfile: prof, workouts: updWorkouts }, { merge: true });
+             }
+          } else {
+             setUserProfile(prof);
+          }
+
+          if (prof.onboardingCompleted) {
             setAppScreen('main');
-            if (d.userProfile.lastMeasureUpdate) {
-               const daysSince = (Date.now() - d.userProfile.lastMeasureUpdate) / (1000 * 60 * 60 * 24);
+            if (prof.lastMeasureUpdate) {
+               const daysSince = (Date.now() - prof.lastMeasureUpdate) / (1000 * 60 * 60 * 24);
                if (daysSince >= 7) setShowMeasureAlert(true);
             }
           } else {
@@ -234,7 +385,7 @@ export default function App() {
       }
     }, (err) => setFirebaseError(err.message));
     return () => unsub();
-  }, [user, firebaseError]);
+  }, [user, firebaseError, todayStr]);
 
   useEffect(() => {
     let int = null;
@@ -245,7 +396,6 @@ export default function App() {
 
   const formatTime = (s) => `${Math.floor(s/60)}:${s%60 < 10 ? '0' : ''}${s%60}`;
 
-  // Sincroniza a chave API guardada com o campo de texto localmente
   useEffect(() => {
     setTempApiKey(userProfile.geminiApiKey || '');
     setIsApiKeyUnlocked(!userProfile.geminiApiKey);
@@ -255,7 +405,7 @@ export default function App() {
     if (!user || !db) return;
     setIsSyncing(true);
     try {
-      const dataToSave = overrideData || { workouts, meals, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
+      const dataToSave = overrideData || { workouts, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), dataToSave, { merge: true });
     } catch (e) { 
       console.error(e); 
@@ -336,18 +486,34 @@ export default function App() {
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
     let vol = 0; let durationGap = 0;
+    let completedExercises = [];
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
     } else {
       (cur.exercises || []).forEach(ex => {
         vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
+        completedExercises.push({
+           name: ex.name,
+           sets: ex.sets,
+           reps: ex.reps,
+           weight: ex.weight
+        });
         ex.isCompleted = false; // Reset for next time
       });
     }
 
     const timestamp = Date.now();
-    const newLog = { id: timestamp, date: todayStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap };
+    const newLog = { 
+      id: timestamp, 
+      date: todayStr, 
+      timestamp, 
+      day: activeWorkoutDay, 
+      volume: vol, 
+      isGap: isGapMode, 
+      gapDuration: durationGap,
+      exercises: completedExercises 
+    };
     const newHist = [...workoutHistory, newLog];
     
     let newDLogs = [...dailyLogs];
@@ -366,7 +532,7 @@ export default function App() {
     let newDLogs = [...dailyLogs];
     const idx = newDLogs.findIndex(l => l.date === todayStr);
     if (idx >= 0) newDLogs[idx].water = (newDLogs[idx].water || 0) + 250;
-    else newDLogs.push({ date: todayStr, water: 250, calories: totals.calories, workout: null });
+    else newDLogs.push({ date: todayStr, water: 250, workout: null });
     setDailyLogs(newDLogs); saveToCloud({ dailyLogs: newDLogs });
   };
 
@@ -454,15 +620,29 @@ export default function App() {
 
   const handleAnalyzeFood = async () => {
     if (!chatInput.trim() || !userProfile.geminiApiKey) return;
-    const mealName = meals.find(m => m.id === selectedMealId)?.name || 'Refeição';
+    const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
     const userText = chatInput;
     setChatMessages(prev => [...prev, { role: 'user', text: userText }]);
     setChatInput(''); setIsAnalyzing(true);
     try {
-      const macros = await callGemini(`Estime macros para: ${userText}. Retorne JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" } } });
-      const updatedMeals = meals.map(m => m.id === selectedMealId ? { ...m, calories: (Number(m.calories)||0) + macros.calories, protein: (Number(m.protein)||0) + macros.protein, carbs: (Number(m.carbs)||0) + macros.carbs, fats: (Number(m.fats)||0) + macros.fats } : m);
-      setMeals(updatedMeals); saveToCloud({ meals: updatedMeals });
-      setChatMessages(prev => [...prev, { role: 'ai', text: `Adicionado ao ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G` }]);
+      const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" } } });
+      
+      const newLog = {
+        id: Date.now(),
+        date: todayStr,
+        mealId: selectedMealId,
+        text: userText,
+        calories: macros.calories,
+        protein: macros.protein,
+        carbs: macros.carbs,
+        fats: macros.fats
+      };
+      
+      const updatedLogs = [...nutritionLogs, newLog];
+      setNutritionLogs(updatedLogs); 
+      saveToCloud({ nutritionLogs: updatedLogs });
+      
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Adicionado ao feed de ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G` }]);
     } catch (error) { 
       setChatMessages(prev => [...prev, { role: 'ai', text: `Erro ao analisar dieta: ${error.message}` }]); 
     } finally { 
@@ -486,8 +666,13 @@ export default function App() {
       Aqui está a lista de TODOS os exercícios disponíveis no banco de dados:
       ${dbContext}
 
-      Selecione de 4 a 7 exercícios apropriados para compor uma ficha de treino completa e equilibrada focada neste dia/grupo muscular.
-      IMPORTANTE: Retorne APENAS um JSON contendo a propriedade "exercises" com a lista de IDs selecionados. Exemplo: {"exercises": ["e1", "e3", "e9", "e14"]}`;
+      REGRAS DE DIVISÃO OBRIGATÓRIAS (Siga rigorosamente a quantidade e os grupos musculares de acordo com o nome do treino):
+      - Se for "Treino Pull": selecione EXATAMENTE 3 exercícios de Costas, 1 de Posterior de Ombro e 2 de Bíceps.
+      - Se for "Treino Push": selecione EXATAMENTE 3 exercícios de Peito, 2 de Ombros e 2 de Tríceps.
+      - Se for "Legs" (Quadríceps, Posterior ou Lower): selecione EXATAMENTE 3 exercícios para Quadríceps, 2 para Posterior da Coxa e 2 para Panturrilhas.
+      - Se for "Upper Body": selecione EXATAMENTE 2 exercícios para Costas, 2 para Peito, 1 para Ombro, 1 para Bíceps e 1 para Tríceps.
+
+      IMPORTANTE: Retorne APENAS um JSON contendo a propriedade "exercises" com a lista de IDs selecionados na ordem correta dos grupos. Exemplo: {"exercises": ["e1", "e3", "e9", "e14"]}`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
@@ -525,7 +710,7 @@ export default function App() {
       'Push': ['Peito', 'Ombros', 'Tríceps', 'Braços'],
       'Legs 1': ['Pernas', 'Glúteo', 'Quadríceps', 'GAP'],
       'Legs 2': ['Pernas', 'Glúteo', 'Posterior', 'Panturrilha', 'GAP'],
-      'Upper': ['Peito', 'Costas', 'Ombros', 'Braços'],
+      'Upper': ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Braços'],
       'Lower': ['Pernas', 'Glúteo', 'GAP']
     };
 
@@ -645,7 +830,7 @@ export default function App() {
                ))}
              </div>
              <button onClick={()=>{
-               const prof = {...userProfile, onboardingCompleted:true, lastMeasureUpdate: Date.now()};
+               const prof = {...userProfile, onboardingCompleted:true, lastMeasureUpdate: Date.now(), lastLoginDate: todayStr};
                setUserProfile(prof); setAppScreen('main');
                saveToCloud({ userProfile: prof, measurements, weightHistory: [{date: todayStr, weight: Number(userProfile.weight)}] });
              }} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold mt-4">Concluir Setup</button>
@@ -731,43 +916,33 @@ export default function App() {
                      </div>
                      
                      <div className="flex-1 flex justify-center items-center h-64 relative cursor-pointer" onClick={()=>setShowBackAnatomy(!showBackAnatomy)}>
-                       {/* SVG Anatómico Abstrato Simplificado */}
                        <svg viewBox="0 0 200 400" className="h-full drop-shadow-xl">
-                          {/* Cabeça */}
                           <circle cx="100" cy="40" r="25" fill="#27272a" />
-                          
                           {showBackAnatomy ? (
                             <>
-                              {/* Costas (Lats/Traps) */}
                               <path d="M 65 80 L 135 80 L 120 160 L 80 160 Z" fill={getFatigueColor(['Costas'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Triceps / Ombro Tras */}
-                              <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Ombros', 'Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
-                              <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Ombros', 'Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
-                              {/* Glúteos */}
+                              {/* Triceps (Costas) */}
+                              <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
+                              <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
+                              
                               <path d="M 75 160 L 125 160 L 130 210 L 100 220 L 70 210 Z" fill={getFatigueColor(['Glúteo', 'GAP', 'Pernas'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Posterior de Coxa */}
                               <rect x="70" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
                               <rect x="104" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
-                              {/* Panturrilha */}
                               <rect x="72" y="300" width="22" height="70" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
                               <rect x="106" y="300" width="22" height="70" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
                             </>
                           ) : (
                             <>
-                              {/* Peito */}
                               <path d="M 65 80 L 135 80 L 130 120 L 100 130 L 70 120 Z" fill={getFatigueColor(['Peito'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Abdômen */}
                               <path d="M 75 125 L 125 125 L 120 180 L 80 180 Z" fill={getFatigueColor(['GAP'])} stroke="#18181b" strokeWidth="2"/>
-                              {/* Ombros / Biceps */}
-                              <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Ombros', 'Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
-                              <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Ombros', 'Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
-                              {/* Antebraços */}
+                              {/* Bíceps (Frente) */}
+                              <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
+                              <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
+                              
                               <rect x="25" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(10 33 150)" />
                               <rect x="159" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(-10 167 150)" />
-                              {/* Quadríceps */}
                               <rect x="70" y="185" width="28" height="90" rx="10" fill={getFatigueColor(['Pernas', 'GAP'])} stroke="#18181b" strokeWidth="2" />
                               <rect x="102" y="185" width="28" height="90" rx="10" fill={getFatigueColor(['Pernas', 'GAP'])} stroke="#18181b" strokeWidth="2" />
-                              {/* Canelas */}
                               <rect x="74" y="280" width="20" height="80" rx="8" fill="#3f3f46" stroke="#18181b" strokeWidth="2" />
                               <rect x="106" y="280" width="20" height="80" rx="8" fill="#3f3f46" stroke="#18181b" strokeWidth="2" />
                             </>
@@ -783,20 +958,17 @@ export default function App() {
 
                    {/* Progresso Diário (Macros e Água) */}
                    <div className="space-y-4">
-                     {/* ÁGUA */}
                      <div className="bg-blue-950/20 border border-blue-900/30 p-6 rounded-3xl relative overflow-hidden flex items-center justify-between">
                        <div className="z-10">
                          <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-1">Hidratação</h3>
                          <p className="text-3xl font-black text-white">{todayLog.water} <span className="text-sm font-medium text-blue-200">/ {waterTarget}ml</span></p>
                          <button onClick={addWater} className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center gap-2"><Plus size={14}/> Copo (250ml)</button>
                        </div>
-                       {/* SVG Bottle Animation */}
                        <div className="w-16 h-24 border-4 border-blue-500/50 rounded-b-2xl rounded-t-lg relative z-10 bg-zinc-950 overflow-hidden">
                          <div className="absolute bottom-0 w-full bg-blue-500 transition-all duration-700" style={{height: `${Math.min(100, (todayLog.water / waterTarget) * 100)}%`}}></div>
                        </div>
                      </div>
 
-                     {/* MACROS */}
                      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
                         <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">Metas de IA Diárias</h3>
                         <div className="space-y-4">
@@ -847,6 +1019,47 @@ export default function App() {
                         </svg>
                       ) : (
                         <div className="h-16 flex items-center justify-center text-xs text-zinc-600">Dados insuficientes</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Feed Semanal de Treinos */}
+                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Dumbbell size={18} className="text-emerald-500"/> Histórico da Semana</h3>
+                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                      {workoutHistory.length === 0 ? (
+                        <p className="text-sm text-zinc-500 italic text-center py-4">Nenhum treino registado ainda.</p>
+                      ) : (
+                        workoutHistory.slice(-7).reverse().map(log => (
+                          <div key={log.id} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 transition-all hover:border-zinc-700 shadow-sm">
+                            <div className="flex justify-between items-center mb-3 border-b border-zinc-800/50 pb-3">
+                               <div className="flex items-center gap-2">
+                                 <span className="font-black text-white text-lg">{log.day}</span>
+                                 {log.isGap && <span className="text-[9px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">GAP</span>}
+                               </div>
+                               <span className="text-xs text-zinc-500 font-bold">{log.date}</span>
+                            </div>
+                            {log.isGap ? (
+                               <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">🔥 Aula GAP • {log.gapDuration} minutos</p>
+                            ) : (
+                               <div>
+                                 <p className="text-[10px] text-zinc-500 mb-3 font-bold uppercase tracking-widest">Volume Movimentado: <span className="text-emerald-400">{log.volume} kg</span></p>
+                                 {log.exercises && log.exercises.length > 0 ? (
+                                   <ul className="space-y-2">
+                                     {log.exercises.map((ex, i) => (
+                                       <li key={i} className="text-xs flex justify-between items-center bg-zinc-900/40 p-2 rounded-lg">
+                                         <span className="text-zinc-300 font-medium">{ex.name}</span>
+                                         <span className="text-zinc-500 font-bold">{ex.sets}x{ex.reps} {ex.weight ? <span className="text-emerald-500">@{ex.weight}kg</span> : ''}</span>
+                                       </li>
+                                     ))}
+                                   </ul>
+                                 ) : (
+                                   <p className="text-xs text-zinc-600 italic">Detalhes dos exercícios não foram registados neste dia.</p>
+                                 )}
+                               </div>
+                            )}
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
@@ -930,110 +1143,126 @@ export default function App() {
                  </div>
                ) : (
                  <div className="space-y-4">
-                   {(workouts[activeWorkoutDay]?.exercises || []).map(ex => (
-                     <div key={ex.id} className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
-                       <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
-                         <div className="flex items-center gap-4">
-                           <button onClick={()=>{
-                             const upd = {...workouts}; 
-                             const e = upd[activeWorkoutDay].exercises.find(x=>x.id===ex.id); 
-                             if(e) e.isCompleted = !e.isCompleted; 
-                             if(e?.isCompleted) {setTimeLeft(timerInterval); setIsTimerRunning(true);}
-                             setWorkouts(upd);
-                           }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
-                           <div>
-                             <span className="font-extrabold text-lg block">{ex.name}</span>
-                             <span className="text-xs text-zinc-500 font-medium">{ex.group}</span>
-                           </div>
-                         </div>
-                         <div className="flex gap-2">
-                           <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
-                           <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                           <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
-                         </div>
-                       </div>
-                       
-                       <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
-                          <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                          <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                          <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
-                       </div>
-
-                       {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
-                       {expandedDesc[ex.id] && (
-                         <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
-                           {anatomyTipState[ex.id] === 'loading' ? (
-                              <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
-                           ) : anatomyTips[ex.id] ? (
-                             <div className="animate-fadeIn space-y-5">
-                               <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
-                                 <Dumbbell size={18} className="text-emerald-500"/>
-                                 <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
-                               </div>
-                               
-                               <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
-
-                               <div>
-                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
-                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
-                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
-                                 </div>
-                               </div>
-
-                               <div>
-                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
-                                 <ul className="space-y-3 mt-3">
-                                   {anatomyTips[ex.id].executionSteps?.map((step, i) => {
-                                      const parts = step.split(':');
-                                      if(parts.length > 1) {
-                                         const boldPart = parts.shift() + ':';
-                                         return (
-                                           <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
-                                             <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
-                                             <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
-                                           </li>
-                                         );
-                                      }
-                                      return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
-                                   })}
-                                 </ul>
-                               </div>
-
-                               <div>
-                                 <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
-                                 <ul className="space-y-2 text-zinc-400">
-                                   {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
-                                     <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
-                                   ))}
-                                 </ul>
-                               </div>
-
-                               <div>
-                                 <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
-                                 <ul className="space-y-2 text-zinc-400">
-                                   {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
-                                      <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
-                                   ))}
-                                 </ul>
-                               </div>
-
-                               <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
-                                 <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                   {(() => {
+                     let lastGroup = null;
+                     return (workouts[activeWorkoutDay]?.exercises || []).map((ex, index) => {
+                       const showHeader = ex.group !== lastGroup;
+                       lastGroup = ex.group;
+                       return (
+                         <React.Fragment key={ex.id || index}>
+                           {showHeader && (
+                             <div className="mt-8 mb-2 flex items-center gap-3 animate-fadeIn">
+                               <div className="h-px flex-1 bg-gradient-to-r from-transparent to-zinc-800"></div>
+                               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
+                               <div className="h-px flex-1 bg-gradient-to-l from-transparent to-zinc-800"></div>
+                             </div>
+                           )}
+                           <div className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
+                             <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
+                               <div className="flex items-center gap-4">
+                                 <button onClick={()=>{
+                                   const upd = {...workouts}; 
+                                   const e = upd[activeWorkoutDay].exercises.find(x=>x.id===ex.id); 
+                                   if(e) e.isCompleted = !e.isCompleted; 
+                                   if(e?.isCompleted) {setTimeLeft(timerInterval); setIsTimerRunning(true);}
+                                   setWorkouts(upd);
+                                 }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
                                  <div>
-                                    <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
-                                    <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                   <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
+                                   <span className="text-xs text-zinc-500 font-medium">{ex.target}</span>
                                  </div>
+                               </div>
+                               <div className="flex gap-2">
+                                 <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
+                                 <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
+                                 <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                </div>
                              </div>
-                           ) : (
-                              <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
-                           )}
-                         </div>
-                       )}
-                     </div>
-                   ))}
+                             
+                             <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
+                             </div>
+
+                             {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
+                             {expandedDesc[ex.id] && (
+                               <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
+                                 {anatomyTipState[ex.id] === 'loading' ? (
+                                    <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                                 ) : anatomyTips[ex.id] ? (
+                                   <div className="animate-fadeIn space-y-5">
+                                     <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
+                                       <Dumbbell size={18} className="text-emerald-500"/>
+                                       <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
+                                     </div>
+                                     
+                                     <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
+
+                                     <div>
+                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
+                                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
+                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
+                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
+                                       </div>
+                                     </div>
+
+                                     <div>
+                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
+                                       <ul className="space-y-3 mt-3">
+                                         {anatomyTips[ex.id].executionSteps?.map((step, i) => {
+                                            const parts = step.split(':');
+                                            if(parts.length > 1) {
+                                               const boldPart = parts.shift() + ':';
+                                               return (
+                                                 <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
+                                                   <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                                   <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
+                                                 </li>
+                                               );
+                                            }
+                                            return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                         })}
+                                       </ul>
+                                     </div>
+
+                                     <div>
+                                       <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
+                                       <ul className="space-y-2 text-zinc-400">
+                                         {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
+                                           <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
+                                         ))}
+                                       </ul>
+                                     </div>
+
+                                     <div>
+                                       <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
+                                       <ul className="space-y-2 text-zinc-400">
+                                         {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
+                                            <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
+                                         ))}
+                                       </ul>
+                                     </div>
+
+                                     <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
+                                       <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                                       <div>
+                                          <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
+                                          <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                       </div>
+                                     </div>
+                                   </div>
+                                 ) : (
+                                    <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
+                                 )}
+                               </div>
+                             )}
+                           </div>
+                         </React.Fragment>
+                       );
+                     });
+                   })()}
 
                    {/* Botão Adicionar Novo Exercício */}
                    {workouts[activeWorkoutDay]?.exercises?.length < 7 && (
@@ -1051,14 +1280,14 @@ export default function App() {
           )}
 
           {activeTab === 'nutricao' && (
-             <div className="space-y-6 animate-fadeIn">
+             <div className="space-y-6 animate-fadeIn pb-12">
                <h1 className="text-3xl font-extrabold">Nutrição</h1>
                
                <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><Sparkles className="text-emerald-400" size={18}/> Registar Refeição (IA)</h3>
                  <div className="flex flex-col md:flex-row gap-3 mb-6">
                    <select value={selectedMealId} onChange={e=>setSelectedMealId(e.target.value)} className="bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold flex-1 focus:border-emerald-500">
-                     {meals.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+                     {INITIAL_MEALS.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
                    </select>
                    <div className="flex gap-2 flex-[2]">
                      <input type="text" value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Ex: 2 ovos e 1 pão francês..." className="bg-zinc-950 p-4 rounded-2xl flex-1 border border-zinc-800 outline-none focus:border-emerald-500 text-white placeholder:text-zinc-600" />
@@ -1103,6 +1332,60 @@ export default function App() {
                      <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.fats}g</p>
                    </div>
                  </div>
+               </div>
+
+               {/* FEED DE REFEIÇÕES */}
+               <div className="mt-8 space-y-4">
+                 <h3 className="text-xl font-bold flex items-center gap-2"><Utensils size={20} className="text-emerald-500"/> Diário de Refeições</h3>
+                 {todayNutrition.length === 0 ? (
+                    <p className="text-sm text-zinc-500 italic bg-zinc-900/30 p-6 rounded-2xl text-center border border-zinc-800/50">Nenhuma refeição registada hoje. Que tal adicionar a sua primeira refeição com a IA?</p>
+                 ) : (
+                    todayNutrition.map(log => (
+                       <div key={log.id} className="bg-zinc-900/50 p-5 rounded-3xl border border-zinc-800 transition-all hover:border-zinc-700">
+                          {editingNutritionId === log.id ? (
+                            <div className="space-y-4 animate-fadeIn">
+                              <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Descrição</label><input type="text" value={editNutritionData.text} onChange={e=>setEditNutritionData({...editNutritionData, text: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none" /></div>
+                              <div className="grid grid-cols-4 gap-3">
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Kcal</label><input type="number" value={editNutritionData.calories} onChange={e=>setEditNutritionData({...editNutritionData, calories: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Prot (g)</label><input type="number" value={editNutritionData.protein} onChange={e=>setEditNutritionData({...editNutritionData, protein: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Carb (g)</label><input type="number" value={editNutritionData.carbs} onChange={e=>setEditNutritionData({...editNutritionData, carbs: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
+                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Gord (g)</label><input type="number" value={editNutritionData.fats} onChange={e=>setEditNutritionData({...editNutritionData, fats: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
+                              </div>
+                              <div className="flex gap-2 pt-2">
+                                <button onClick={()=>{
+                                   const upd = nutritionLogs.map(n => n.id === log.id ? { ...n, ...editNutritionData } : n);
+                                   setNutritionLogs(upd); saveToCloud({ nutritionLogs: upd }); setEditingNutritionId(null);
+                                }} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl text-sm font-bold text-white flex-1 transition-colors">Salvar</button>
+                                <button onClick={()=>setEditingNutritionId(null)} className="bg-zinc-800 hover:bg-zinc-700 px-4 py-3 rounded-xl text-sm font-bold text-white flex-1 transition-colors">Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1">
+                                <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">{INITIAL_MEALS.find(m=>m.id===log.mealId)?.name || 'Refeição'}</span>
+                                <p className="font-extrabold text-white mt-3 text-base leading-snug">{log.text}</p>
+                                <p className="text-[11px] text-zinc-400 mt-2 font-bold tracking-widest bg-zinc-950 inline-block px-3 py-1.5 rounded-lg border border-zinc-800/50">🔥 {log.calories} kcal • 🥩 {log.protein}g • 🍚 {log.carbs}g • 🥑 {log.fats}g</p>
+                              </div>
+                              <div className="flex gap-1 shrink-0 bg-zinc-950 p-1 rounded-xl border border-zinc-800/50">
+                                <button onClick={()=>{setEditingNutritionId(log.id); setEditNutritionData(log);}} className="text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all p-2 rounded-lg"><Pencil size={16}/></button>
+                                {confirmDeleteId === log.id ? (
+                                  <div className="flex items-center gap-1 bg-red-500/10 rounded-lg p-1 animate-fadeIn">
+                                    <button onClick={() => {
+                                      const upd = nutritionLogs.filter(n => n.id !== log.id);
+                                      setNutritionLogs(upd); saveToCloud({ nutritionLogs: upd });
+                                      setConfirmDeleteId(null);
+                                    }} className="text-red-400 font-bold text-[10px] px-2 py-1 hover:bg-red-500/20 rounded transition-colors">SIM</button>
+                                    <button onClick={() => setConfirmDeleteId(null)} className="text-zinc-400 font-bold text-[10px] px-2 py-1 hover:bg-zinc-800 rounded transition-colors">NÃO</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setConfirmDeleteId(log.id)} className="text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all p-2 rounded-lg"><Trash2 size={16}/></button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                       </div>
+                    ))
+                 )}
                </div>
              </div>
           )}
