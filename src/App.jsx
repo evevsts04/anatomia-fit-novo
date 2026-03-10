@@ -385,7 +385,9 @@ export default function App() {
   // --- IA Functions ---
   const callGemini = async (prompt, schema = null) => {
     if (!userProfile.geminiApiKey) throw new Error("Sem API Key configurada.");
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userProfile.geminiApiKey.trim()}`, {
+    
+    // Atualizamos para o modelo mais estável e universal (gemini-2.5-flash)
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userProfile.geminiApiKey.trim()}`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(schema && {generationConfig: {responseMimeType: "application/json", responseSchema: schema}}) })
     });
@@ -397,7 +399,8 @@ export default function App() {
       throw new Error(data.error?.message || "Falha na chamada da API.");
     }
     
-    let textOutput = data.candidates[0].content.parts[0].text;
+    let textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textOutput) throw new Error("Resposta vazia da IA.");
     
     if (schema) {
       // Limpeza de possíveis formatações markdown indevidas que a IA possa enviar
@@ -414,7 +417,11 @@ export default function App() {
       const hist = workoutHistory.slice(-7).map(h => `${h.day}${h.isGap? '(GAP) ':''} ${h.volume}kg`).join(', ');
       const res = await callGemini(`Atue como treinador. Analise o aluno: Objetivo: ${userProfile.goal}. Treinos recentes: ${hist || 'Nenhum'}. Gere 1 parágrafo curto e motivacional de feedback. PT-BR.`);
       setDeepInsightText(res);
-    } catch { setDeepInsightText("Erro ao contatar IA."); } finally { setIsDeepInsightLoading(false); }
+    } catch (error) { 
+      setDeepInsightText(`Erro IA: ${error.message}`); 
+    } finally { 
+      setIsDeepInsightLoading(false); 
+    }
   };
 
   const handleGetAnatomyTip = async (exId, exName) => {
@@ -427,7 +434,10 @@ export default function App() {
         { type: "OBJECT", properties: { group:{type:"STRING"}, target:{type:"STRING"}, execution:{type:"STRING"}, tips:{type:"STRING"} } }
       );
       setAnatomyTips(p => ({ ...p, [exId]: res })); setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
-    } catch { setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); }
+    } catch (error) { 
+      console.error(error);
+      setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
+    }
   };
 
   const handleAnalyzeFood = async () => {
@@ -441,7 +451,11 @@ export default function App() {
       const updatedMeals = meals.map(m => m.id === selectedMealId ? { ...m, calories: (Number(m.calories)||0) + macros.calories, protein: (Number(m.protein)||0) + macros.protein, carbs: (Number(m.carbs)||0) + macros.carbs, fats: (Number(m.fats)||0) + macros.fats } : m);
       setMeals(updatedMeals); saveToCloud({ meals: updatedMeals });
       setChatMessages(prev => [...prev, { role: 'ai', text: `Adicionado ao ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G` }]);
-    } catch { setChatMessages(prev => [...prev, { role: 'ai', text: "Erro ao analisar dieta." }]); } finally { setIsAnalyzing(false); }
+    } catch (error) { 
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Erro ao analisar dieta: ${error.message}` }]); 
+    } finally { 
+      setIsAnalyzing(false); 
+    }
   };
 
   // --- NOVO: GERAR TREINO COM IA ---
@@ -461,10 +475,12 @@ export default function App() {
       ${dbContext}
 
       Selecione de 4 a 7 exercícios apropriados para compor uma ficha de treino completa e equilibrada focada neste dia/grupo muscular.
-      IMPORTANTE: Retorne APENAS um array JSON contendo exclusivamente as IDs dos exercícios selecionados. Exemplo: ["e1", "e3", "e9", "e14"]`;
+      IMPORTANTE: Retorne APENAS um JSON contendo a propriedade "exercises" com a lista de IDs selecionados. Exemplo: {"exercises": ["e1", "e3", "e9", "e14"]}`;
 
-      const schema = { type: "ARRAY", items: { type: "STRING" } };
-      const resultIds = await callGemini(prompt, schema);
+      // Corrigido para OBJECT em vez de ARRAY na raiz
+      const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
+      const resultData = await callGemini(prompt, schema);
+      const resultIds = resultData.exercises || [];
 
       if (Array.isArray(resultIds) && resultIds.length > 0) {
          const newExercises = resultIds.map(id => {
@@ -483,7 +499,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      alert("Erro ao gerar treino. Verifique a sua chave API ou tente novamente mais tarde.");
+      alert(`Erro da IA: ${error.message}`);
     } finally {
       setIsGeneratingWorkout(false);
     }
