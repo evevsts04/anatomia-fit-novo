@@ -15,12 +15,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
-  authDomain: "anatomiafit-96b5b.firebaseapp.com",
-  projectId: "anatomiafit-96b5b",
-  storageBucket: "anatomiafit-96b5b.firebasestorage.app",
-  messagingSenderId: "786814321049",
-  appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -658,21 +658,22 @@ export default function App() {
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
-      const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}', Nome:'${e.name}', Grupo:'${e.group}'`).join(' | ');
+      // PASSAMOS O ALVO ESPECÍFICO (TARGET) PARA A IA CONSEGUIR DISTINGUIR BÍCEPS/TRÍCEPS, ETC.
+      const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
 
       const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal}.
       O treino selecionado para hoje é: "${dayInfo.name}".
       Aqui está a lista de TODOS os exercícios disponíveis no banco de dados:
       ${dbContext}
 
-      REGRAS OBRIGATÓRIAS DE DIVISÃO:
-      - Dia "Pull" (ou Treino Pull): Exatamente 3 exercícios de Costas, 1 de Ombros (focado em posterior), 2 de Braços (focado em Bíceps).
-      - Dia "Push" (ou Treino Push): Exatamente 3 exercícios de Peito, 2 de Ombros, 2 de Braços (focado em Tríceps).
-      - Dias "Legs" ou "Lower": Exatamente 3 exercícios para Quadríceps (Pernas), 2 para Posterior (Pernas) e 2 para Panturrilha (Pernas).
-      - Dia "Upper": Exatamente 2 de Costas, 2 de Peito, 1 de Ombros, 1 de Braços (Bíceps) e 1 de Braços (Tríceps).
+      REGRAS OBRIGATÓRIAS DE DIVISÃO (Siga a quantidade pedida prestando atenção no "Foco Muscular" dos exercícios escolhidos):
+      - Dia "Pull" (ou Treino Pull): Exatamente 3 de Costas, 1 de Ombros (Foco: Deltoide Posterior), e 2 de Braços (Foco: Bíceps ou Braquial).
+      - Dia "Push" (ou Treino Push): Exatamente 3 de Peito, 2 de Ombros (Foco: Anterior/Lateral), e 2 de Braços (Foco: Tríceps).
+      - Dias "Legs" ou "Lower": Exatamente 3 de Pernas (Foco: Quadríceps), 2 de Pernas (Foco: Posterior/Isquiotibiais), e 2 de Pernas (Foco: Panturrilha/Gastrocnêmio).
+      - Dia "Upper": Exatamente 2 de Costas, 2 de Peito, 1 de Ombros, 1 de Braços (Foco: Bíceps) e 1 de Braços (Foco: Tríceps).
 
-      Sempre selecione os melhores exercícios e ordene a lista de forma que os exercícios do mesmo grupo muscular fiquem juntos (ex: todos de peito, seguidos de ombro, etc.).
-      IMPORTANTE: Retorne APENAS um JSON com a propriedade "exercises" contendo a lista de IDs. Ex: {"exercises": ["e1", "e3", "e32", "e36", "e57", "e59"]}`;
+      Ordene a lista final para que exercícios do mesmo músculo fiquem juntos em sequência.
+      IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo apenas os IDs selecionados.`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
@@ -1147,7 +1148,7 @@ export default function App() {
                        return (
                          <React.Fragment key={ex.id || index}>
                            {showHeader && (
-                             <div className="mt-8 mb-4 flex items-center gap-3 animate-fadeIn">
+                             <div className="mt-8 mb-2 flex items-center gap-3 animate-fadeIn">
                                <div className="h-px flex-1 bg-linear-to-r from-transparent to-zinc-800"></div>
                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
                                <div className="h-px flex-1 bg-linear-to-l from-transparent to-zinc-800"></div>
