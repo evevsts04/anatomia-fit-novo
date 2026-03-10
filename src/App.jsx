@@ -15,12 +15,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
-  authDomain: "anatomiafit-96b5b.firebaseapp.com",
-  projectId: "anatomiafit-96b5b",
-  storageBucket: "anatomiafit-96b5b.firebasestorage.app",
-  messagingSenderId: "786814321049",
-  appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -845,7 +845,7 @@ export default function App() {
       
       {/* MODAL ALERTA MEDIDAS */}
       {showMeasureAlert && (
-        <div className="absolute inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
+        <div className="absolute inset-0 bg-black/80 z-100 flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl max-w-md w-full text-center">
               <AlertTriangle size={48} className="text-yellow-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold mb-2">Hora de Atualizar!</h2>
@@ -987,7 +987,7 @@ export default function App() {
                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><CalendarDays size={18}/> Consistência (7 Dias)</h3>
                     <div className="flex gap-2 overflow-x-auto pb-2 justify-between">
                       {getCalendarDays().map((d, i) => (
-                        <div key={i} className={`flex flex-col items-center p-3 rounded-2xl min-w-[3.5rem] border ${d.hasWorkout ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-950 border-zinc-800'}`}>
+                        <div key={i} className={`flex flex-col items-center p-3 rounded-2xl min-w-14 border ${d.hasWorkout ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-950 border-zinc-800'}`}>
                           <span className="text-[10px] text-zinc-500 font-bold uppercase">{d.dayStr}</span>
                           <span className="text-lg font-bold text-white mb-2">{d.dateNum}</span>
                           {d.hasWorkout ? <Smile size={20} className="text-emerald-500"/> : <Frown size={20} className="text-zinc-600"/>}
@@ -1152,9 +1152,9 @@ export default function App() {
                          <React.Fragment key={ex.id || index}>
                            {showHeader && (
                              <div className="mt-8 mb-2 flex items-center gap-3 animate-fadeIn">
-                               <div className="h-px flex-1 bg-gradient-to-r from-transparent to-zinc-800"></div>
+                               <div className="h-px flex-1 bg-linear-to-r from-transparent to-zinc-800"></div>
                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
-                               <div className="h-px flex-1 bg-gradient-to-l from-transparent to-zinc-800"></div>
+                               <div className="h-px flex-1 bg-linear-to-l from-transparent to-zinc-800"></div>
                              </div>
                            )}
                            <div className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
@@ -1289,7 +1289,7 @@ export default function App() {
                    <select value={selectedMealId} onChange={e=>setSelectedMealId(e.target.value)} className="bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold flex-1 focus:border-emerald-500">
                      {INITIAL_MEALS.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
                    </select>
-                   <div className="flex gap-2 flex-[2]">
+                   <div className="flex gap-2 flex-2">
                      <input type="text" value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Ex: 2 ovos e 1 pão francês..." className="bg-zinc-950 p-4 rounded-2xl flex-1 border border-zinc-800 outline-none focus:border-emerald-500 text-white placeholder:text-zinc-600" />
                      <button onClick={handleAnalyzeFood} disabled={isAnalyzing || !chatInput} className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white p-4 rounded-2xl transition-colors"><Send size={24}/></button>
                    </div>
@@ -1394,7 +1394,7 @@ export default function App() {
              <div className="space-y-6 animate-fadeIn pb-10">
                 <h1 className="text-3xl font-extrabold text-white">Perfil do Atleta</h1>
                 
-                <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 p-8 rounded-3xl border border-zinc-800 flex flex-col md:flex-row items-center gap-8 shadow-xl">
+                <div className="bg-linear-to-br from-zinc-900 to-zinc-950 p-8 rounded-3xl border border-zinc-800 flex flex-col md:flex-row items-center gap-8 shadow-xl">
                   <div className="w-28 h-28 bg-emerald-500/10 rounded-full flex items-center justify-center border-4 border-emerald-500/20 shadow-inner">
                     <UserCircle size={56} className="text-emerald-500" />
                   </div>
@@ -1528,7 +1528,7 @@ export default function App() {
 
           {/* MODAL EXERCÍCIO (SWAP / ADD) */}
           {exerciseModal.active && (
-            <div className="fixed inset-0 bg-black/90 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
+            <div className="fixed inset-0 bg-black/90 z-60 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
               <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-md p-6 shadow-2xl h-[85vh] md:max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 shrink-0">
                   <h3 className="font-extrabold text-xl text-white">{exerciseModal.mode === 'swap' ? 'Substituir Exercício' : 'Adicionar Exercício'}</h3>
@@ -1565,7 +1565,7 @@ export default function App() {
 
           {/* MODAL TREINO CONCLUÍDO */}
           {showWorkoutSuccess && (
-            <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
+            <div className="fixed inset-0 bg-black/90 z-70 flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
               <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
                 <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Flame size={40} className="text-emerald-500" />
