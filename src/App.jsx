@@ -15,12 +15,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
-  authDomain: "anatomiafit-96b5b.firebaseapp.com",
-  projectId: "anatomiafit-96b5b",
-  storageBucket: "anatomiafit-96b5b.firebasestorage.app",
-  messagingSenderId: "786814321049",
-  appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -187,8 +187,12 @@ export default function App() {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-        else await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+           await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+           // Modificamos a inicialização anônima para evitar conflitos se o usuário estiver na tela de login
+           // await signInAnonymously(auth); 
+        }
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
     initAuth();
@@ -262,13 +266,31 @@ export default function App() {
   };
 
   const handleAuthAction = async () => {
-    setAuthErrorMsg(''); setIsProcessingAuth(true);
+    setAuthErrorMsg(''); 
+    setIsProcessingAuth(true);
     try {
-      if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
-      else await createUserWithEmailAndPassword(auth, email, password);
+      if (isLoginMode) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
     } catch (error) {
-      setAuthErrorMsg('Erro: Verifique credenciais ou conexão.');
-    } finally { setIsProcessingAuth(false); }
+      console.error("Auth Error Full:", error);
+      // Tratamento específico de erros para ajudar a depurar
+      if (error.code === 'auth/admin-restricted-operation') {
+        setAuthErrorMsg('Operação restrita. Verifique se a sua API Key do Firebase está correta e se a ativação E-mail/Senha está correta.');
+      } else if (error.code === 'auth/invalid-credential') {
+         setAuthErrorMsg('E-mail ou senha incorretos.');
+      } else if (error.code === 'auth/email-already-in-use') {
+         setAuthErrorMsg('Este e-mail já está registado.');
+      } else if (error.code === 'auth/weak-password') {
+         setAuthErrorMsg('A senha deve ter pelo menos 6 caracteres.');
+      } else {
+         setAuthErrorMsg(`Erro: ${error.message}`);
+      }
+    } finally { 
+      setIsProcessingAuth(false); 
+    }
   };
 
   const handleLogout = async () => {
@@ -512,7 +534,7 @@ export default function App() {
         <p className="text-zinc-400 text-sm mb-8">O seu ecossistema de treino inteligente.</p>
         <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="E-mail" />
         <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') handleAuthAction();}} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center tracking-widest text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="Senha" />
-        {authErrorMsg && <div className="text-red-400 text-xs mb-4">{authErrorMsg}</div>}
+        {authErrorMsg && <div className="text-red-400 text-xs mb-4 p-2 bg-red-500/10 rounded-xl">{authErrorMsg}</div>}
         <button onClick={handleAuthAction} disabled={isProcessingAuth} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all">
           {isProcessingAuth ? <Loader2 className="animate-spin mx-auto" /> : (isLoginMode ? 'Entrar' : 'Registar')}
         </button>
