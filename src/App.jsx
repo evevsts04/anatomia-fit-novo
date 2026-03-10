@@ -430,8 +430,8 @@ export default function App() {
     if (!userProfile.geminiApiKey) return setAnatomyTipState(p => ({ ...p, [exId]: 'error' }));
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
     try {
-      const res = await callGemini(`Analise "${exName}". Retorne JSON: {"group": "Grupo Muscular", "target": "Alvo principal", "execution": "Resumo da execução", "tips": "1 dica biomecânica curta"}.`,
-        { type: "OBJECT", properties: { group:{type:"STRING"}, target:{type:"STRING"}, execution:{type:"STRING"}, tips:{type:"STRING"} } }
+      const res = await callGemini(`Resuma o exercício "${exName}" para leitura rápida no treino. Retorne JSON: {"target": "Músculo principal (ex: Peitoral)", "auxiliary": "Músculo auxiliar (ex: Tríceps)", "execution": "Instrução direta (máx 2 linhas)", "tips": "Dica de ouro e curta"}.`,
+        { type: "OBJECT", properties: { target:{type:"STRING"}, auxiliary:{type:"STRING"}, execution:{type:"STRING"}, tips:{type:"STRING"} } }
       );
       setAnatomyTips(p => ({ ...p, [exId]: res })); setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
     } catch (error) { 
