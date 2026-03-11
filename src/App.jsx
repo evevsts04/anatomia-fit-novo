@@ -14,7 +14,7 @@ import {
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
-const firebaseConfig = {
+ const firebaseConfig = {
   apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
   authDomain: "anatomiafit-96b5b.firebaseapp.com",
   projectId: "anatomiafit-96b5b",
@@ -562,7 +562,7 @@ export default function App() {
     if (!textOutput) throw new Error("Resposta vazia da IA.");
     
     if (schema) {
-      textOutput = textOutput.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+      textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim();
       return JSON.parse(textOutput);
     }
     return textOutput;
@@ -658,7 +658,6 @@ export default function App() {
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
-      // PASSAMOS O ALVO ESPECÍFICO (TARGET) PARA A IA CONSEGUIR DISTINGUIR BÍCEPS/TRÍCEPS, ETC.
       const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
 
       const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal}.
@@ -672,7 +671,6 @@ export default function App() {
       - Dias "Legs" ou "Lower": Exatamente 3 de Pernas (Foco: Quadríceps), 2 de Pernas (Foco: Posterior/Isquiotibiais), e 2 de Pernas (Foco: Panturrilha/Gastrocnêmio).
       - Dia "Upper": Exatamente 2 de Costas, 2 de Peito, 1 de Ombros, 1 de Braços (Foco: Bíceps) e 1 de Braços (Foco: Tríceps).
 
-      Ordene a lista final para que exercícios do mesmo músculo fiquem juntos em sequência.
       IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo apenas os IDs selecionados.`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
@@ -687,9 +685,12 @@ export default function App() {
 
          if (newExercises.length > 0) {
            const upd = {...workouts};
-           upd[activeWorkoutDay].exercises = newExercises;
+           upd[activeWorkoutDay] = {
+             ...upd[activeWorkoutDay],
+             exercises: newExercises
+           };
            setWorkouts(upd);
-           saveToCloud(upd);
+           saveToCloud({ workouts: upd });
          } else {
            alert("A IA não retornou exercícios compatíveis com o nosso banco de dados. Tente novamente.");
          }
@@ -744,16 +745,23 @@ export default function App() {
 
   const handleExerciseChange = (id, field, value) => {
     const upd = {...workouts};
-    const ex = upd[activeWorkoutDay].exercises.find(x => x.id === id);
-    if(ex) ex[field] = value;
+    upd[activeWorkoutDay] = {
+      ...upd[activeWorkoutDay],
+      exercises: upd[activeWorkoutDay].exercises.map(x =>
+        x.id === id ? { ...x, [field]: value } : x
+      )
+    };
     setWorkouts(upd);
   };
 
   const handleRemoveExercise = (id) => {
     const upd = {...workouts};
-    upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.filter(ex => ex.id !== id);
+    upd[activeWorkoutDay] = {
+      ...upd[activeWorkoutDay],
+      exercises: upd[activeWorkoutDay].exercises.filter(ex => ex.id !== id)
+    };
     setWorkouts(upd);
-    saveToCloud(upd);
+    saveToCloud({ workouts: upd });
   };
 
   // --- SCREENS ---
@@ -924,6 +932,7 @@ export default function App() {
                               <path d="M 65 80 L 135 80 L 120 160 L 80 160 Z" fill={getFatigueColor(['Costas'])} stroke="#18181b" strokeWidth="2"/>
                               <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
                               <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Tríceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
+                              
                               <path d="M 75 160 L 125 160 L 130 210 L 100 220 L 70 210 Z" fill={getFatigueColor(['Glúteo', 'GAP', 'Pernas'])} stroke="#18181b" strokeWidth="2"/>
                               <rect x="70" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
                               <rect x="104" y="215" width="26" height="80" rx="8" fill={getFatigueColor(['Pernas'])} stroke="#18181b" strokeWidth="2" />
@@ -936,6 +945,7 @@ export default function App() {
                               <path d="M 75 125 L 125 125 L 120 180 L 80 180 Z" fill={getFatigueColor(['GAP'])} stroke="#18181b" strokeWidth="2"/>
                               <rect x="40" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(15 50 85)" />
                               <rect x="140" y="85" width="20" height="60" rx="10" fill={getFatigueColor(['Bíceps'])} stroke="#18181b" strokeWidth="2" transform="rotate(-15 150 85)" />
+                              
                               <rect x="25" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(10 33 150)" />
                               <rect x="159" y="150" width="16" height="50" rx="8" fill={getFatigueColor(['Braços'])} stroke="#18181b" strokeWidth="2" transform="rotate(-10 167 150)" />
                               <rect x="70" y="185" width="28" height="90" rx="10" fill={getFatigueColor(['Pernas', 'GAP'])} stroke="#18181b" strokeWidth="2" />
@@ -1140,126 +1150,118 @@ export default function App() {
                  </div>
                ) : (
                  <div className="space-y-4">
-                   {(() => {
-                     let lastGroup = null;
-                     return (workouts[activeWorkoutDay]?.exercises || []).map((ex, index) => {
-                       const showHeader = ex.group !== lastGroup;
-                       lastGroup = ex.group;
-                       return (
-                         <React.Fragment key={ex.id || index}>
-                           {showHeader && (
-                             <div className="mt-8 mb-2 flex items-center gap-3 animate-fadeIn">
-                               <div className="h-px flex-1 bg-linear-to-r from-transparent to-zinc-800"></div>
-                               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
-                               <div className="h-px flex-1 bg-linear-to-l from-transparent to-zinc-800"></div>
-                             </div>
-                           )}
-                           <div className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
-                             <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
-                               <div className="flex items-center gap-4">
-                                 <button onClick={()=>{
-                                   const upd = {...workouts}; 
-                                   const e = upd[activeWorkoutDay].exercises.find(x=>x.id===ex.id); 
-                                   if(e) e.isCompleted = !e.isCompleted; 
-                                   if(e?.isCompleted) {setTimeLeft(timerInterval); setIsTimerRunning(true);}
-                                   setWorkouts(upd);
-                                 }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
-                                 <div>
-                                   <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
-                                   <span className="text-xs text-zinc-500 font-medium">{ex.target}</span>
+                   {(workouts[activeWorkoutDay]?.exercises || []).map((ex) => (
+                     <div key={ex.id} className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
+                       <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
+                         <div className="flex items-center gap-4">
+                           <button onClick={()=>{
+                             const upd = {...workouts};
+                             upd[activeWorkoutDay] = {
+                               ...upd[activeWorkoutDay],
+                               exercises: upd[activeWorkoutDay].exercises.map(x => {
+                                 if(x.id === ex.id) {
+                                   const isComp = !x.isCompleted;
+                                   if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
+                                   return { ...x, isCompleted: isComp };
+                                 }
+                                 return x;
+                               })
+                             };
+                             setWorkouts(upd);
+                           }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
+                           <div>
+                             <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
+                             <span className="text-xs text-zinc-500 font-medium">{ex.target}</span>
+                           </div>
+                         </div>
+                         <div className="flex gap-2">
+                           <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
+                           <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
+                           <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+                         </div>
+                       </div>
+                       
+                       <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
+                          <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                          <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                          <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
+                       </div>
+
+                       {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
+                       {expandedDesc[ex.id] && (
+                         <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
+                           {anatomyTipState[ex.id] === 'loading' ? (
+                              <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                           ) : anatomyTips[ex.id] ? (
+                             <div className="animate-fadeIn space-y-5">
+                               <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
+                                 <Dumbbell size={18} className="text-emerald-500"/>
+                                 <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
+                               </div>
+                               
+                               <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
+
+                               <div>
+                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
+                                   <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
                                  </div>
                                </div>
-                               <div className="flex gap-2">
-                                 <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
-                                 <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                                 <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+
+                               <div>
+                                 <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
+                                 <ul className="space-y-3 mt-3">
+                                   {anatomyTips[ex.id].executionSteps?.map((step, i) => {
+                                      const parts = step.split(':');
+                                      if(parts.length > 1) {
+                                         const boldPart = parts.shift() + ':';
+                                         return (
+                                           <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
+                                             <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                             <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
+                                           </li>
+                                         );
+                                      }
+                                      return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                   })}
+                                 </ul>
+                               </div>
+
+                               <div>
+                                 <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
+                                 <ul className="space-y-2 text-zinc-400">
+                                   {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
+                                     <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
+                                   ))}
+                                 </ul>
+                               </div>
+
+                               <div>
+                                 <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
+                                 <ul className="space-y-2 text-zinc-400">
+                                   {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
+                                      <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
+                                   ))}
+                                 </ul>
+                               </div>
+
+                               <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
+                                 <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                                 <div>
+                                    <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
+                                    <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                 </div>
                                </div>
                              </div>
-                             
-                             <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
-                             </div>
-
-                             {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
-                             {expandedDesc[ex.id] && (
-                               <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
-                                 {anatomyTipState[ex.id] === 'loading' ? (
-                                    <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
-                                 ) : anatomyTips[ex.id] ? (
-                                   <div className="animate-fadeIn space-y-5">
-                                     <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
-                                       <Dumbbell size={18} className="text-emerald-500"/>
-                                       <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
-                                     </div>
-                                     
-                                     <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
-
-                                     <div>
-                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
-                                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
-                                       </div>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
-                                       <ul className="space-y-3 mt-3">
-                                         {anatomyTips[ex.id].executionSteps?.map((step, i) => {
-                                            const parts = step.split(':');
-                                            if(parts.length > 1) {
-                                               const boldPart = parts.shift() + ':';
-                                               return (
-                                                 <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
-                                                   <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
-                                                   <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
-                                                 </li>
-                                               );
-                                            }
-                                            return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
-                                         })}
-                                       </ul>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
-                                       <ul className="space-y-2 text-zinc-400">
-                                         {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
-                                           <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
-                                         ))}
-                                       </ul>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
-                                       <ul className="space-y-2 text-zinc-400">
-                                         {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
-                                            <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
-                                         ))}
-                                       </ul>
-                                     </div>
-
-                                     <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
-                                       <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
-                                       <div>
-                                          <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
-                                          <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
-                                       </div>
-                                     </div>
-                                   </div>
-                                 ) : (
-                                    <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
-                                 )}
-                               </div>
-                             )}
-                           </div>
-                         </React.Fragment>
-                       );
-                     });
-                   })()}
+                           ) : (
+                              <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
+                           )}
+                         </div>
+                       )}
+                     </div>
+                   ))}
 
                    {/* Botão Adicionar Novo Exercício */}
                    {workouts[activeWorkoutDay]?.exercises?.length < 7 && (
@@ -1535,17 +1537,21 @@ export default function App() {
                   {(exerciseModal.mode === 'swap' ? EXERCISE_DB.filter(e => e.group === exerciseModal.filterGroup) : EXERCISE_DB).map(ex => (
                     <button key={ex.id} onClick={() => {
                       const upd = {...workouts};
-                      const newEx = {id:Date.now(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
+                      const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
                       
+                      const exercises = [...(upd[activeWorkoutDay].exercises || [])];
+
                       if (exerciseModal.mode === 'swap') {
-                        const i = upd[activeWorkoutDay].exercises.findIndex(e=>e.id===exerciseModal.targetExId);
-                        if (i > -1) upd[activeWorkoutDay].exercises[i] = newEx;
+                        const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
+                        if (i > -1) exercises[i] = newEx;
                       } else {
-                        if (!upd[activeWorkoutDay].exercises) upd[activeWorkoutDay].exercises = [];
-                        upd[activeWorkoutDay].exercises.push(newEx);
+                        exercises.push(newEx);
                       }
                       
-                      setWorkouts(upd); saveToCloud(upd); 
+                      upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
+                      
+                      setWorkouts(upd); 
+                      saveToCloud({ workouts: upd }); 
                       setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
                     }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
                       <div>
