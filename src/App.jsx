@@ -4,7 +4,7 @@ import {
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
   Smile, Frown, Lock, Flame, ArrowRightCircle, LogOut, Key, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, ActivitySquare, AlertTriangle, 
-  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil
+  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil, MessageSquareQuote
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -15,12 +15,12 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
-  apiKey: "AIzaSyD25FBlMS6nnIyZRo3jhl85dIdnc8Cx63A",
-  authDomain: "anatomiafit-96b5b.firebaseapp.com",
-  projectId: "anatomiafit-96b5b",
-  storageBucket: "anatomiafit-96b5b.firebasestorage.app",
-  messagingSenderId: "786814321049",
-  appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
+  apiKey: "AIzaSyDtlwKNQopCALMw2yDyOpiVTLiMjFyi9h4",
+  authDomain: "anatomiafitnovo.firebaseapp.com",
+  projectId: "anatomiafitnovo",
+  storageBucket: "anatomiafitnovo.firebasestorage.app",
+  messagingSenderId: "81113017284",
+  appId: "1:81113017284:web:c757d52e0358c10f1d9291"
 };
 
 let app, auth, db, appId = 'hypertrophy-app';
@@ -196,15 +196,22 @@ export default function App() {
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
   // IA Geral
-  const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: 'Olá! Registe as suas refeições aqui.' }]);
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [deepInsightText, setDeepInsightText] = useState('');
-  const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [anatomyTips, setAnatomyTips] = useState({});
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
+
+  // FEEDBACKS IA (ESTADOS NOVOS)
+  const [deepInsightText, setDeepInsightText] = useState('');
+  const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
+  
+  const [workoutFeedback, setWorkoutFeedback] = useState('');
+  const [isWorkoutFeedbackLoading, setIsWorkoutFeedbackLoading] = useState(false);
+  
+  const [nutritionFeedback, setNutritionFeedback] = useState('');
+  const [isNutritionFeedbackLoading, setIsNutritionFeedbackLoading] = useState(false);
 
   // Dados Essenciais
   const [workouts, setWorkouts] = useState({});
@@ -216,7 +223,7 @@ export default function App() {
   const [gapDuration, setGapDuration] = useState(45);
   
   const [userProfile, setUserProfile] = useState({ 
-    name: '', age: '', gender: 'M', height: '', weight: '', goal: 'Hipertrofia', 
+    name: '', age: '', gender: 'M', height: '', weight: '', targetWeight: '', goal: 'Hipertrofia', 
     onboardingCompleted: false, geminiApiKey: '', lastMeasureUpdate: null, lastLoginDate: todayStr
   });
   
@@ -348,7 +355,7 @@ export default function App() {
         if (d.measurements) setMeasurements({ cintura: '', ...d.measurements }); 
         if (d.weightHistory) setWeightHistory(d.weightHistory);
         if (d.userProfile) {
-          let prof = d.userProfile;
+          let prof = { targetWeight: '', ...d.userProfile };
           
           if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
              let updWorkouts = { ...(d.workouts || workouts) };
@@ -570,17 +577,86 @@ export default function App() {
     return textOutput;
   };
 
+  // 1. Feedback Holístico (Painel Semanal)
   const handleGenerateDeepInsight = async () => {
     if (!userProfile.geminiApiKey) return setDeepInsightText("❌ Adicione a Chave API no Perfil.");
     setIsDeepInsightLoading(true); setDeepInsightText('');
     try {
-      const hist = workoutHistory.slice(-7).map(h => `${h.day}${h.isGap? '(GAP) ':''} ${h.volume}kg`).join(', ');
-      const res = await callGemini(`Atue como treinador. Analise o aluno: Objetivo: ${userProfile.goal}. Treinos recentes: ${hist || 'Nenhum'}. Gere 1 parágrafo curto e motivacional de feedback. PT-BR.`);
+      const recentWorkouts = workoutHistory.slice(-7);
+      const workoutCount = recentWorkouts.length;
+      
+      let recentNutritionCal = 0;
+      let nutritionDaysCount = 0;
+      // Calcular média de kcal dos últimos 7 dias baseando-se nos logs diários que têm dados de dieta
+      const recentDays = dailyLogs.slice(-7);
+      recentDays.forEach(log => {
+        if (log.calories > 0) {
+           recentNutritionCal += log.calories;
+           nutritionDaysCount++;
+        }
+      });
+      const avgKcal = nutritionDaysCount > 0 ? Math.round(recentNutritionCal / nutritionDaysCount) : 0;
+
+      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo é ${userProfile.goal}. 
+      Nos últimos 7 dias: 
+      - Treinei ${workoutCount} vezes.
+      - A minha média de consumo calórico foi ${avgKcal > 0 ? avgKcal : 'desconhecida'} kcal (A minha meta diária calculada pela IA é de ${aiGoals.calories} kcal).
+      - O meu peso atual é ${userProfile.weight} kg e o meu peso desejado é ${userProfile.targetWeight} kg.
+      
+      Faça uma avaliação geral e holística do meu desempenho (treino + nutrição) com base nestes números. Diga se estou no caminho certo, o que preciso de ajustar para não estagnar (seja no treino ou na dieta) e termine com uma frase motivacional poderosa.
+      IMPORTANTE: Responda em Português de Portugal. Escreva um máximo de 3 parágrafos diretos e organizados.`;
+
+      const res = await callGemini(prompt);
       setDeepInsightText(res);
     } catch (error) { 
       setDeepInsightText(`Erro IA: ${error.message}`); 
     } finally { 
       setIsDeepInsightLoading(false); 
+    }
+  };
+
+  // 2. Feedback de Treino (Aba Treino)
+  const handleEvaluateWorkout = async () => {
+    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
+    setIsWorkoutFeedbackLoading(true); setWorkoutFeedback('');
+    try {
+      const dayInfo = workouts[activeWorkoutDay];
+      const exerciseList = dayInfo.exercises.map(e => `${e.name} (${e.target})`).join(', ');
+
+      const prompt = `Atue como um Master Trainer. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg). 
+      Avalie a seguinte seleção de exercícios estruturada para o meu treino de ${dayInfo.name}: 
+      ${exerciseList}.
+      
+      Seja muito direto: A seleção está bem construída e equilibrada para a minha meta? Falta algum estímulo importante ou há sobreposição desnecessária? 
+      IMPORTANTE: Responda em Português de Portugal. Escreva no máximo 2 ou 3 parágrafos curtos e objetivos.`;
+
+      const res = await callGemini(prompt);
+      setWorkoutFeedback(res);
+    } catch (error) {
+      setWorkoutFeedback(`Erro ao avaliar: ${error.message}`);
+    } finally {
+      setIsWorkoutFeedbackLoading(false);
+    }
+  };
+
+  // 3. Feedback de Nutrição (Aba Nutrição)
+  const handleEvaluateNutrition = async () => {
+    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
+    setIsNutritionFeedbackLoading(true); setNutritionFeedback('');
+    try {
+      const prompt = `Atue como um Nutricionista Desportivo. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg). 
+      A minha meta diária recomendada é: ${aiGoals.calories} kcal, ${aiGoals.protein}g Proteína, ${aiGoals.carbs}g Hidratos e ${aiGoals.fats}g Gordura. 
+      Até agora (hoje), já consumi: ${totals.calories} kcal, ${totals.protein}g Proteína, ${totals.carbs}g Hidratos e ${totals.fats}g Gordura.
+      
+      Avalie o meu alinhamento com a meta no dia de hoje. Estou a comer demais/de menos? O que me sugere comer na próxima refeição para corrigir possíveis défices (se faltar proteína, ou se já passei da gordura, etc.)?
+      IMPORTANTE: Responda em Português de Portugal. Seja rápido, direto e prático (máx 2 parágrafos curtos).`;
+
+      const res = await callGemini(prompt);
+      setNutritionFeedback(res);
+    } catch (error) {
+      setNutritionFeedback(`Erro ao avaliar: ${error.message}`);
+    } finally {
+      setIsNutritionFeedbackLoading(false);
     }
   };
 
@@ -609,7 +685,7 @@ export default function App() {
       - executionSteps: 3 a 4 passos práticos formatados como 'Tópico: Explicação' (ex: "Base: Pés firmes..."). 
       - safetyTips: 2 a 3 dicas de proteção articular ou respiração. 
       - mistakes: 2 a 4 erros muito comuns e perigosos. 
-      - geminiTip: A dica final de ouro. Em português do Brasil.`, schema);
+      - geminiTip: A dica final de ouro. Em português de Portugal.`, schema);
       
       setAnatomyTips(p => ({ ...p, [exId]: res })); 
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
@@ -623,16 +699,17 @@ export default function App() {
     if (!chatInput.trim() || !userProfile.geminiApiKey) return;
     const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
     const userText = chatInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: userText }]);
+    // Removido chat temporário local para evitar que mensagens de sistema ("Estime macros para...") fiquem visíveis caso o usuário queira um chat puro no futuro. 
+    // Em vez disso, já usamos o alert ou inserção direta no log.
     setChatInput(''); setIsAnalyzing(true);
     try {
-      const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" } } });
+      const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" }, name: { type: "STRING" } } });
       
       const newLog = {
         id: Date.now(),
         date: todayStr,
         mealId: selectedMealId,
-        text: userText,
+        text: macros.name || userText,
         calories: macros.calories,
         protein: macros.protein,
         carbs: macros.carbs,
@@ -642,10 +719,9 @@ export default function App() {
       const updatedLogs = [...nutritionLogs, newLog];
       setNutritionLogs(updatedLogs); 
       saveToCloud({ nutritionLogs: updatedLogs });
-      
-      setChatMessages(prev => [...prev, { role: 'ai', text: `Adicionado ao feed de ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G` }]);
+      alert(`Adicionado ao feed de ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G`);
     } catch (error) { 
-      setChatMessages(prev => [...prev, { role: 'ai', text: `Erro ao analisar dieta: ${error.message}` }]); 
+      alert(`Erro ao analisar dieta: ${error.message}`); 
     } finally { 
       setIsAnalyzing(false); 
     }
@@ -662,7 +738,7 @@ export default function App() {
       const dayInfo = workouts[activeWorkoutDay];
       const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
 
-      const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal}.
+      const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg).
       O treino selecionado para hoje é: "${dayInfo.name}".
       Aqui está a lista de TODOS os exercícios disponíveis no banco de dados:
       ${dbContext}
@@ -817,16 +893,19 @@ export default function App() {
               <div><label className="text-xs text-zinc-500 font-bold uppercase">Género</label><select value={userProfile.gender} onChange={e=>setUserProfile({...userProfile, gender:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none"><option value="M">Masc</option><option value="F">Fem</option></select></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+              <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+              <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Desejado (kg)</label><input type="number" value={userProfile.targetWeight} onChange={e=>setUserProfile({...userProfile, targetWeight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div><label className="text-xs text-zinc-500 font-bold uppercase">Altura (cm)</label><input type="number" value={userProfile.height} onChange={e=>setUserProfile({...userProfile, height:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+              <div>
+                <label className="text-xs text-zinc-500 font-bold uppercase">Objetivo</label>
+                <select value={userProfile.goal} onChange={e=>setUserProfile({...userProfile, goal:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none text-emerald-400 font-bold">
+                  <option>Hipertrofia</option><option>Definição</option><option>Manutenção</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-zinc-500 font-bold uppercase">Objetivo</label>
-              <select value={userProfile.goal} onChange={e=>setUserProfile({...userProfile, goal:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none text-emerald-400 font-bold">
-                <option>Hipertrofia</option><option>Definição</option><option>Manutenção</option>
-              </select>
-            </div>
-            <button onClick={()=>setOnboardingStep(2)} disabled={!userProfile.name || !userProfile.weight} className="w-full bg-emerald-600 disabled:opacity-50 py-4 rounded-2xl font-bold mt-4">Próximo</button>
+            <button onClick={()=>setOnboardingStep(2)} disabled={!userProfile.name || !userProfile.weight || !userProfile.targetWeight || !userProfile.height} className="w-full bg-emerald-600 disabled:opacity-50 py-4 rounded-2xl font-bold mt-4">Próximo</button>
           </div>
         )}
 
@@ -864,7 +943,10 @@ export default function App() {
               <p className="text-zinc-400 mb-6 text-sm">Passaram-se 7 dias desde o último registo. Atualize o seu peso e medidas para alimentar a IA.</p>
               
               <div className="space-y-4 text-left mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                 <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-emerald-400 font-bold mt-1" /></div>
+                 <div className="grid grid-cols-2 gap-3 mb-2">
+                   <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-emerald-400 font-bold mt-1" /></div>
+                   <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Desejado</label><input type="number" value={userProfile.targetWeight} onChange={e=>setUserProfile({...userProfile, targetWeight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-emerald-400 font-bold mt-1" /></div>
+                 </div>
                  {Object.keys(measurements).map(key => (
                    <div key={key}>
                      <label className="text-[10px] text-zinc-500 font-bold uppercase">{key} (cm)</label>
@@ -1074,15 +1156,16 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Consultoria IA */}
+                  {/* Consultoria IA Holística */}
                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4"><Sparkles className="text-emerald-400" size={20} /> Feedback IA do Treinador</h3>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4"><MessageSquareQuote className="text-emerald-400" size={20} /> Relatório Geral de Desempenho</h3>
+                    <p className="text-xs text-zinc-400 mb-4">A IA vai cruzar o seu histórico de treino e ingestão calórica para fornecer um feedback abrangente.</p>
                     <button onClick={handleGenerateDeepInsight} disabled={isDeepInsightLoading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                      {isDeepInsightLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Meu Desempenho
+                      {isDeepInsightLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Desempenho (Treino + Nutrição)
                     </button>
                     {deepInsightText && (
-                      <div className="mt-6 text-emerald-100/80 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium">
-                        "{deepInsightText}"
+                      <div className="mt-6 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line">
+                        {deepInsightText}
                       </div>
                     )}
                   </div>
@@ -1099,10 +1182,9 @@ export default function App() {
                </header>
                
                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                 {WORKOUT_DAYS.map(d=><button key={d} onClick={()=>{setActiveWorkoutDay(d); setIsGapMode(false);}} className={`px-6 py-3 shrink-0 rounded-2xl text-sm font-bold transition-all ${activeWorkoutDay===d?'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20':'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'}`}>{d}</button>)}
+                 {WORKOUT_DAYS.map(d=><button key={d} onClick={()=>{setActiveWorkoutDay(d); setIsGapMode(false); setWorkoutFeedback('');}} className={`px-6 py-3 shrink-0 rounded-2xl text-sm font-bold transition-all ${activeWorkoutDay===d?'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20':'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'}`}>{d}</button>)}
                </div>
 
-               {/* Controle Especial: Modo GAP para dias de Perna */}
                {workouts[activeWorkoutDay]?.isLegs && (
                  <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
                    <div className="flex items-center gap-3">
@@ -1118,18 +1200,16 @@ export default function App() {
                  </div>
                )}
 
-               {/* Cabecalho do Treino e Geração IA */}
                {!isGapMode && (
                  <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
                     <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
                     <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
                       {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin"/> : <Cpu size={16} />}
-                      {isGeneratingWorkout ? "Gerando..." : "Gerar com IA"}
+                      {isGeneratingWorkout ? "Gerando..." : "Gerar Ficha (IA)"}
                     </button>
                  </div>
                )}
 
-               {/* Cronómetro Global (se não for GAP) */}
                {!isGapMode && (
                  <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm">
                    <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}><Timer size={24} /></div>
@@ -1203,7 +1283,6 @@ export default function App() {
                                 <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
                              </div>
 
-                             {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
                              {expandedDesc[ex.id] && (
                                <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
                                  {anatomyTipState[ex.id] === 'loading' ? (
@@ -1282,12 +1361,23 @@ export default function App() {
                      });
                    })()}
 
-                   {/* Botão Adicionar Novo Exercício */}
-                   {workouts[activeWorkoutDay]?.exercises?.length < 7 && (
-                     <button onClick={() => setExerciseModal({ active: true, mode: 'add', targetExId: null, filterGroup: null })} className="w-full py-5 bg-zinc-900/50 border-2 border-dashed border-zinc-800 text-zinc-400 rounded-3xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 hover:text-white transition-all">
-                       <Plus size={20}/> Adicionar Exercício ({workouts[activeWorkoutDay].exercises.length}/7)
+                   <button onClick={() => setExerciseModal({ active: true, mode: 'add', targetExId: null, filterGroup: null })} className="w-full py-5 bg-zinc-900/50 border-2 border-dashed border-zinc-800 text-zinc-400 rounded-3xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 hover:text-white transition-all mt-4">
+                     <Plus size={20}/> Adicionar Exercício Manual
+                   </button>
+                   
+                   {/* FEEDBACK IA DO TREINO */}
+                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
+                     <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação da Ficha (IA)</h3>
+                     <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar se os exercícios escolhidos fazem sentido para o seu objetivo.</p>
+                     <button onClick={handleEvaluateWorkout} disabled={isWorkoutFeedbackLoading} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                       {isWorkoutFeedbackLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Treino Atual
                      </button>
-                   )}
+                     {workoutFeedback && (
+                       <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
+                         {workoutFeedback}
+                       </div>
+                     )}
+                   </div>
                  </div>
                )}
 
@@ -1312,11 +1402,6 @@ export default function App() {
                      <button onClick={handleAnalyzeFood} disabled={isAnalyzing || !chatInput} className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white p-4 rounded-2xl transition-colors"><Send size={24}/></button>
                    </div>
                  </div>
-                 {chatMessages.length > 1 && (
-                   <div className="p-5 bg-emerald-950/20 rounded-2xl text-sm whitespace-pre-line text-emerald-100 border border-emerald-900/30 font-medium">
-                     {chatMessages[chatMessages.length - 1].text}
-                   </div>
-                 )}
                </div>
 
                <h3 className="text-xl font-bold mt-8 mb-4">Metas de Hoje</h3>
@@ -1350,6 +1435,20 @@ export default function App() {
                      <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.fats}g</p>
                    </div>
                  </div>
+               </div>
+
+               {/* FEEDBACK IA DA DIETA */}
+               <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
+                 <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação de Ingestão Diária (IA)</h3>
+                 <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar como os seus macros estão hoje em relação ao objetivo e receber sugestões.</p>
+                 <button onClick={handleEvaluateNutrition} disabled={isNutritionFeedbackLoading} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                   {isNutritionFeedbackLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Meus Macros
+                 </button>
+                 {nutritionFeedback && (
+                   <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
+                     {nutritionFeedback}
+                   </div>
+                 )}
                </div>
 
                {/* FEED DE REFEIÇÕES */}
@@ -1429,8 +1528,8 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 text-center">
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">Peso Atual</p>
-                    <p className="text-3xl font-black text-white">{userProfile.weight} <span className="text-lg text-zinc-500">kg</span></p>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">Peso Atual / Desejado</p>
+                    <p className="text-3xl font-black text-white">{userProfile.weight} <span className="text-lg text-zinc-500">/ {userProfile.targetWeight || '--'} kg</span></p>
                   </div>
                   <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 text-center">
                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">IMC IA</p>
