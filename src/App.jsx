@@ -699,8 +699,6 @@ export default function App() {
     if (!chatInput.trim() || !userProfile.geminiApiKey) return;
     const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
     const userText = chatInput;
-    // Removido chat temporário local para evitar que mensagens de sistema ("Estime macros para...") fiquem visíveis caso o usuário queira um chat puro no futuro. 
-    // Em vez disso, já usamos o alert ou inserção direta no log.
     setChatInput(''); setIsAnalyzing(true);
     try {
       const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" }, name: { type: "STRING" } } });
@@ -842,6 +840,9 @@ export default function App() {
     setWorkouts(upd);
     saveToCloud({ workouts: upd });
   };
+
+  // Pre-computação das Datas Recentes para o Feed de Nutrição
+  const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
 
   // --- SCREENS ---
   if (isAuthLoading || appScreen === 'loading') return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
@@ -1156,6 +1157,41 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Feed Semanal de Nutrição */}
+                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Utensils size={18} className="text-emerald-500"/> Histórico de Nutrição</h3>
+                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                      {recentNutritionDates.length === 0 ? (
+                        <p className="text-sm text-zinc-500 italic text-center py-4">Nenhum registo de nutrição ainda.</p>
+                      ) : (
+                        recentNutritionDates.map(date => {
+                          const dayLogs = nutritionLogs.filter(n => n.date === date);
+                          const dayTotals = dayLogs.reduce((acc, log) => ({
+                            cal: acc.cal + (Number(log.calories)||0),
+                            pro: acc.pro + (Number(log.protein)||0),
+                            car: acc.car + (Number(log.carbs)||0),
+                            fat: acc.fat + (Number(log.fats)||0)
+                          }), { cal: 0, pro: 0, car: 0, fat: 0 });
+
+                          return (
+                            <div key={date} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 transition-all hover:border-zinc-700 shadow-sm">
+                              <div className="flex justify-between items-center mb-3 border-b border-zinc-800/50 pb-3">
+                                 <span className="font-black text-white text-lg">{date}</span>
+                                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">{dayLogs.length} Refeições</span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2 text-center">
+                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-orange-400 font-bold uppercase">Kcal</p><p className="font-bold text-white text-sm">{dayTotals.cal}</p></div>
+                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-emerald-400 font-bold uppercase">Prot</p><p className="font-bold text-white text-sm">{dayTotals.pro}g</p></div>
+                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-blue-400 font-bold uppercase">Carb</p><p className="font-bold text-white text-sm">{dayTotals.car}g</p></div>
+                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-yellow-400 font-bold uppercase">Gord</p><p className="font-bold text-white text-sm">{dayTotals.fat}g</p></div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+
                   {/* Consultoria IA Holística */}
                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4"><MessageSquareQuote className="text-emerald-400" size={20} /> Relatório Geral de Desempenho</h3>
@@ -1283,6 +1319,7 @@ export default function App() {
                                 <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
                              </div>
 
+                             {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
                              {expandedDesc[ex.id] && (
                                <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
                                  {anatomyTipState[ex.id] === 'loading' ? (
