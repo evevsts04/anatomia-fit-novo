@@ -200,7 +200,7 @@ export default function App() {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanFeedback, setScanFeedback] = useState([]);
   const [estimatedMeasures, setEstimatedMeasures] = useState(null);
-  const [uploadedPhotos, setUploadedPhotos] = useState({ frente: false, direita: false, esquerda: false, costas: false });
+  const [uploadedPhotos, setUploadedPhotos] = useState({ frente: null, direita: null, esquerda: null, costas: null });
   const [scanAiReport, setScanAiReport] = useState('');
   const [isScanningAi, setIsScanningAi] = useState(false);
 
@@ -595,11 +595,15 @@ export default function App() {
   };
 
   // --- Função Simulação Escaneamento Biométrico ---
-  const handlePhotoUpload = (view) => {
-    setUploadedPhotos(prev => ({ ...prev, [view]: true }));
+  const handlePhotoUpload = (view, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setUploadedPhotos(prev => ({ ...prev, [view]: url }));
+    }
   };
 
-  const allPhotosUploaded = Object.values(uploadedPhotos).every(v => v === true);
+  const allPhotosUploaded = Object.values(uploadedPhotos).every(v => v !== null);
 
   const startBiometricScan = () => {
     setScanState('scanning');
@@ -651,7 +655,7 @@ export default function App() {
     handleUpdateMeasures();
     setBioTab('evolution');
     setScanState('idle'); // reseta estado para futuras medições
-    setUploadedPhotos({ frente: false, direita: false, esquerda: false, costas: false });
+    setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null });
     setScanAiReport('');
   };
 
@@ -1799,15 +1803,16 @@ export default function App() {
                        
                        <div className="grid grid-cols-2 gap-4 mb-6">
                           {['frente', 'direita', 'esquerda', 'costas'].map((view) => (
-                             <button 
+                             <label 
                                key={view}
-                               onClick={() => handlePhotoUpload(view)}
-                               className={`h-32 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed transition-all ${uploadedPhotos[view] ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}
+                               className={`relative h-32 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed transition-all cursor-pointer overflow-hidden ${uploadedPhotos[view] ? 'border-emerald-500/50 text-emerald-400 bg-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}
                              >
-                               {uploadedPhotos[view] ? <CheckCircle2 size={32} className="mb-2" /> : <Upload size={28} className="mb-2" />}
-                               <span className="text-xs font-bold uppercase tracking-wider">{view}</span>
-                               {uploadedPhotos[view] && <span className="text-[10px] mt-1 opacity-70">Enviada</span>}
-                             </button>
+                               <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(view, e)} />
+                               {uploadedPhotos[view] && <img src={uploadedPhotos[view]} alt={`Upload ${view}`} className="absolute inset-0 w-full h-full object-cover opacity-30" />}
+                               {uploadedPhotos[view] ? <CheckCircle2 size={32} className="mb-2 relative z-10" /> : <Upload size={28} className="mb-2 relative z-10" />}
+                               <span className="text-xs font-bold uppercase tracking-wider relative z-10">{view}</span>
+                               {uploadedPhotos[view] && <span className="text-[10px] mt-1 opacity-100 bg-emerald-500/20 px-2 py-0.5 rounded font-bold relative z-10">Enviada</span>}
+                             </label>
                           ))}
                        </div>
                        
@@ -1933,7 +1938,7 @@ export default function App() {
                        </div>
 
                        <div className="p-6 bg-zinc-900 border-t border-zinc-800 flex flex-col md:flex-row gap-3">
-                         <button onClick={() => {setScanState('idle'); setUploadedPhotos({ frente: false, direita: false, esquerda: false, costas: false }); setScanAiReport('');}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-bold transition-all">
+                         <button onClick={() => {setScanState('idle'); setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null }); setScanAiReport('');}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-bold transition-all">
                            Re-escanear
                          </button>
                          <button onClick={saveBiometricMeasures} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg">
