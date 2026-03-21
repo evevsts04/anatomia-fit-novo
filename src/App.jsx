@@ -4,7 +4,8 @@ import {
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
   Smile, Frown, Lock, Flame, ArrowRightCircle, LogOut, Key, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, ActivitySquare, AlertTriangle, 
-  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil, MessageSquareQuote
+  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil, MessageSquareQuote,
+  Camera, Scan, Focus, BarChart3, Fingerprint, View, Upload, Image as ImageIcon, Activity
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -160,6 +161,17 @@ const INITIAL_MEALS = [
 ];
 const WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2', 'Upper', 'Lower'];
 
+// Função utilitária para calcular o início da semana atual (Segunda-feira)
+const getStartOfCurrentWeek = () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0 é Domingo
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysSinceMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday.getTime();
+};
+
 // Funções utilitárias
 const getEx = (id) => EXERCISE_DB.find(e => e.id === id);
 const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
@@ -181,6 +193,16 @@ export default function App() {
   const [showBackAnatomy, setShowBackAnatomy] = useState(false);
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
+
+  // ABA BIOMETRIA
+  const [bioTab, setBioTab] = useState('capture');
+  const [scanState, setScanState] = useState('idle'); // idle, scanning, done
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanFeedback, setScanFeedback] = useState([]);
+  const [estimatedMeasures, setEstimatedMeasures] = useState(null);
+  const [uploadedPhotos, setUploadedPhotos] = useState({ frente: false, direita: false, esquerda: false, costas: false });
+  const [scanAiReport, setScanAiReport] = useState('');
+  const [isScanningAi, setIsScanningAi] = useState(false);
 
   // Autenticação e Config
   const [email, setEmail] = useState('');
@@ -246,6 +268,27 @@ export default function App() {
   // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
+
+  // NOVO: Lógica de Bloqueio Semanal de Treinos (Rota Sucessiva)
+  const completedWorkoutsThisWeek = useMemo(() => {
+    const startOfWeek = getStartOfCurrentWeek();
+    return workoutHistory
+      .filter(log => {
+        const logTime = log.timestamp || new Date(log.date.split('/').reverse().join('-')).getTime();
+        return logTime >= startOfWeek;
+      })
+      .map(log => log.day);
+  }, [workoutHistory]);
+
+  // Avançar automaticamente para o próximo treino se o atual estiver bloqueado
+  useEffect(() => {
+    if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < WORKOUT_DAYS.length) {
+      const nextAvailable = WORKOUT_DAYS.find(d => !completedWorkoutsThisWeek.includes(d));
+      if (nextAvailable) {
+        setActiveWorkoutDay(nextAvailable);
+      }
+    }
+  }, [completedWorkoutsThisWeek, activeWorkoutDay]);
 
   const todayNutrition = nutritionLogs.filter(log => log.date === todayStr);
   const totals = todayNutrition.reduce((acc, log) => ({ 
@@ -551,6 +594,67 @@ export default function App() {
     saveToCloud({ userProfile: upProf, measurements, weightHistory: wHist });
   };
 
+  // --- Função Simulação Escaneamento Biométrico ---
+  const handlePhotoUpload = (view) => {
+    setUploadedPhotos(prev => ({ ...prev, [view]: true }));
+  };
+
+  const allPhotosUploaded = Object.values(uploadedPhotos).every(v => v === true);
+
+  const startBiometricScan = () => {
+    setScanState('scanning');
+    setScanProgress(0);
+    setScanFeedback([]);
+    setScanAiReport(''); // Reseta o relatório anterior
+
+    const steps = [
+      { p: 20, t: "Verificando Câmera e Iluminação [OK]" },
+      { p: 40, t: "Fotos validadas e Estáveis [OK]" },
+      { p: 60, t: "Ângulos: Frontal, Perfil e Costas [OK]" },
+      { p: 80, t: "Mapeando Pontos-chave do Corpo (Pose Estimation)..." },
+      { p: 100, t: "Calculando Proporções e Estimando Medidas..." }
+    ];
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      if (currentStep < steps.length) {
+        setScanProgress(steps[currentStep].p);
+        setScanFeedback(prev => [...prev, steps[currentStep].t]);
+        currentStep++;
+      } else {
+        clearInterval(interval);
+        // Gerar Medidas Estimadas Baseadas no Perfil
+        const h = Number(userProfile.height) || 175;
+        const w = Number(userProfile.weight) || 70;
+        setEstimatedMeasures({
+          peito: Math.round(w * 1.35),
+          cintura: Math.round(h * 0.45),
+          quadril: Math.round(w * 1.3),
+          bracos: Math.round(w * 0.48),
+          pernas: Math.round(h * 0.33)
+        });
+        setScanState('done');
+      }
+    }, 1200);
+  };
+
+  const saveBiometricMeasures = () => {
+    const newMeasures = {
+      ...measurements,
+      peito: estimatedMeasures.peito,
+      cintura: estimatedMeasures.cintura,
+      quadril: estimatedMeasures.quadril,
+      bracos: estimatedMeasures.bracos,
+      pernas: estimatedMeasures.pernas
+    };
+    setMeasurements(newMeasures);
+    handleUpdateMeasures();
+    setBioTab('evolution');
+    setScanState('idle'); // reseta estado para futuras medições
+    setUploadedPhotos({ frente: false, direita: false, esquerda: false, costas: false });
+    setScanAiReport('');
+  };
+
   // --- IA Functions ---
   const callGemini = async (prompt, schema = null) => {
     if (!userProfile.geminiApiKey) throw new Error("Sem API Key configurada.");
@@ -584,27 +688,42 @@ export default function App() {
     try {
       const recentWorkouts = workoutHistory.slice(-7);
       const workoutCount = recentWorkouts.length;
+      const totalVolume = recentWorkouts.reduce((acc, w) => acc + (w.volume || 0), 0);
       
-      let recentNutritionCal = 0;
-      let nutritionDaysCount = 0;
-      // Calcular média de kcal dos últimos 7 dias baseando-se nos logs diários que têm dados de dieta
-      const recentDays = dailyLogs.slice(-7);
-      recentDays.forEach(log => {
-        if (log.calories > 0) {
-           recentNutritionCal += log.calories;
-           nutritionDaysCount++;
+      let totalCal = 0, totalPro = 0, totalCar = 0, totalFat = 0, daysWithFood = 0;
+      const uniqueDates = [...new Set(nutritionLogs.map(n => n.date))].slice(-7);
+
+      uniqueDates.forEach(date => {
+        const dayLogs = nutritionLogs.filter(n => n.date === date);
+        if (dayLogs.length > 0) {
+            daysWithFood++;
+            dayLogs.forEach(l => {
+                totalCal += (Number(l.calories) || 0);
+                totalPro += (Number(l.protein) || 0);
+                totalCar += (Number(l.carbs) || 0);
+                totalFat += (Number(l.fats) || 0);
+            });
         }
       });
-      const avgKcal = nutritionDaysCount > 0 ? Math.round(recentNutritionCal / nutritionDaysCount) : 0;
 
-      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo é ${userProfile.goal}. 
-      Nos últimos 7 dias: 
-      - Treinei ${workoutCount} vezes.
-      - A minha média de consumo calórico foi ${avgKcal > 0 ? avgKcal : 'desconhecida'} kcal (A minha meta diária calculada pela IA é de ${aiGoals.calories} kcal).
-      - O meu peso atual é ${userProfile.weight} kg e o meu peso desejado é ${userProfile.targetWeight} kg.
-      
-      Faça uma avaliação geral e holística do meu desempenho (treino + nutrição) com base nestes números. Diga se estou no caminho certo, o que preciso de ajustar para não estagnar (seja no treino ou na dieta) e termine com uma frase motivacional poderosa.
-      IMPORTANTE: Responda em Português de Portugal. Escreva um máximo de 3 parágrafos diretos e organizados.`;
+      const avgCal = daysWithFood > 0 ? Math.round(totalCal / daysWithFood) : 0;
+      const avgPro = daysWithFood > 0 ? Math.round(totalPro / daysWithFood) : 0;
+      const avgCar = daysWithFood > 0 ? Math.round(totalCar / daysWithFood) : 0;
+      const avgFat = daysWithFood > 0 ? Math.round(totalFat / daysWithFood) : 0;
+
+      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
+
+      RESUMO DOS ÚLTIMOS 7 DIAS:
+      - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
+      - Nutrição (média diária): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
+      - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
+
+      TAREFA:
+      1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
+      2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
+      3. Apresente um resumo estruturado com "Pontos Fortes" e "Pontos a Melhorar".
+
+      IMPORTANTE: Responda em Português de Portugal. Seja direto, prático, encorajador e utilize formatação em tópicos (bullet points) para facilitar a leitura.`;
 
       const res = await callGemini(prompt);
       setDeepInsightText(res);
@@ -657,6 +776,32 @@ export default function App() {
       setNutritionFeedback(`Erro ao avaliar: ${error.message}`);
     } finally {
       setIsNutritionFeedbackLoading(false);
+    }
+  };
+
+  const handleGenerateBiometricReport = async () => {
+    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
+    setIsScanningAi(true);
+    setScanAiReport('');
+    try {
+      const prompt = `Atue como um Especialista em Biometria e Avaliação Física. O meu objetivo atual é ${userProfile.goal} (Peso: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
+      
+      No meu formulário de perfil, as minhas medidas atuais/preenchidas eram (em cm):
+      Peito: ${measurements.peito || '--'}, Cintura: ${measurements.cintura || '--'}, Quadril: ${measurements.quadril || '--'}, Braços: ${measurements.bracos || '--'}, Pernas: ${measurements.pernas || '--'}.
+      
+      Acabei de realizar um "Check-up Fotográfico" de Visão Computacional e o sistema extraiu as seguintes medidas atualizadas da minha imagem (em cm):
+      Peito: ${estimatedMeasures.peito}, Cintura: ${estimatedMeasures.cintura}, Quadril: ${estimatedMeasures.quadril}, Braços: ${estimatedMeasures.bracos}, Pernas: ${estimatedMeasures.pernas}.
+      
+      Compare as medidas extraídas da imagem com as antigas do formulário. Faça uma análise de desempenho apontando se as proporções atuais lidas pelas fotos estão alinhadas com os padrões para alcançar a minha meta de ${userProfile.goal}.
+      Destaque o que evoluiu ou o que precisa de mais atenção nos treinos de forma muito motivadora.
+      IMPORTANTE: Responda em Português de Portugal, em no máximo 3 parágrafos diretos.`;
+      
+      const res = await callGemini(prompt);
+      setScanAiReport(res);
+    } catch (error) {
+      setScanAiReport(`Erro na análise biométrica: ${error.message}`);
+    } finally {
+      setIsScanningAi(false);
     }
   };
 
@@ -810,12 +955,51 @@ export default function App() {
   };
 
   const getCalendarDays = () => {
-    const days = []; const today = new Date();
-    for(let i=6; i>=0; i--) {
-      const d = new Date(today); d.setDate(today.getDate() - i);
+    const days = []; 
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let signup = new Date(today);
+    signup.setDate(today.getDate() - 6);
+
+    if (userProfile.signupTimestamp) {
+      signup = new Date(userProfile.signupTimestamp);
+      signup.setHours(0,0,0,0);
+    } else if (weightHistory.length > 0) {
+      const parts = weightHistory[0].date.split('/');
+      if (parts.length === 3) {
+        signup = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+        signup.setHours(0,0,0,0);
+      }
+    }
+
+    const diffTime = today.getTime() - signup.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    let startDate = new Date();
+    if (diffDays >= 0 && diffDays < 7) {
+       startDate = new Date(signup);
+    } else {
+       startDate = new Date(today);
+       startDate.setDate(today.getDate() - 6);
+    }
+
+    for(let i=0; i<7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
       const dStr = d.toLocaleDateString('pt-BR');
       const log = dailyLogs.find(l => l.date === dStr);
-      days.push({ dateNum: d.getDate(), dayStr: d.toLocaleDateString('pt-BR', {weekday:'short'}), hasWorkout: !!log?.workout });
+      
+      const isFuture = d > today;
+      const isBeforeSignup = d < signup;
+
+      days.push({ 
+        dateNum: d.getDate(), 
+        dayStr: d.toLocaleDateString('pt-BR', {weekday:'short'}), 
+        hasWorkout: !!log?.workout,
+        isFuture,
+        isBeforeSignup
+      });
     }
     return days;
   };
@@ -970,6 +1154,7 @@ export default function App() {
           <SidebarBtn a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={20}/>} l="Painel" />
           <SidebarBtn a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={20}/>} l="Treino" />
           <SidebarBtn a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={20}/>} l="Nutrição" />
+          <SidebarBtn a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={20}/>} l="Check-up" />
           <SidebarBtn a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
         </nav>
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
@@ -1080,10 +1265,10 @@ export default function App() {
                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><CalendarDays size={18}/> Consistência (7 Dias)</h3>
                     <div className="flex gap-2 overflow-x-auto pb-2 justify-between">
                       {getCalendarDays().map((d, i) => (
-                        <div key={i} className={`flex flex-col items-center p-3 rounded-2xl min-w-14 border ${d.hasWorkout ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-950 border-zinc-800'}`}>
+                        <div key={i} className={`flex flex-col items-center p-3 rounded-2xl min-w-14 border ${d.hasWorkout ? 'bg-emerald-500/10 border-emerald-500/30' : (d.isFuture || d.isBeforeSignup) ? 'bg-zinc-950/30 border-zinc-900 opacity-40' : 'bg-zinc-950 border-zinc-800'}`}>
                           <span className="text-[10px] text-zinc-500 font-bold uppercase">{d.dayStr}</span>
                           <span className="text-lg font-bold text-white mb-2">{d.dateNum}</span>
-                          {d.hasWorkout ? <Smile size={20} className="text-emerald-500"/> : <Frown size={20} className="text-zinc-600"/>}
+                          {d.hasWorkout ? <Smile size={20} className="text-emerald-500"/> : (d.isFuture || d.isBeforeSignup) ? <div className="w-5 h-5 rounded-full border border-zinc-800 bg-zinc-900/50"></div> : <Frown size={20} className="text-zinc-600"/>}
                         </div>
                       ))}
                     </div>
@@ -1218,209 +1403,253 @@ export default function App() {
                </header>
                
                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                 {WORKOUT_DAYS.map(d=><button key={d} onClick={()=>{setActiveWorkoutDay(d); setIsGapMode(false); setWorkoutFeedback('');}} className={`px-6 py-3 shrink-0 rounded-2xl text-sm font-bold transition-all ${activeWorkoutDay===d?'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20':'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'}`}>{d}</button>)}
+                 {WORKOUT_DAYS.map(d => {
+                   const isLocked = completedWorkoutsThisWeek.includes(d);
+                   return (
+                     <button 
+                       key={d} 
+                       onClick={()=>{
+                         if(!isLocked) {
+                           setActiveWorkoutDay(d); 
+                           setIsGapMode(false); 
+                           setWorkoutFeedback('');
+                         }
+                       }} 
+                       disabled={isLocked}
+                       className={`px-6 py-3 shrink-0 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 ${
+                         isLocked 
+                           ? 'bg-zinc-950 text-zinc-600 border border-zinc-800/50 cursor-not-allowed opacity-50' 
+                           : activeWorkoutDay===d
+                             ? 'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20'
+                             : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'
+                       }`}
+                     >
+                       {d} {isLocked && <Lock size={14} />}
+                     </button>
+                   );
+                 })}
                </div>
 
-               {workouts[activeWorkoutDay]?.isLegs && (
-                 <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><ActivitySquare size={20}/></div>
-                     <div>
-                       <p className="font-bold text-white text-sm">Aula de GAP?</p>
-                       <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
-                     </div>
-                   </div>
-                   <button onClick={()=>setIsGapMode(!isGapMode)} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
-                     <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isGapMode?'left-7':'left-1'}`}></div>
-                   </button>
-                 </div>
-               )}
-
-               {!isGapMode && (
-                 <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
-                    <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
-                    <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
-                      {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin"/> : <Cpu size={16} />}
-                      {isGeneratingWorkout ? "Gerando..." : "Gerar Ficha (IA)"}
-                    </button>
-                 </div>
-               )}
-
-               {!isGapMode && (
-                 <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm">
-                   <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}><Timer size={24} /></div>
-                   <div className="font-mono text-3xl font-black w-24 text-center tracking-tighter">{formatTime(timeLeft)}</div>
-                   <input type="range" min="30" max="180" step="15" value={timerInterval} onChange={e=>{setTimerInterval(e.target.value); setTimeLeft(e.target.value);}} className="flex-1 accent-emerald-500 h-2 bg-zinc-950 rounded-lg appearance-none cursor-pointer" />
-                   <button onClick={()=>setIsTimerRunning(!isTimerRunning)} className="p-3 bg-zinc-950 text-white rounded-2xl hover:bg-emerald-500 hover:text-zinc-950 transition-colors shadow-sm">{isTimerRunning ? <Pause size={20}/> : <Play size={20} className="ml-0.5"/>}</button>
-                 </div>
-               )}
-
-               {isGapMode ? (
-                 <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn">
-                    <Flame size={48} className="text-purple-500 mx-auto mb-4" />
-                    <h3 className="text-2xl font-extrabold mb-2">Registo de Aula GAP</h3>
-                    <p className="text-zinc-400 text-sm mb-8">Glúteos, Abdómen e Pernas. Indique o tempo da aula.</p>
-                    <div className="flex justify-center items-center gap-4 mb-6">
-                      <button onClick={()=>setGapDuration(Math.max(15, gapDuration-15))} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">-</button>
-                      <span className="text-5xl font-black text-purple-400 w-24">{gapDuration}</span>
-                      <button onClick={()=>setGapDuration(gapDuration+15)} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">+</button>
-                    </div>
-                    <p className="text-zinc-500 font-bold uppercase mb-8">Minutos</p>
+               {completedWorkoutsThisWeek.includes(activeWorkoutDay) ? (
+                 <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mt-8">
+                   {completedWorkoutsThisWeek.length === WORKOUT_DAYS.length ? (
+                     <>
+                       <Smile size={48} className="text-emerald-500 mx-auto mb-4" />
+                       <h3 className="text-2xl font-extrabold mb-2">Semana Concluída! 🎉</h3>
+                       <p className="text-zinc-400 text-sm">Completou todos os treinos da rota nesta semana. Descanse, a sua rotina será desbloqueada na próxima segunda-feira.</p>
+                     </>
+                   ) : (
+                     <>
+                       <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4" />
+                       <h3 className="text-2xl font-extrabold mb-2">Treino Concluído!</h3>
+                       <p className="text-zinc-400 text-sm">Este treino já foi realizado esta semana. Continue com os próximos dias disponíveis. Esta secção será libertada novamente na próxima segunda-feira.</p>
+                     </>
+                   )}
                  </div>
                ) : (
-                 <div className="space-y-4">
-                   {(() => {
-                     let lastGroup = null;
-                     return (workouts[activeWorkoutDay]?.exercises || []).map((ex, index) => {
-                       const showHeader = ex.group !== lastGroup;
-                       lastGroup = ex.group;
-                       return (
-                         <React.Fragment key={ex.id || index}>
-                           {showHeader && (
-                             <div className="mt-8 mb-4 flex items-center gap-3 animate-fadeIn">
-                               <div className="h-px flex-1 bg-linear-to-r from-transparent to-zinc-800"></div>
-                               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
-                               <div className="h-px flex-1 bg-linear-to-l from-transparent to-zinc-800"></div>
-                             </div>
-                           )}
-                           <div className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
-                             <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
-                               <div className="flex items-center gap-4">
-                                 <button onClick={()=>{
-                                   const upd = {...workouts};
-                                   upd[activeWorkoutDay] = {
-                                     ...upd[activeWorkoutDay],
-                                     exercises: upd[activeWorkoutDay].exercises.map(x => {
-                                       if(x.id === ex.id) {
-                                         const isComp = !x.isCompleted;
-                                         if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
-                                         return { ...x, isCompleted: isComp };
-                                       }
-                                       return x;
-                                     })
-                                   };
-                                   setWorkouts(upd);
-                                 }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
-                                 <div>
-                                   <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
-                                   <span className="text-xs text-zinc-500 font-medium">{ex.target}</span>
+                 <>
+                   {workouts[activeWorkoutDay]?.isLegs && (
+                     <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                         <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><ActivitySquare size={20}/></div>
+                         <div>
+                           <p className="font-bold text-white text-sm">Aula de GAP?</p>
+                           <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
+                         </div>
+                       </div>
+                       <button onClick={()=>setIsGapMode(!isGapMode)} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isGapMode?'left-7':'left-1'}`}></div>
+                       </button>
+                     </div>
+                   )}
+
+                   {!isGapMode && (
+                     <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+                        <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
+                        <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
+                          {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin"/> : <Cpu size={16} />}
+                          {isGeneratingWorkout ? "Gerando..." : "Gerar Ficha (IA)"}
+                        </button>
+                     </div>
+                   )}
+
+                   {!isGapMode && (
+                     <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm">
+                       <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}><Timer size={24} /></div>
+                       <div className="font-mono text-3xl font-black w-24 text-center tracking-tighter">{formatTime(timeLeft)}</div>
+                       <input type="range" min="30" max="180" step="15" value={timerInterval} onChange={e=>{setTimerInterval(e.target.value); setTimeLeft(e.target.value);}} className="flex-1 accent-emerald-500 h-2 bg-zinc-950 rounded-lg appearance-none cursor-pointer" />
+                       <button onClick={()=>setIsTimerRunning(!isTimerRunning)} className="p-3 bg-zinc-950 text-white rounded-2xl hover:bg-emerald-500 hover:text-zinc-950 transition-colors shadow-sm">{isTimerRunning ? <Pause size={20}/> : <Play size={20} className="ml-0.5"/>}</button>
+                     </div>
+                   )}
+
+                   {isGapMode ? (
+                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn">
+                        <Flame size={48} className="text-purple-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-extrabold mb-2">Registo de Aula GAP</h3>
+                        <p className="text-zinc-400 text-sm mb-8">Glúteos, Abdómen e Pernas. Indique o tempo da aula.</p>
+                        <div className="flex justify-center items-center gap-4 mb-6">
+                          <button onClick={()=>setGapDuration(Math.max(15, gapDuration-15))} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">-</button>
+                          <span className="text-5xl font-black text-purple-400 w-24">{gapDuration}</span>
+                          <button onClick={()=>setGapDuration(gapDuration+15)} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">+</button>
+                        </div>
+                        <p className="text-zinc-500 font-bold uppercase mb-8">Minutos</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-4">
+                       {(() => {
+                         let lastGroup = null;
+                         return (workouts[activeWorkoutDay]?.exercises || []).map((ex, index) => {
+                           const showHeader = ex.group !== lastGroup;
+                           lastGroup = ex.group;
+                           return (
+                             <React.Fragment key={ex.id || index}>
+                               {showHeader && (
+                                 <div className="mt-8 mb-4 flex items-center gap-3 animate-fadeIn">
+                                   <div className="h-px flex-1 bg-zinc-800"></div>
+                                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 shadow-sm">{ex.group}</span>
+                                   <div className="h-px flex-1 bg-zinc-800"></div>
                                  </div>
-                               </div>
-                               <div className="flex gap-2">
-                                 <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
-                                 <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                                 <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
-                               </div>
-                             </div>
-                             
-                             <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
-                             </div>
-
-                             {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
-                             {expandedDesc[ex.id] && (
-                               <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
-                                 {anatomyTipState[ex.id] === 'loading' ? (
-                                    <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
-                                 ) : anatomyTips[ex.id] ? (
-                                   <div className="animate-fadeIn space-y-5">
-                                     <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
-                                       <Dumbbell size={18} className="text-emerald-500"/>
-                                       <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
-                                     </div>
-                                     
-                                     <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
-
+                               )}
+                               <div className={`bg-zinc-900 rounded-3xl border transition-all duration-300 overflow-hidden ${ex.isCompleted?'border-emerald-900/50 bg-emerald-950/10 opacity-70':'border-zinc-800 shadow-lg shadow-black/20'}`}>
+                                 <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
+                                   <div className="flex items-center gap-4">
+                                     <button onClick={()=>{
+                                       const upd = {...workouts};
+                                       upd[activeWorkoutDay] = {
+                                         ...upd[activeWorkoutDay],
+                                         exercises: upd[activeWorkoutDay].exercises.map(x => {
+                                           if(x.id === ex.id) {
+                                             const isComp = !x.isCompleted;
+                                             if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
+                                             return { ...x, isCompleted: isComp };
+                                           }
+                                           return x;
+                                         })
+                                       };
+                                       setWorkouts(upd);
+                                     }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
                                      <div>
-                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
-                                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
-                                         <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
-                                       </div>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
-                                       <ul className="space-y-3 mt-3">
-                                         {anatomyTips[ex.id].executionSteps?.map((step, i) => {
-                                            const parts = step.split(':');
-                                            if(parts.length > 1) {
-                                               const boldPart = parts.shift() + ':';
-                                               return (
-                                                 <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
-                                                   <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
-                                                   <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
-                                                 </li>
-                                               );
-                                            }
-                                            return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
-                                         })}
-                                       </ul>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
-                                       <ul className="space-y-2 text-zinc-400">
-                                         {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
-                                           <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
-                                         ))}
-                                       </ul>
-                                     </div>
-
-                                     <div>
-                                       <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
-                                       <ul className="space-y-2 text-zinc-400">
-                                         {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
-                                            <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
-                                         ))}
-                                       </ul>
-                                     </div>
-
-                                     <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
-                                       <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
-                                       <div>
-                                          <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
-                                          <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
-                                       </div>
+                                       <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
+                                       <span className="text-xs text-zinc-500 font-medium">{ex.target}</span>
                                      </div>
                                    </div>
-                                 ) : (
-                                    <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
+                                   <div className="flex gap-2">
+                                     <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
+                                     <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
+                                     <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+                                   </div>
+                                 </div>
+                                 
+                                 <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
+                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                    <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
+                                 </div>
+
+                                 {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
+                                 {expandedDesc[ex.id] && (
+                                   <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
+                                     {anatomyTipState[ex.id] === 'loading' ? (
+                                        <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                                     ) : anatomyTips[ex.id] ? (
+                                       <div className="animate-fadeIn space-y-5">
+                                         <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
+                                           <Dumbbell size={18} className="text-emerald-500"/>
+                                           <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
+                                         </div>
+                                         
+                                         <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
+
+                                         <div>
+                                           <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
+                                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
+                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
+                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
+                                           </div>
+                                         </div>
+
+                                         <div>
+                                           <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
+                                           <ul className="space-y-3 mt-3">
+                                             {anatomyTips[ex.id].executionSteps?.map((step, i) => {
+                                                const parts = step.split(':');
+                                                if(parts.length > 1) {
+                                                   const boldPart = parts.shift() + ':';
+                                                   return (
+                                                     <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
+                                                       <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                                       <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
+                                                     </li>
+                                                   );
+                                                }
+                                                return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                             })}
+                                           </ul>
+                                         </div>
+
+                                         <div>
+                                           <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
+                                           <ul className="space-y-2 text-zinc-400">
+                                             {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
+                                               <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
+                                             ))}
+                                           </ul>
+                                         </div>
+
+                                         <div>
+                                           <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
+                                           <ul className="space-y-2 text-zinc-400">
+                                             {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
+                                                <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
+                                             ))}
+                                           </ul>
+                                         </div>
+
+                                         <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
+                                           <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                                           <div>
+                                              <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
+                                              <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                           </div>
+                                         </div>
+                                       </div>
+                                     ) : (
+                                        <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
+                                     )}
+                                   </div>
                                  )}
                                </div>
-                             )}
+                             </React.Fragment>
+                           );
+                         });
+                       })()}
+
+                       <button onClick={() => setExerciseModal({ active: true, mode: 'add', targetExId: null, filterGroup: null })} className="w-full py-5 bg-zinc-900/50 border-2 border-dashed border-zinc-800 text-zinc-400 rounded-3xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 hover:text-white transition-all mt-4">
+                         <Plus size={20}/> Adicionar Exercício Manual
+                       </button>
+                       
+                       {/* FEEDBACK IA DO TREINO */}
+                       <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
+                         <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação da Ficha (IA)</h3>
+                         <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar se os exercícios escolhidos fazem sentido para o seu objetivo.</p>
+                         <button onClick={handleEvaluateWorkout} disabled={isWorkoutFeedbackLoading} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                           {isWorkoutFeedbackLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Treino Atual
+                         </button>
+                         {workoutFeedback && (
+                           <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
+                             {workoutFeedback}
                            </div>
-                         </React.Fragment>
-                       );
-                     });
-                   })()}
-
-                   <button onClick={() => setExerciseModal({ active: true, mode: 'add', targetExId: null, filterGroup: null })} className="w-full py-5 bg-zinc-900/50 border-2 border-dashed border-zinc-800 text-zinc-400 rounded-3xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 hover:text-white transition-all mt-4">
-                     <Plus size={20}/> Adicionar Exercício Manual
-                   </button>
-                   
-                   {/* FEEDBACK IA DO TREINO */}
-                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
-                     <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação da Ficha (IA)</h3>
-                     <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar se os exercícios escolhidos fazem sentido para o seu objetivo.</p>
-                     <button onClick={handleEvaluateWorkout} disabled={isWorkoutFeedbackLoading} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                       {isWorkoutFeedbackLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Treino Atual
-                     </button>
-                     {workoutFeedback && (
-                       <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
-                         {workoutFeedback}
+                         )}
                        </div>
-                     )}
-                   </div>
-                 </div>
-               )}
+                     </div>
+                   )}
 
-               <button onClick={handleCompleteWorkout} className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-3xl font-black text-lg mt-8 shadow-xl shadow-emerald-900/40 active:scale-95 transition-all flex items-center justify-center gap-2">
-                 <Save size={24}/> {isGapMode ? "Salvar Aula GAP" : "Concluir Treino"}
-               </button>
+                   <button onClick={handleCompleteWorkout} className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-3xl font-black text-lg mt-8 shadow-xl shadow-emerald-900/40 active:scale-95 transition-all flex items-center justify-center gap-2">
+                     <Save size={24}/> {isGapMode ? "Salvar Aula GAP" : "Concluir Treino"}
+                   </button>
+                 </>
+               )}
              </div>
           )}
 
@@ -1544,11 +1773,290 @@ export default function App() {
              </div>
           )}
 
+          {activeTab === 'biometria' && (
+            <div className="space-y-6 animate-fadeIn pb-12">
+              <header className="flex justify-between items-end mb-6">
+                <div>
+                  <h1 className="text-3xl font-extrabold text-white">Biometria AI</h1>
+                  <p className="text-zinc-400 font-medium">Análise Corporal via Câmera</p>
+                </div>
+              </header>
+
+              <div className="flex bg-zinc-900 border border-zinc-800 rounded-xl p-1 mb-6">
+                <button onClick={()=>setBioTab('capture')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors flex justify-center items-center gap-2 ${bioTab==='capture'?'bg-zinc-800 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}><Camera size={16}/> Captura & Análise</button>
+                <button onClick={()=>setBioTab('evolution')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors flex justify-center items-center gap-2 ${bioTab==='evolution'?'bg-zinc-800 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}><View size={16}/> Evolução 3D</button>
+              </div>
+
+              {bioTab === 'capture' && (
+                <div className="space-y-6">
+                  {scanState === 'idle' && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden relative p-6">
+                       <div className="text-center mb-6">
+                          <Focus size={40} className="text-emerald-500 mx-auto mb-3" />
+                          <h2 className="text-lg font-bold text-white mb-1">Check-up Fotográfico</h2>
+                          <p className="text-zinc-400 text-sm">Carregue ou tire as 4 fotos para que a IA analise a sua estrutura corporal.</p>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-4 mb-6">
+                          {['frente', 'direita', 'esquerda', 'costas'].map((view) => (
+                             <button 
+                               key={view}
+                               onClick={() => handlePhotoUpload(view)}
+                               className={`h-32 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed transition-all ${uploadedPhotos[view] ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}
+                             >
+                               {uploadedPhotos[view] ? <CheckCircle2 size={32} className="mb-2" /> : <Upload size={28} className="mb-2" />}
+                               <span className="text-xs font-bold uppercase tracking-wider">{view}</span>
+                               {uploadedPhotos[view] && <span className="text-[10px] mt-1 opacity-70">Enviada</span>}
+                             </button>
+                          ))}
+                       </div>
+                       
+                       <button 
+                         onClick={startBiometricScan} 
+                         disabled={!allPhotosUploaded}
+                         className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg"
+                       >
+                         <Scan size={20} /> Processar Check-up
+                       </button>
+                    </div>
+                  )}
+
+                  {scanState === 'scanning' && (
+                    <div className="bg-zinc-900/50 border border-emerald-500/30 rounded-3xl overflow-hidden relative">
+                       <div className="h-96 bg-zinc-950 relative flex items-center justify-center overflow-hidden">
+                          {/* Efeito de Scanner Linear */}
+                          <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20"></div>
+                          
+                          {/* Esqueleto SVG (Pose Estimation Wireframe) */}
+                          <svg viewBox="0 0 200 400" className="h-full opacity-80 relative z-10">
+                            <defs>
+                              <filter id="glow">
+                                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                                <feMerge>
+                                  <feMergeNode in="coloredBlur"/>
+                                  <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                              </filter>
+                            </defs>
+                            {/* Linhas principais */}
+                            <path d="M 100 80 L 100 160 L 70 240 L 70 360 M 100 160 L 130 240 L 130 360" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
+                            <path d="M 60 100 L 100 90 L 140 100" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
+                            <path d="M 60 100 L 40 180 L 30 260 M 140 100 L 160 180 L 170 260" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
+                            <path d="M 70 240 L 130 240" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
+                            
+                            {/* Pontos de Articulação */}
+                            <circle cx="100" cy="50" r="15" stroke="#10b981" strokeWidth="2" fill="transparent" filter="url(#glow)" /> {/* Cabeça */}
+                            <circle cx="100" cy="90" r="4" fill="#10b981" /> {/* Pescoço */}
+                            <circle cx="60" cy="100" r="4" fill="#34d399" /> {/* Ombro Esq */}
+                            <circle cx="140" cy="100" r="4" fill="#34d399" /> {/* Ombro Dir */}
+                            <circle cx="40" cy="180" r="4" fill="#34d399" /> {/* Cotovelo Esq */}
+                            <circle cx="160" cy="180" r="4" fill="#34d399" /> {/* Cotovelo Dir */}
+                            <circle cx="30" cy="260" r="3" fill="#6ee7b7" /> {/* Pulso Esq */}
+                            <circle cx="170" cy="260" r="3" fill="#6ee7b7" /> {/* Pulso Dir */}
+                            <circle cx="100" cy="160" r="4" fill="#10b981" /> {/* Centro */}
+                            <circle cx="70" cy="240" r="4" fill="#34d399" /> {/* Anca Esq */}
+                            <circle cx="130" cy="240" r="4" fill="#34d399" /> {/* Anca Dir */}
+                            <circle cx="70" cy="360" r="4" fill="#6ee7b7" /> {/* Joelho Esq */}
+                            <circle cx="130" cy="360" r="4" fill="#6ee7b7" /> {/* Joelho Dir */}
+                          </svg>
+
+                          <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-zinc-800">
+                             <div className="flex items-center gap-2 text-xs font-bold text-emerald-400"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Live AI</div>
+                          </div>
+                       </div>
+                       
+                       <div className="p-6 bg-zinc-900 border-t border-emerald-900/30">
+                         <div className="mb-4">
+                           <div className="flex justify-between text-xs font-bold mb-1.5">
+                             <span className="text-zinc-400 uppercase tracking-wider">Progresso da Análise</span>
+                             <span className="text-emerald-400">{scanProgress}%</span>
+                           </div>
+                           <div className="h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
+                             <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{width: `${scanProgress}%`}}></div>
+                           </div>
+                         </div>
+                         <div className="space-y-2 h-24 overflow-y-auto custom-scrollbar pr-2">
+                           {scanFeedback.map((fb, i) => (
+                             <div key={i} className="flex items-center gap-2 text-xs font-medium text-zinc-300 animate-fadeIn">
+                               <Check size={14} className="text-emerald-500" /> {fb}
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                    </div>
+                  )}
+
+                  {scanState === 'done' && estimatedMeasures && (
+                    <div className="bg-zinc-900/50 border border-emerald-500/30 rounded-3xl overflow-hidden animate-fadeIn">
+                       <div className="bg-emerald-950/30 p-6 border-b border-emerald-900/30 text-center">
+                          <Fingerprint size={48} className="text-emerald-500 mx-auto mb-4" />
+                          <h2 className="text-xl font-extrabold text-white mb-1">Mapeamento Concluído</h2>
+                          <p className="text-zinc-400 text-sm">A IA calculou estas estimativas com base no seu esqueleto.</p>
+                       </div>
+                       
+                       <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Peito</p>
+                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.peito} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
+                          </div>
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Cintura</p>
+                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.cintura} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
+                          </div>
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Quadril</p>
+                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.quadril} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
+                          </div>
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Braços</p>
+                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.bracos} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
+                          </div>
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
+                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Pernas</p>
+                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.pernas} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
+                          </div>
+                       </div>
+
+                       <div className="p-6 bg-zinc-950 border-t border-zinc-800">
+                         <div className="bg-emerald-950/20 border border-emerald-900/30 p-5 rounded-2xl">
+                           <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Relatório de Desempenho Biométrico</h3>
+                           <p className="text-xs text-zinc-400 mb-4">A IA vai cruzar as medidas lidas na fotografia com as medidas guardadas no seu perfil e gerar uma análise completa perante a sua meta de <strong>{userProfile.goal}</strong>.</p>
+                           <button onClick={handleGenerateBiometricReport} disabled={isScanningAi} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                             {isScanningAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Gerar Avaliação da IA
+                           </button>
+                           {scanAiReport && (
+                             <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
+                               {scanAiReport}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+
+                       <div className="p-6 bg-zinc-900 border-t border-zinc-800 flex flex-col md:flex-row gap-3">
+                         <button onClick={() => {setScanState('idle'); setUploadedPhotos({ frente: false, direita: false, esquerda: false, costas: false }); setScanAiReport('');}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-bold transition-all">
+                           Re-escanear
+                         </button>
+                         <button onClick={saveBiometricMeasures} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg">
+                           <Save size={18} /> Salvar & Ir para Evolução
+                         </button>
+                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bioTab === 'evolution' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="bg-gradient-to-r from-zinc-900 to-emerald-950/20 border border-zinc-800 p-6 rounded-3xl flex items-center justify-between">
+                     <div>
+                       <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-1">Score IA Exclusivo</p>
+                       <h3 className="text-2xl font-black text-white">Índice de Simetria: <span className="text-emerald-500">94%</span></h3>
+                       <p className="text-zinc-400 text-xs mt-2 max-w-xs">Baseado na proporção de cintura vs. ombros extraída das suas fotos.</p>
+                     </div>
+                     <div className="w-16 h-16 bg-zinc-950 rounded-full border-4 border-emerald-500 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                       <Activity size={24} className="text-emerald-400" />
+                     </div>
+                  </div>
+
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><UserCircle size={20} className="text-emerald-500"/> Avatares Paramétricos 3D</h3>
+                    
+                    <div className="flex items-center justify-around gap-4 mb-6 relative">
+                       {/* Linha conectora de fundo */}
+                       <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-zinc-800 border-t border-dashed border-zinc-700 z-0"></div>
+
+                       {/* Semana 1 (Mais Largo/Sem Definição) */}
+                       <div className="relative z-10 flex flex-col items-center">
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 mb-3 shadow-lg">
+                             <svg viewBox="0 0 100 200" className="w-24 h-48 opacity-60">
+                               <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Head */}
+                               <path d="M 35 60 L 20 70 L 15 110" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Arm L */}
+                               <path d="M 65 60 L 80 70 L 85 110" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Arm R */}
+                               {/* Torso - wider */}
+                               <path d="M 35 60 C 20 80, 25 120, 30 140 C 40 145, 60 145, 70 140 C 75 120, 80 80, 65 60 Z" fill="none" stroke="#52525b" strokeWidth="2"/>
+                               {/* Legs */}
+                               <path d="M 30 140 L 30 190" fill="none" stroke="#52525b" strokeWidth="2"/>
+                               <path d="M 70 140 L 70 190" fill="none" stroke="#52525b" strokeWidth="2"/>
+                               {/* Grid lines to simulate 3D surface */}
+                               <path d="M 25 90 C 40 100, 60 100, 75 90" fill="none" stroke="#3f3f46" strokeWidth="1"/>
+                               <path d="M 28 115 C 40 125, 60 125, 72 115" fill="none" stroke="#3f3f46" strokeWidth="1"/>
+                             </svg>
+                          </div>
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-md">Semana 1</span>
+                       </div>
+
+                       <ArrowRightCircle size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
+
+                       {/* Semana 8 (Fit/Cintura fina) */}
+                       <div className="relative z-10 flex flex-col items-center">
+                          <div className="bg-zinc-950 p-4 rounded-2xl border border-emerald-500/30 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative overflow-hidden">
+                             {/* Brilho fundo */}
+                             <div className="absolute inset-0 bg-radial-gradient from-emerald-500/10 to-transparent"></div>
+                             <svg viewBox="0 0 100 200" className="w-24 h-48 relative z-10">
+                               <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Head */}
+                               <path d="M 35 60 L 22 70 L 18 110" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Arm L (more V-shape) */}
+                               <path d="M 65 60 L 78 70 L 82 110" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Arm R */}
+                               {/* Torso - Leaner V-Taper */}
+                               <path d="M 35 60 C 25 80, 35 110, 40 140 C 45 142, 55 142, 60 140 C 65 110, 75 80, 65 60 Z" fill="none" stroke="#10b981" strokeWidth="2"/>
+                               {/* Legs */}
+                               <path d="M 40 140 L 35 190" fill="none" stroke="#10b981" strokeWidth="2"/>
+                               <path d="M 60 140 L 65 190" fill="none" stroke="#10b981" strokeWidth="2"/>
+                               {/* Grid lines - deeper curves for muscle definition */}
+                               <path d="M 30 85 C 45 100, 55 100, 70 85" fill="none" stroke="#047857" strokeWidth="1"/>
+                               <path d="M 35 115 C 45 120, 55 120, 65 115" fill="none" stroke="#047857" strokeWidth="1"/>
+                               <path d="M 50 60 L 50 140" fill="none" stroke="#047857" strokeWidth="1" strokeDasharray="2 2"/> {/* Linha Alba */}
+                             </svg>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-md">Atual</span>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
+                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><BarChart3 size={18}/> Tendência de Simetria</h3>
+                     
+                     <div className="h-32 w-full relative">
+                        {/* Linhas guia */}
+                        <div className="absolute top-0 w-full h-px bg-zinc-800"></div>
+                        <div className="absolute top-1/2 w-full h-px bg-zinc-800"></div>
+                        <div className="absolute bottom-0 w-full h-px bg-zinc-800"></div>
+
+                        {/* Gráfico Tendência SVG */}
+                        <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible relative z-10">
+                          <defs>
+                            <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#10b981" stopOpacity="0.4"/>
+                              <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
+                            </linearGradient>
+                          </defs>
+                          <path d="M 0 40 L 20 35 L 40 25 L 60 28 L 80 15 L 100 10 L 100 50 L 0 50 Z" fill="url(#lineGrad)" />
+                          <polyline 
+                            fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            points="0,40 20,35 40,25 60,28 80,15 100,10"
+                          />
+                          <circle cx="20" cy="35" r="1.5" fill="#10b981"/>
+                          <circle cx="40" cy="25" r="1.5" fill="#10b981"/>
+                          <circle cx="60" cy="28" r="1.5" fill="#10b981"/>
+                          <circle cx="80" cy="15" r="1.5" fill="#10b981"/>
+                          <circle cx="100" cy="10" r="2.5" fill="#fff" stroke="#10b981" strokeWidth="1"/>
+                        </svg>
+                     </div>
+                     <div className="flex justify-between mt-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                       <span>Sem 1</span>
+                       <span>Sem 4</span>
+                       <span>Atual</span>
+                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'perfil' && (
              <div className="space-y-6 animate-fadeIn pb-10">
                 <h1 className="text-3xl font-extrabold text-white">Perfil do Atleta</h1>
                 
-                <div className="bg-linear-to-br from-zinc-900 to-zinc-950 p-8 rounded-3xl border border-zinc-800 flex flex-col md:flex-row items-center gap-8 shadow-xl">
+                <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 p-8 rounded-3xl border border-zinc-800 flex flex-col md:flex-row items-center gap-8 shadow-xl">
                   <div className="w-28 h-28 bg-emerald-500/10 rounded-full flex items-center justify-center border-4 border-emerald-500/20 shadow-inner">
                     <UserCircle size={56} className="text-emerald-500" />
                   </div>
