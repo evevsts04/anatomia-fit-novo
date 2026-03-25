@@ -5,7 +5,7 @@ import {
   Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
-  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity
+  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
