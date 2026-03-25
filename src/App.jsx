@@ -211,6 +211,12 @@ export default function App() {
   const [authErrorMsg, setAuthErrorMsg] = useState('');
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
   const [resetPassAttempt, setResetPassAttempt] = useState('');
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiPasswordAttempt, setApiPasswordAttempt] = useState('');
+  const [isApiAuthPending, setIsApiAuthPending] = useState(false);
+  const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
+  const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
   // IA Geral
   const [chatInput, setChatInput] = useState('');
@@ -364,9 +370,8 @@ export default function App() {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-           await signInAnonymously(auth);
         }
+        // O login anónimo automático foi removido para forçar a exibição da tela de login
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
     initAuth();
@@ -441,6 +446,11 @@ export default function App() {
 
   const formatTime = (s) => `${Math.floor(s/60)}:${s%60 < 10 ? '0' : ''}${s%60}`;
 
+  useEffect(() => {
+    setTempApiKey(userProfile.geminiApiKey || '');
+    setIsApiKeyUnlocked(!userProfile.geminiApiKey);
+  }, [userProfile.geminiApiKey]);
+
   const saveToCloud = async (overrideData = null) => {
     if (!user || !db) return;
     setIsSyncing(true);
@@ -480,6 +490,18 @@ export default function App() {
     }
   };
 
+  const handleGuestLogin = async () => {
+    setAuthErrorMsg('');
+    setIsProcessingAuth(true);
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`);
+    } finally {
+      setIsProcessingAuth(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -488,6 +510,38 @@ export default function App() {
     } catch (error) {
       console.error("Logout failed:", error);
     }
+  };
+
+  const handleUnlockApiKey = async () => {
+    if (user?.email) {
+      try {
+        setIsApiAuthPending(true);
+        await signInWithEmailAndPassword(auth, user.email, apiPasswordAttempt);
+        setIsApiKeyUnlocked(true);
+        setShowUnlockPrompt(false);
+        setApiPasswordAttempt('');
+      } catch (error) {
+        alert("Senha incorreta!");
+      } finally {
+        setIsApiAuthPending(false);
+      }
+    } else {
+      if (apiPasswordAttempt === 'admin123') {
+        setIsApiKeyUnlocked(true);
+        setShowUnlockPrompt(false);
+        setApiPasswordAttempt('');
+      } else {
+        alert("Senha incorreta! No modo local, digite 'admin123'.");
+      }
+    }
+  };
+
+  const handleSaveApiKey = () => {
+     const upProf = {...userProfile, geminiApiKey: tempApiKey.trim()};
+     setUserProfile(upProf);
+     saveToCloud({ userProfile: upProf });
+     setIsApiKeyUnlocked(false);
+     alert("Chave API salva e bloqueada com sucesso!");
   };
 
   const handleCompleteWorkout = () => {
@@ -1019,8 +1073,11 @@ export default function App() {
         <button onClick={handleAuthAction} disabled={isProcessingAuth} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all">
           {isProcessingAuth ? <Loader2 className="animate-spin mx-auto" /> : (isLoginMode ? 'Entrar' : 'Registar')}
         </button>
-        <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthErrorMsg(''); }} className="mt-6 text-sm text-emerald-400 font-bold">
+        <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthErrorMsg(''); }} className="mt-6 text-sm text-emerald-400 font-bold block w-full">
           {isLoginMode ? 'Não tem conta? Registe-se' : 'Já tem conta? Entre'}
+        </button>
+        <button onClick={handleGuestLogin} disabled={isProcessingAuth} className="mt-4 text-xs text-zinc-500 hover:text-zinc-300 font-medium block w-full transition-colors">
+          Continuar sem conta (Modo Convidado)
         </button>
       </div>
     </div>
