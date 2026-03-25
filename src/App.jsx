@@ -677,7 +677,8 @@ export default function App() {
   // --- NATIVA INTEGRAÇÃO IA (Gemini) COM RETENTATIVA (Exponential Backoff) ---
   const callGemini = async (prompt, schema = null, retries = 5) => {
     const apiKey = userProfile.geminiApiKey || ""; // Utiliza a chave do utilizador ou vazio para injeção automática no ambiente
-    const model = "gemini-2.5-flash-preview-09-2025";
+    // Ajuste dinâmico: Usa a versão pública se tiver chave própria, ou a versão preview no ambiente de desenvolvimento
+    const model = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const payload = {
