@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, Dumbbell, Utensils, UserCircle, Send, 
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
-  Smile, Frown, Lock, Flame, ArrowRightCircle, LogOut, Key, Settings, 
-  RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, ActivitySquare, AlertTriangle, 
-  CalendarDays, Eye, EyeOff, Trash2, Cpu, CheckCircle2, Pencil, MessageSquareQuote,
-  Camera, Scan, Focus, BarChart3, Fingerprint, View, Upload, Image as ImageIcon, Activity
+  Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
+  RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
+  CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
+  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -210,12 +210,7 @@ export default function App() {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authErrorMsg, setAuthErrorMsg] = useState('');
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiPasswordAttempt, setApiPasswordAttempt] = useState('');
-  const [isApiAuthPending, setIsApiAuthPending] = useState(false);
-  const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
-  const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
+  const [resetPassAttempt, setResetPassAttempt] = useState('');
 
   // IA Geral
   const [chatInput, setChatInput] = useState('');
@@ -225,13 +220,11 @@ export default function App() {
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
 
-  // FEEDBACKS IA (ESTADOS NOVOS)
+  // FEEDBACKS IA 
   const [deepInsightText, setDeepInsightText] = useState('');
   const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
-  
   const [workoutFeedback, setWorkoutFeedback] = useState('');
   const [isWorkoutFeedbackLoading, setIsWorkoutFeedbackLoading] = useState(false);
-  
   const [nutritionFeedback, setNutritionFeedback] = useState('');
   const [isNutritionFeedbackLoading, setIsNutritionFeedbackLoading] = useState(false);
 
@@ -246,7 +239,7 @@ export default function App() {
   
   const [userProfile, setUserProfile] = useState({ 
     name: '', age: '', gender: 'M', height: '', weight: '', targetWeight: '', goal: 'Hipertrofia', 
-    onboardingCompleted: false, geminiApiKey: '', lastMeasureUpdate: null, lastLoginDate: todayStr
+    onboardingCompleted: false, lastMeasureUpdate: null, lastLoginDate: todayStr
   });
   
   const [measurements, setMeasurements] = useState({ peito: '', bracos: '', antebraco: '', quadril: '', costas: '', pernas: '', cintura: '', panturrilha: '' });
@@ -258,7 +251,6 @@ export default function App() {
   const [timerInterval, setTimerInterval] = useState(90);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [resetPassAttempt, setResetPassAttempt] = useState('');
   
   // Controle Feed Nutrição
   const [editingNutritionId, setEditingNutritionId] = useState(null);
@@ -269,7 +261,7 @@ export default function App() {
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
 
-  // NOVO: Lógica de Bloqueio Semanal de Treinos (Rota Sucessiva)
+  // Lógica de Bloqueio Semanal de Treinos (Rota Sucessiva)
   const completedWorkoutsThisWeek = useMemo(() => {
     const startOfWeek = getStartOfCurrentWeek();
     return workoutHistory
@@ -328,38 +320,38 @@ export default function App() {
   const generateAIPlan = () => {
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
-          formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12), // 3 Costas (Dorsal, Romboides, Miolo)
-          formatEx(getEx('e40'), 3, 15), // 1 Posterior de Ombro
-          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12), // 2 Bíceps
-          formatEx(getEx('e56'), 3, 15) // 1 Antebraço (Total 7)
+          formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12),
+          formatEx(getEx('e40'), 3, 15), 
+          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12), 
+          formatEx(getEx('e56'), 3, 15)
       ]},
       'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ 
-          formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), // 3 Quad
-          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), // 2 Posterior
-          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15) // 2 Panturrilha (Total 7)
+          formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), 
+          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), 
+          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15)
       ]},
       'Push': { name: 'Treino Push', isLegs: false, exercises: [ 
-          formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), // 3 Peito (Maior, Sup, Inf)
-          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), // 2 Ombros (Ant, Lat)
-          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) // 2 Tríceps (Lat, Longa) (Total 7)
+          formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), 
+          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), 
+          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) 
       ]},
       'Legs 2': { name: 'Legs Posterior', isLegs: true, exercises: [ 
-          formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), // 3 Quad
-          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), // 2 Posterior
-          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15) // 2 Panturrilha (Total 7)
+          formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), 
+          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), 
+          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15)
       ]},
       'Upper': { name: 'Upper Body', isLegs: false, exercises: [ 
-          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), // 2 Costas
-          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), // 2 Peito
-          formatEx(getEx('e36'), 3, 12), // 1 Ombro
-          formatEx(getEx('e47'), 3, 12), // 1 Bíceps
-          formatEx(getEx('e57'), 3, 12)  // 1 Tríceps (Total 7)
+          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), 
+          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), 
+          formatEx(getEx('e36'), 3, 12), 
+          formatEx(getEx('e47'), 3, 12), 
+          formatEx(getEx('e57'), 3, 12) 
       ]},
       'Lower': { name: 'Lower Body', isLegs: true, exercises: [ 
-          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), // 2 Quad
-          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), // 2 Posterior
-          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), // 2 Panturrilha
-          formatEx(getEx('e87'), 3, 12) // 1 GAP/Glúteo (Total 7)
+          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), 
+          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), 
+          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), 
+          formatEx(getEx('e87'), 3, 12) 
       ]}
     };
     setWorkouts(p);
@@ -372,6 +364,8 @@ export default function App() {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+           await signInAnonymously(auth);
         }
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
@@ -447,11 +441,6 @@ export default function App() {
 
   const formatTime = (s) => `${Math.floor(s/60)}:${s%60 < 10 ? '0' : ''}${s%60}`;
 
-  useEffect(() => {
-    setTempApiKey(userProfile.geminiApiKey || '');
-    setIsApiKeyUnlocked(!userProfile.geminiApiKey);
-  }, [userProfile.geminiApiKey]);
-
   const saveToCloud = async (overrideData = null) => {
     if (!user || !db) return;
     setIsSyncing(true);
@@ -475,9 +464,8 @@ export default function App() {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (error) {
-      console.error("Auth Error Full:", error);
       if (error.code === 'auth/admin-restricted-operation') {
-        setAuthErrorMsg('Operação restrita. Verifique se a sua API Key do Firebase está correta e se a ativação E-mail/Senha está correta.');
+        setAuthErrorMsg('Operação restrita.');
       } else if (error.code === 'auth/invalid-credential') {
          setAuthErrorMsg('E-mail ou senha incorretos.');
       } else if (error.code === 'auth/email-already-in-use') {
@@ -502,38 +490,6 @@ export default function App() {
     }
   };
 
-  const handleUnlockApiKey = async () => {
-    if (user?.email) {
-      try {
-        setIsApiAuthPending(true);
-        await signInWithEmailAndPassword(auth, user.email, apiPasswordAttempt);
-        setIsApiKeyUnlocked(true);
-        setShowUnlockPrompt(false);
-        setApiPasswordAttempt('');
-      } catch (error) {
-        alert("Senha incorreta!");
-      } finally {
-        setIsApiAuthPending(false);
-      }
-    } else {
-      if (apiPasswordAttempt === 'admin' || apiPasswordAttempt === '123456') {
-        setIsApiKeyUnlocked(true);
-        setShowUnlockPrompt(false);
-        setApiPasswordAttempt('');
-      } else {
-        alert("Modo Local: Use a senha 'admin' ou '123456'");
-      }
-    }
-  };
-
-  const handleSaveApiKey = () => {
-     const upProf = {...userProfile, geminiApiKey: tempApiKey.trim()};
-     setUserProfile(upProf);
-     saveToCloud({ userProfile: upProf });
-     setIsApiKeyUnlocked(false);
-     alert("Chave API salva e bloqueada com sucesso!");
-  };
-
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
     let vol = 0; let durationGap = 0;
@@ -541,8 +497,8 @@ export default function App() {
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
-    } else {
-      (cur.exercises || []).forEach(ex => {
+    } else if (cur && cur.exercises) {
+      cur.exercises.forEach(ex => {
         vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
         completedExercises.push({
            name: ex.name,
@@ -598,8 +554,12 @@ export default function App() {
   const handlePhotoUpload = (view, e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setUploadedPhotos(prev => ({ ...prev, [view]: url }));
+      // Converte ficheiro para Base64 para garantir total suporte de imagem no preview de iframe e evitar erros de recursos (400)
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedPhotos(prev => ({ ...prev, [view]: reader.result }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -612,18 +572,19 @@ export default function App() {
     setScanAiReport(''); // Reseta o relatório anterior
 
     const steps = [
-      { p: 20, t: "Verificando Câmera e Iluminação [OK]" },
-      { p: 40, t: "Fotos validadas e Estáveis [OK]" },
-      { p: 60, t: "Ângulos: Frontal, Perfil e Costas [OK]" },
-      { p: 80, t: "Mapeando Pontos-chave do Corpo (Pose Estimation)..." },
-      { p: 100, t: "Calculando Proporções e Estimando Medidas..." }
+      { p: 20, text: "Verificando Câmera e Iluminação [OK]" },
+      { p: 40, text: "Fotos validadas e Estáveis [OK]" },
+      { p: 60, text: "Ângulos: Frontal, Perfil e Costas [OK]" },
+      { p: 80, text: "Mapeando Pontos-chave do Corpo (Pose Estimation)..." },
+      { p: 100, text: "Calculando Proporções e Estimando Medidas..." }
     ];
 
     let currentStep = 0;
     const interval = setInterval(() => {
       if (currentStep < steps.length) {
-        setScanProgress(steps[currentStep].p);
-        setScanFeedback(prev => [...prev, steps[currentStep].t]);
+        const current = steps[currentStep];
+        setScanProgress(current.p);
+        setScanFeedback(prev => [...prev, current.text]);
         currentStep++;
       } else {
         clearInterval(interval);
@@ -659,35 +620,54 @@ export default function App() {
     setScanAiReport('');
   };
 
-  // --- IA Functions ---
-  const callGemini = async (prompt, schema = null) => {
-    if (!userProfile.geminiApiKey) throw new Error("Sem API Key configurada.");
+  // --- NATIVA INTEGRAÇÃO IA (Gemini) COM RETENTATIVA (Exponential Backoff) ---
+  const callGemini = async (prompt, schema = null, retries = 5) => {
+    const apiKey = ""; // API Key em branco (o ambiente seguro do canvas encarrega-se da injeção)
+    const model = "gemini-2.5-flash-preview-09-2025";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userProfile.geminiApiKey.trim()}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(schema && {generationConfig: {responseMimeType: "application/json", responseSchema: schema}}) })
-    });
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      ...(schema && {
+        generationConfig: {
+          responseMimeType: "application/json", 
+          responseSchema: schema
+        }
+      })
+    };
+
+    const delays = [1000, 2000, 4000, 8000, 16000];
     
-    const data = await res.json();
-    
-    if (!res.ok) {
-      console.error("Gemini API Error:", data);
-      throw new Error(data.error?.message || "Falha na chamada da API.");
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST', 
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Falha na API da IA.");
+        
+        let textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!textOutput) throw new Error("Resposta da IA está vazia.");
+        
+        if (schema) {
+          textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim();
+          return JSON.parse(textOutput);
+        }
+        return textOutput;
+      } catch (err) {
+        if (attempt === retries - 1) {
+          throw new Error("Falha na comunicação com a IA após várias tentativas. Detalhe: " + err.message);
+        }
+        await new Promise(r => setTimeout(r, delays[attempt]));
+      }
     }
-    
-    let textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textOutput) throw new Error("Resposta vazia da IA.");
-    
-    if (schema) {
-      textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim();
-      return JSON.parse(textOutput);
-    }
-    return textOutput;
   };
 
-  // 1. Feedback Holístico (Painel Semanal)
+  // 1. Feedback Holístico (Painel Semanal) atualizado com volumes e médias exatas
   const handleGenerateDeepInsight = async () => {
-    if (!userProfile.geminiApiKey) return setDeepInsightText("❌ Adicione a Chave API no Perfil.");
     setIsDeepInsightLoading(true); setDeepInsightText('');
     try {
       const recentWorkouts = workoutHistory.slice(-7);
@@ -719,15 +699,14 @@ export default function App() {
 
       RESUMO DOS ÚLTIMOS 7 DIAS:
       - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
-      - Nutrição (média diária): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
+      - Nutrição (média diária atual): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
       - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
 
       TAREFA:
       1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
       2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
-      3. Apresente um resumo estruturado com "Pontos Fortes" e "Pontos a Melhorar".
-
-      IMPORTANTE: Responda em Português de Portugal. Seja direto, prático, encorajador e utilize formatação em tópicos (bullet points) para facilitar a leitura.`;
+      3. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
+      IMPORTANTE: Responda obrigatoriamente em Português de Portugal.`;
 
       const res = await callGemini(prompt);
       setDeepInsightText(res);
@@ -740,7 +719,6 @@ export default function App() {
 
   // 2. Feedback de Treino (Aba Treino)
   const handleEvaluateWorkout = async () => {
-    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
     setIsWorkoutFeedbackLoading(true); setWorkoutFeedback('');
     try {
       const dayInfo = workouts[activeWorkoutDay];
@@ -764,7 +742,6 @@ export default function App() {
 
   // 3. Feedback de Nutrição (Aba Nutrição)
   const handleEvaluateNutrition = async () => {
-    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
     setIsNutritionFeedbackLoading(true); setNutritionFeedback('');
     try {
       const prompt = `Atue como um Nutricionista Desportivo. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg). 
@@ -784,7 +761,6 @@ export default function App() {
   };
 
   const handleGenerateBiometricReport = async () => {
-    if (!userProfile.geminiApiKey) return alert("Configure a Chave API no Perfil.");
     setIsScanningAi(true);
     setScanAiReport('');
     try {
@@ -812,7 +788,6 @@ export default function App() {
   const handleGetAnatomyTip = async (exId, exName) => {
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
     if (anatomyTipState[exId] === 'done') return; 
-    if (!userProfile.geminiApiKey) return setAnatomyTipState(p => ({ ...p, [exId]: 'error' }));
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
     try {
       const schema = { 
@@ -845,7 +820,7 @@ export default function App() {
   };
 
   const handleAnalyzeFood = async () => {
-    if (!chatInput.trim() || !userProfile.geminiApiKey) return;
+    if (!chatInput.trim()) return;
     const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
     const userText = chatInput;
     setChatInput(''); setIsAnalyzing(true);
@@ -876,10 +851,6 @@ export default function App() {
 
   // --- GERAR TREINO COM IA: REGRAS APLICADAS ---
   const handleGenerateAIWorkout = async () => {
-    if (!userProfile.geminiApiKey) {
-      alert("Configure a chave da API Gemini na aba Perfil para gerar treinos personalizados.");
-      return;
-    }
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
@@ -1066,7 +1037,7 @@ export default function App() {
 
         {onboardingStep === 0 && (
           <div className="text-center animate-fadeIn">
-            <ActivitySquare size={64} className="text-emerald-500 mx-auto mb-6" />
+            <Activity size={64} className="text-emerald-500 mx-auto mb-6" />
             <h1 className="text-3xl font-extrabold mb-4">Configure o seu Perfil</h1>
             <p className="text-zinc-400 mb-8">A IA usará estes dados para calcular metas e nivelar treinos.</p>
             <button onClick={()=>setOnboardingStep(1)} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold">Avançar</button>
@@ -1444,7 +1415,7 @@ export default function App() {
                      </>
                    ) : (
                      <>
-                       <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4" />
+                       <CheckCircle size={48} className="text-emerald-500 mx-auto mb-4" />
                        <h3 className="text-2xl font-extrabold mb-2">Treino Concluído!</h3>
                        <p className="text-zinc-400 text-sm">Este treino já foi realizado esta semana. Continue com os próximos dias disponíveis. Esta secção será libertada novamente na próxima segunda-feira.</p>
                      </>
@@ -1455,7 +1426,7 @@ export default function App() {
                    {workouts[activeWorkoutDay]?.isLegs && (
                      <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                         <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><ActivitySquare size={20}/></div>
+                         <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Activity size={20}/></div>
                          <div>
                            <p className="font-bold text-white text-sm">Aula de GAP?</p>
                            <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
@@ -1538,7 +1509,7 @@ export default function App() {
                                      </div>
                                    </div>
                                    <div className="flex gap-2">
-                                     <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash2 size={18}/></button>
+                                     <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
                                      <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
                                      <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                    </div>
@@ -1582,12 +1553,12 @@ export default function App() {
                                                    const boldPart = parts.shift() + ':';
                                                    return (
                                                      <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
-                                                       <CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                                       <CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
                                                        <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
                                                      </li>
                                                    );
                                                 }
-                                                return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle2 size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                                return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
                                              })}
                                            </ul>
                                          </div>
@@ -1765,7 +1736,7 @@ export default function App() {
                                     <button onClick={() => setConfirmDeleteId(null)} className="text-zinc-400 font-bold text-[10px] px-2 py-1 hover:bg-zinc-800 rounded transition-colors">NÃO</button>
                                   </div>
                                 ) : (
-                                  <button onClick={() => setConfirmDeleteId(log.id)} className="text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all p-2 rounded-lg"><Trash2 size={16}/></button>
+                                  <button onClick={() => setConfirmDeleteId(log.id)} className="text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all p-2 rounded-lg"><Trash size={16}/></button>
                                 )}
                               </div>
                             </div>
@@ -1809,7 +1780,7 @@ export default function App() {
                              >
                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(view, e)} />
                                {uploadedPhotos[view] && <img src={uploadedPhotos[view]} alt={`Upload ${view}`} className="absolute inset-0 w-full h-full object-cover opacity-30" />}
-                               {uploadedPhotos[view] ? <CheckCircle2 size={32} className="mb-2 relative z-10" /> : <Upload size={28} className="mb-2 relative z-10" />}
+                               {uploadedPhotos[view] ? <CheckCircle size={32} className="mb-2 relative z-10" /> : <Upload size={28} className="mb-2 relative z-10" />}
                                <span className="text-xs font-bold uppercase tracking-wider relative z-10">{view}</span>
                                {uploadedPhotos[view] && <span className="text-[10px] mt-1 opacity-100 bg-emerald-500/20 px-2 py-0.5 rounded font-bold relative z-10">Enviada</span>}
                              </label>
@@ -1990,7 +1961,7 @@ export default function App() {
                           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-md">Semana 1</span>
                        </div>
 
-                       <ArrowRightCircle size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
+                       <ArrowRight size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
 
                        {/* Semana 8 (Fit/Cintura fina) */}
                        <div className="relative z-10 flex flex-col items-center">
@@ -2018,7 +1989,7 @@ export default function App() {
                   </div>
 
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
-                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><BarChart3 size={18}/> Tendência de Simetria</h3>
+                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><BarChart size={18}/> Tendência de Simetria</h3>
                      
                      <div className="h-32 w-full relative">
                         {/* Linhas guia */}
@@ -2100,89 +2071,30 @@ export default function App() {
                   <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
                 </div>
 
-                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
-                  
-                  {!isApiKeyUnlocked ? (
-                    <div className="space-y-4">
-                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Chave API Atual</label>
-                      <div className="w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-zinc-500 text-center tracking-widest">
-                        ••••••••••••••••••••••••••••••••
-                      </div>
-                      
-                      {!showUnlockPrompt ? (
-                        <button 
-                          onClick={() => setShowUnlockPrompt(true)}
-                          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors"
-                        >
-                          Desbloquear para Editar
-                        </button>
-                      ) : (
-                        <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 animate-fadeIn mt-4">
-                           <p className="text-xs text-zinc-400 mb-3 font-bold">Confirme a sua senha para desbloquear:</p>
-                           <div className="flex flex-col sm:flex-row gap-2">
-                             <input 
-                               type="password" 
-                               value={apiPasswordAttempt} 
-                               onChange={e => setApiPasswordAttempt(e.target.value)} 
-                               placeholder="Sua senha..." 
-                               className="bg-zinc-900 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-emerald-500"
-                             />
-                             <button 
-                               onClick={handleUnlockApiKey}
-                               disabled={isApiAuthPending || !apiPasswordAttempt}
-                               className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center"
-                             >
-                               {isApiAuthPending ? <Loader2 size={18} className="animate-spin" /> : "Validar"}
-                             </button>
-                           </div>
-                           <button onClick={() => {setShowUnlockPrompt(false); setApiPasswordAttempt('');}} className="w-full mt-3 text-xs text-zinc-500 hover:text-zinc-300">Cancelar</button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4 animate-fadeIn">
-                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Configurar Chave</label>
-                      <div className="relative">
-                        <input 
-                          type={showApiKey ? "text" : "password"} 
-                          value={tempApiKey} 
-                          onChange={e => setTempApiKey(e.target.value)} 
-                          placeholder="Cole a sua chave aqui..." 
-                          className="w-full bg-zinc-950 p-4 pr-12 rounded-2xl outline-none font-medium text-emerald-400 border border-emerald-900/50 focus:border-emerald-500 transition-colors" 
-                        />
-                        <button 
-                          onClick={() => setShowApiKey(!showApiKey)} 
-                          className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                          {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-zinc-500 font-bold mb-4">Ao salvar, a chave será ocultada e bloqueada para edições acidentais.</p>
-
-                      <button 
-                        onClick={handleSaveApiKey}
-                        disabled={!tempApiKey}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Save size={18}/> Salvar e Bloquear
-                      </button>
-                      {userProfile.geminiApiKey && (
-                         <button onClick={() => {setIsApiKeyUnlocked(false); setTempApiKey(userProfile.geminiApiKey); setShowUnlockPrompt(false);}} className="w-full text-xs text-zinc-500 hover:text-zinc-300 mt-2">Cancelar Edição</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
                 <div className="bg-red-950/20 p-6 rounded-3xl border border-red-900/30">
                    <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2"><AlertCircle size={18}/> Zona de Perigo</h3>
-                   <p className="text-xs text-zinc-400 mb-4">Para apagar todos os dados locais, digite a sua senha e confirme.</p>
+                   <p className="text-xs text-zinc-400 mb-4">Para apagar todos os dados locais, digite a sua senha de login e confirme.</p>
                    <div className="flex gap-2">
                      <input type="password" value={resetPassAttempt} onChange={e=>setResetPassAttempt(e.target.value)} placeholder="Senha..." className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-red-500"/>
-                     <button onClick={()=>{
-                       if(resetPassAttempt === userProfile.password || resetPassAttempt === 'resetar') {
-                         localStorage.clear(); window.location.reload();
-                       } else alert("Senha incorreta!");
+                     <button onClick={async () => {
+                       if (user?.email) {
+                         try {
+                           // Valida a senha tentando reautenticar no Firebase
+                           await signInWithEmailAndPassword(auth, user.email, resetPassAttempt);
+                           localStorage.clear(); 
+                           window.location.reload();
+                         } catch (error) {
+                           alert("Senha incorreta!");
+                         }
+                       } else {
+                         // Fallback para utilizadores anónimos/locais
+                         if (resetPassAttempt === 'resetar') {
+                           localStorage.clear(); 
+                           window.location.reload();
+                         } else {
+                           alert("Senha incorreta! No modo local, digite 'resetar'.");
+                         }
+                       }
                      }} className="bg-red-600 text-white px-4 rounded-xl font-bold">Reset</button>
                    </div>
                 </div>
@@ -2265,6 +2177,7 @@ export default function App() {
         <MobileNavButton a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={24}/>} l="Painel" />
         <MobileNavButton a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={24}/>} l="Treino" />
         <MobileNavButton a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={24}/>} l="Nutrição" />
+        <MobileNavButton a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={24}/>} l="Check-up" />
         <MobileNavButton a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={24}/>} l="Perfil" />
       </nav>
     </div>
