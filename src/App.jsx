@@ -465,7 +465,7 @@ export default function App() {
       }
     } catch (error) {
       if (error.code === 'auth/admin-restricted-operation') {
-        setAuthErrorMsg('Operação restrita.');
+        setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo" no painel do Firebase Authentication.');
       } else if (error.code === 'auth/invalid-credential') {
          setAuthErrorMsg('E-mail ou senha incorretos.');
       } else if (error.code === 'auth/email-already-in-use') {
@@ -622,7 +622,7 @@ export default function App() {
 
   // --- NATIVA INTEGRAÇÃO IA (Gemini) COM RETENTATIVA (Exponential Backoff) ---
   const callGemini = async (prompt, schema = null, retries = 5) => {
-    const apiKey = ""; // API Key em branco (o ambiente seguro do canvas encarrega-se da injeção)
+    const apiKey = userProfile.geminiApiKey || ""; // Utiliza a chave do utilizador ou vazio para injeção automática no ambiente
     const model = "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
@@ -2071,6 +2071,79 @@ export default function App() {
                   <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
                 </div>
 
+                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
+                  
+                  {!isApiKeyUnlocked ? (
+                    <div className="space-y-4">
+                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Chave API Atual</label>
+                      <div className="w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-zinc-500 text-center tracking-widest">
+                        {userProfile.geminiApiKey ? '••••••••••••••••••••••••••••••••' : 'Nenhuma chave configurada'}
+                      </div>
+                      
+                      {!showUnlockPrompt ? (
+                        <button 
+                          onClick={() => setShowUnlockPrompt(true)}
+                          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors"
+                        >
+                          Desbloquear para Editar
+                        </button>
+                      ) : (
+                        <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 animate-fadeIn mt-4">
+                           <p className="text-xs text-zinc-400 mb-3 font-bold">Confirme a sua senha de login para desbloquear:</p>
+                           <div className="flex flex-col sm:flex-row gap-2">
+                             <input 
+                               type="password" 
+                               value={apiPasswordAttempt} 
+                               onChange={e => setApiPasswordAttempt(e.target.value)} 
+                               placeholder="Sua senha..." 
+                               className="bg-zinc-900 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-emerald-500"
+                             />
+                             <button 
+                               onClick={handleUnlockApiKey}
+                               disabled={isApiAuthPending || !apiPasswordAttempt}
+                               className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center"
+                             >
+                               {isApiAuthPending ? <Loader2 size={18} className="animate-spin" /> : "Validar"}
+                             </button>
+                           </div>
+                           <button onClick={() => {setShowUnlockPrompt(false); setApiPasswordAttempt('');}} className="w-full mt-3 text-xs text-zinc-500 hover:text-zinc-300">Cancelar</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-fadeIn">
+                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Configurar Chave</label>
+                      <div className="relative">
+                        <input 
+                          type={showApiKey ? "text" : "password"} 
+                          value={tempApiKey} 
+                          onChange={e => setTempApiKey(e.target.value)} 
+                          placeholder="Cole a sua chave aqui..." 
+                          className="w-full bg-zinc-950 p-4 pr-12 rounded-2xl outline-none font-medium text-emerald-400 border border-emerald-900/50 focus:border-emerald-500 transition-colors" 
+                        />
+                        <button 
+                          onClick={() => setShowApiKey(!showApiKey)} 
+                          className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                          {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 font-bold mb-4">Ao salvar, a chave será ocultada e bloqueada para edições acidentais.</p>
+
+                      <button 
+                        onClick={handleSaveApiKey}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Save size={18}/> Salvar e Bloquear
+                      </button>
+                      {userProfile.geminiApiKey && (
+                         <button onClick={() => {setIsApiKeyUnlocked(false); setTempApiKey(userProfile.geminiApiKey); setShowUnlockPrompt(false);}} className="w-full text-xs text-zinc-500 hover:text-zinc-300 mt-2">Cancelar Edição</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="bg-red-950/20 p-6 rounded-3xl border border-red-900/30">
                    <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2"><AlertCircle size={18}/> Zona de Perigo</h3>
                    <p className="text-xs text-zinc-400 mb-4">Para apagar todos os dados locais, digite a sua senha de login e confirme.</p>
@@ -2088,11 +2161,11 @@ export default function App() {
                          }
                        } else {
                          // Fallback para utilizadores anónimos/locais
-                         if (resetPassAttempt === 'resetar') {
+                         if (resetPassAttempt === 'admin123') {
                            localStorage.clear(); 
                            window.location.reload();
                          } else {
-                           alert("Senha incorreta! No modo local, digite 'resetar'.");
+                           alert("Senha incorreta! No modo local, digite 'admin123'.");
                          }
                        }
                      }} className="bg-red-600 text-white px-4 rounded-xl font-bold">Reset</button>
