@@ -176,6 +176,21 @@ const getStartOfCurrentWeek = () => {
 const getEx = (id) => EXERCISE_DB.find(e => e.id === id);
 const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
 
+const MEASUREMENTS_LABELS = {
+  peito: 'Peito', 
+  costas: 'Costas', 
+  cintura: 'Cintura', 
+  quadril: 'Quadril',
+  bracoEsq: 'Braço Esq.', 
+  bracoDir: 'Braço Dir.', 
+  antebracoEsq: 'Antebraço Esq.', 
+  antebracoDir: 'Antebraço Dir.', 
+  pernaEsq: 'Perna Esq.', 
+  pernaDir: 'Perna Dir.', 
+  panturrilhaEsq: 'Panturrilha Esq.', 
+  panturrilhaDir: 'Panturrilha Dir.'
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -248,7 +263,8 @@ export default function App() {
     onboardingCompleted: false, lastMeasureUpdate: null, lastLoginDate: todayStr
   });
   
-  const [measurements, setMeasurements] = useState({ peito: '', bracos: '', antebraco: '', quadril: '', costas: '', pernas: '', cintura: '', panturrilha: '' });
+  const initialMeasures = Object.keys(MEASUREMENTS_LABELS).reduce((acc, key) => ({...acc, [key]: ''}), {});
+  const [measurements, setMeasurements] = useState(initialMeasures);
   const [weightHistory, setWeightHistory] = useState([]); 
   
   // UI & Cronômetro & Nutrição Feed
@@ -394,7 +410,27 @@ export default function App() {
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
-        if (d.measurements) setMeasurements({ cintura: '', ...d.measurements }); 
+        if (d.measurements) {
+          let loadedMeasures = { ...initialMeasures, ...d.measurements };
+          // Migração de dados de utilizadores antigos
+          if (d.measurements.bracos && !d.measurements.bracoEsq) {
+              loadedMeasures.bracoEsq = d.measurements.bracos;
+              loadedMeasures.bracoDir = d.measurements.bracos;
+          }
+          if (d.measurements.pernas && !d.measurements.pernaEsq) {
+              loadedMeasures.pernaEsq = d.measurements.pernas;
+              loadedMeasures.pernaDir = d.measurements.pernas;
+          }
+          if (d.measurements.antebraco && !d.measurements.antebracoEsq) {
+              loadedMeasures.antebracoEsq = d.measurements.antebraco;
+              loadedMeasures.antebracoDir = d.measurements.antebraco;
+          }
+          if (d.measurements.panturrilha && !d.measurements.panturrilhaEsq) {
+              loadedMeasures.panturrilhaEsq = d.measurements.panturrilha;
+              loadedMeasures.panturrilhaDir = d.measurements.panturrilha;
+          }
+          setMeasurements(loadedMeasures);
+        }
         if (d.weightHistory) setWeightHistory(d.weightHistory);
         if (d.userProfile) {
           let prof = { targetWeight: '', ...d.userProfile };
@@ -663,8 +699,10 @@ export default function App() {
       peito: estimatedMeasures.peito,
       cintura: estimatedMeasures.cintura,
       quadril: estimatedMeasures.quadril,
-      bracos: estimatedMeasures.bracos,
-      pernas: estimatedMeasures.pernas
+      bracoEsq: estimatedMeasures.bracos,
+      bracoDir: estimatedMeasures.bracos,
+      pernaEsq: estimatedMeasures.pernas,
+      pernaDir: estimatedMeasures.pernas
     };
     setMeasurements(newMeasures);
     handleUpdateMeasures();
@@ -822,10 +860,10 @@ export default function App() {
       const prompt = `Atue como um Especialista em Biometria e Avaliação Física. O meu objetivo atual é ${userProfile.goal} (Peso: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
       
       No meu formulário de perfil, as minhas medidas atuais/preenchidas eram (em cm):
-      Peito: ${measurements.peito || '--'}, Cintura: ${measurements.cintura || '--'}, Quadril: ${measurements.quadril || '--'}, Braços: ${measurements.bracos || '--'}, Pernas: ${measurements.pernas || '--'}.
+      Peito: ${measurements.peito || '--'}, Cintura: ${measurements.cintura || '--'}, Quadril: ${measurements.quadril || '--'}, Braço Esq: ${measurements.bracoEsq || '--'}, Braço Dir: ${measurements.bracoDir || '--'}, Perna Esq: ${measurements.pernaEsq || '--'}, Perna Dir: ${measurements.pernaDir || '--'}.
       
       Acabei de realizar um "Check-up Fotográfico" de Visão Computacional e o sistema extraiu as seguintes medidas atualizadas da minha imagem (em cm):
-      Peito: ${estimatedMeasures.peito}, Cintura: ${estimatedMeasures.cintura}, Quadril: ${estimatedMeasures.quadril}, Braços: ${estimatedMeasures.bracos}, Pernas: ${estimatedMeasures.pernas}.
+      Peito: ${estimatedMeasures.peito}, Cintura: ${estimatedMeasures.cintura}, Quadril: ${estimatedMeasures.quadril}, Braços (Média): ${estimatedMeasures.bracos}, Pernas (Média): ${estimatedMeasures.pernas}.
       
       Compare as medidas extraídas da imagem com as antigas do formulário. Faça uma análise de desempenho apontando se as proporções atuais lidas pelas fotos estão alinhadas com os padrões para alcançar a minha meta de ${userProfile.goal}.
       Destaque o que evoluiu ou o que precisa de mais atenção nos treinos de forma muito motivadora.
@@ -1119,7 +1157,9 @@ export default function App() {
               <div>
                 <label className="text-xs text-zinc-500 font-bold uppercase">Objetivo</label>
                 <select value={userProfile.goal} onChange={e=>setUserProfile({...userProfile, goal:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none text-emerald-400 font-bold">
-                  <option>Hipertrofia</option><option>Definição</option><option>Manutenção</option>
+                  <option value="Hipertrofia">Hipertrofia</option>
+                  <option value="Definição">Definição</option>
+                  <option value="Manutenção">Manutenção</option>
                 </select>
               </div>
             </div>
@@ -1131,9 +1171,9 @@ export default function App() {
           <div className="animate-fadeIn space-y-4">
              <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Ruler size={20} className="text-emerald-500"/> Medidas Iniciais (cm)</h2>
              <div className="grid grid-cols-2 gap-3">
-               {Object.keys(measurements).map(key => (
+               {Object.keys(MEASUREMENTS_LABELS).map(key => (
                  <div key={key}>
-                   <label className="text-[10px] text-zinc-500 font-bold uppercase">{key}</label>
+                   <label className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]}</label>
                    <input type="number" value={measurements[key]} onChange={e=>setMeasurements({...measurements, [key]:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none focus:border-emerald-500 text-sm font-bold" />
                  </div>
                ))}
@@ -1165,12 +1205,14 @@ export default function App() {
                    <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-emerald-400 font-bold mt-1" /></div>
                    <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Desejado</label><input type="number" value={userProfile.targetWeight} onChange={e=>setUserProfile({...userProfile, targetWeight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-emerald-400 font-bold mt-1" /></div>
                  </div>
-                 {Object.keys(measurements).map(key => (
-                   <div key={key}>
-                     <label className="text-[10px] text-zinc-500 font-bold uppercase">{key} (cm)</label>
-                     <input type="number" value={measurements[key]} onChange={e=>setMeasurements({...measurements, [key]:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none font-bold mt-1 text-sm" />
-                   </div>
-                 ))}
+                 <div className="grid grid-cols-2 gap-3">
+                   {Object.keys(MEASUREMENTS_LABELS).map(key => (
+                     <div key={key}>
+                       <label className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]} (cm)</label>
+                       <input type="number" value={measurements[key]} onChange={e=>setMeasurements({...measurements, [key]:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none font-bold mt-1 text-sm" />
+                     </div>
+                   ))}
+                 </div>
               </div>
               <button onClick={handleUpdateMeasures} className="w-full py-4 bg-emerald-600 rounded-2xl font-bold">Salvar Medidas</button>
            </div>
@@ -2119,10 +2161,10 @@ export default function App() {
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Ruler size={18}/> Medidas Corporais</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Object.entries(measurements).map(([k, v]) => (
-                      <div key={k} className="bg-zinc-950 p-3 rounded-2xl border border-zinc-800 text-center">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase">{k}</span>
-                        <p className="font-bold text-lg text-zinc-200">{v || '--'} cm</p>
+                    {Object.keys(MEASUREMENTS_LABELS).map(key => (
+                      <div key={key} className="bg-zinc-950 p-3 rounded-2xl border border-zinc-800 text-center">
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]}</span>
+                        <p className="font-bold text-lg text-zinc-200">{measurements[key] || '--'} cm</p>
                       </div>
                     ))}
                   </div>
