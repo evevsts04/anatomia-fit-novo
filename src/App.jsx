@@ -1264,7 +1264,7 @@ export default function App() {
   const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
 
   // --- SCREENS ---
-  if (isAuthLoading || appScreen === 'loading' || !isCloudDBLoaded) return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
+  if (isAuthLoading || appScreen === 'loading') return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
   if (firebaseError) return <div className="p-8 bg-zinc-950 text-white"><AlertCircle className="text-red-500 mb-4" size={48}/>{firebaseError}</div>;
 
   if (!user || appScreen === 'login') return (
@@ -1289,6 +1289,9 @@ export default function App() {
       </div>
     </div>
   );
+
+  // Impede o avanço para a App principal enquanto a Nuvem não carregar os exercícios
+  if (!isCloudDBLoaded) return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
 
   if (appScreen === 'onboarding') return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white p-6 justify-center">
