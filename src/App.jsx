@@ -360,15 +360,9 @@ export default function App() {
   // Firebase Setup & Listeners
   useEffect(() => {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-           await signInWithCustomToken(auth, __initial_auth_token);
-        }
-        // O login anónimo automático foi removido aqui para permitir a exibição da tela de login normal.
-      } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
-    };
-    initAuth();
+    
+    // Removida a injeção automática de token e sessões anónimas 
+    // para garantir que o utilizador passe sempre pelo ecrã de Login.
     
     const unsubscribe = onAuthStateChanged(auth, (u) => { 
       setUser(u); 
