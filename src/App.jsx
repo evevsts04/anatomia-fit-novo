@@ -6,14 +6,14 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal
+  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal, Database
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, 
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 // --- FIREBASE CONFIG ---
@@ -38,7 +38,7 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- DB EXERCÍCIOS (EXPANDIDO - 100 EXERCÍCIOS) ---
+// --- DB EXERCÍCIOS ESTÁTICOS (USADOS PARA MIGRAÇÃO/FALLBACK) ---
 const EXERCISE_DB = [
   // --- PEITO ---
   { id: 'e1', name: 'Supino Reto (Barra)', target: 'Peitoral Maior', group: 'Peito' },
@@ -276,8 +276,6 @@ const getStartOfCurrentWeek = () => {
   return monday.getTime();
 };
 
-// Funções utilitárias
-const getEx = (id) => EXERCISE_DB.find(e => e.id === id);
 const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
 
 const MEASUREMENTS_LABELS = {
@@ -301,6 +299,16 @@ export default function App() {
   const [firebaseError, setFirebaseError] = useState(null); 
   const [isSyncing, setIsSyncing] = useState(false);
   const [appScreen, setAppScreen] = useState('loading'); 
+
+  // --- NOVA ESTRUTURA: DATABASE NA NUVEM ---
+  const [cloudExercises, setCloudExercises] = useState([]);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(null);
+
+  // Derivação Dinâmica da BD Activa
+  const activeDB = cloudExercises.length > 0 ? cloudExercises : EXERCISE_DB;
+  const getEx = (id) => activeDB.find(e => e.id === id) || EXERCISE_DB.find(e => e.id === id);
 
   // Sistema de Toasts (Notificações)
   const [toasts, setToasts] = useState([]);
@@ -415,11 +423,9 @@ export default function App() {
     return ACHIEVEMENTS.filter(a => a.condition(workoutHistory));
   }, [workoutHistory]);
 
-  // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
 
-  // Lógica de Bloqueio Semanal de Treinos (Rota Sucessiva)
   const completedWorkoutsThisWeek = useMemo(() => {
     const startOfWeek = getStartOfCurrentWeek();
     return workoutHistory
@@ -430,17 +436,13 @@ export default function App() {
       .map(log => log.day);
   }, [workoutHistory]);
 
-  // Avançar automaticamente para o próximo treino se o atual estiver bloqueado
   useEffect(() => {
     if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutOrder.length) {
       const nextAvailable = workoutOrder.find(d => !completedWorkoutsThisWeek.includes(d));
-      if (nextAvailable) {
-        setActiveWorkoutDay(nextAvailable);
-      }
+      if (nextAvailable) setActiveWorkoutDay(nextAvailable);
     }
   }, [completedWorkoutsThisWeek, activeWorkoutDay, workoutOrder]);
 
-  // Sincronizar o dia ativo caso os treinos mudem completamente (ex: Restaurar plano)
   useEffect(() => {
     const keys = Object.keys(workouts);
     if (keys.length > 0 && !keys.includes(activeWorkoutDay) && workoutOrder.includes(activeWorkoutDay) === false) {
@@ -482,7 +484,6 @@ export default function App() {
     return '0';
   }, [userProfile.weight, userProfile.height]);
 
-  // --- NOVA ESTRUTURA COM REGRAS RÍGIDAS DE GRUPAMENTOS (EXATAMENTE 7 EXERCÍCIOS) ---
   const generateAIPlan = () => {
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
@@ -490,35 +491,35 @@ export default function App() {
           formatEx(getEx('e40'), 3, 15), 
           formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12), 
           formatEx(getEx('e56'), 3, 15)
-      ]},
+      ].filter(e => e)},
       'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ 
           formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), 
           formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), 
           formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15)
-      ]},
+      ].filter(e => e)},
       'Push': { name: 'Treino Push', isLegs: false, exercises: [ 
           formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), 
           formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), 
           formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) 
-      ]},
+      ].filter(e => e)},
       'Legs 2 ou Cardio': { name: 'Legs Posterior', isLegs: true, exercises: [ 
           formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), 
           formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), 
           formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15)
-      ]},
+      ].filter(e => e)},
       'Upper': { name: 'Upper Body', isLegs: false, exercises: [ 
           formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), 
           formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), 
           formatEx(getEx('e36'), 3, 12), 
           formatEx(getEx('e47'), 3, 12), 
           formatEx(getEx('e57'), 3, 12) 
-      ]},
+      ].filter(e => e)},
       'Lower': { name: 'Lower Body', isLegs: true, exercises: [ 
           formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), 
           formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), 
           formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), 
           formatEx(getEx('e87'), 3, 12) 
-      ]},
+      ].filter(e => e)},
       'Cardio': { name: 'Cardio & Core', isLegs: false, exercises: [ 
           formatEx(getEx('c_polichinelo'), 3, 50),
           formatEx(getEx('c_burpee'), 3, 10),
@@ -532,13 +533,15 @@ export default function App() {
     saveToCloud({ workouts: p, workoutOrder: DEFAULT_WORKOUT_DAYS });
   };
 
-  // Firebase Setup
+  // Firebase Setup & Listeners
   useEffect(() => {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+           await signInAnonymously(auth);
         }
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
@@ -552,6 +555,18 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // OUVINTE: Exercícios da Nuvem
+  useEffect(() => {
+    if (!user || !db) return;
+    const exRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+    const unsubEx = onSnapshot(exRef, (snap) => {
+      const data = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      setCloudExercises(data);
+    }, (err) => console.error("Erro ao escutar exercícios:", err));
+    return () => unsubEx();
+  }, [user]);
+
+  // OUVINTE: Dados do Utilizador
   useEffect(() => {
     if (!user || !db || firebaseError) return;
     const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'); 
@@ -654,6 +669,79 @@ export default function App() {
       console.error(e); 
     } finally {
       setTimeout(() => setIsSyncing(false), 800);
+    }
+  };
+
+  // --- ADMIN & CLOUD DB LOGIC ---
+  const handleMigrateDB = async () => {
+    if(!user || !db) return;
+    setIsMigrating(true);
+    try {
+      const batch = writeBatch(db);
+      const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+      const existingIds = cloudExercises.map(e => e.id);
+      let added = 0;
+      
+      EXERCISE_DB.forEach(ex => {
+        if(!existingIds.includes(ex.id)) {
+           const docRef = doc(colRef); 
+           batch.set(docRef, ex);
+           added++;
+        }
+      });
+      await batch.commit();
+      showToast(`Migração concluída! ${added} exercícios foram para a Nuvem.`, 'success');
+    } catch(e) {
+      showToast(`Erro na migração: ${e.message}`, 'error');
+    }
+    setIsMigrating(false);
+  };
+
+  const saveExercise = async () => {
+    if(!user || !db || !editingExercise.name || !editingExercise.group) {
+      showToast("Preencha o Nome e o Grupo obrigatóriamente.", "error");
+      return;
+    }
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+    try {
+      if(editingExercise.docId) {
+         const dRef = doc(colRef, editingExercise.docId);
+         await updateDoc(dRef, editingExercise);
+      } else {
+         if(!editingExercise.id) editingExercise.id = 'cstm_' + Date.now();
+         await addDoc(colRef, editingExercise);
+      }
+      setEditingExercise(null);
+      showToast('Exercício salvo na Nuvem com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao salvar: ' + err.message, 'error');
+    }
+  };
+
+  const deleteExercise = async (docId) => {
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'exercises', docId));
+      showToast('Exercício apagado da Nuvem.', 'info');
+    } catch (err) {
+      showToast('Erro ao apagar: ' + err.message, 'error');
+    }
+  };
+
+  const handleUploadGifForCloud = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !storage || !editingExercise) return;
+    showToast("A enviar GIF para a Nuvem...", "info");
+    try {
+      const safeId = editingExercise.id || ('cstm_' + Date.now());
+      if(!editingExercise.id) setEditingExercise({...editingExercise, id: safeId});
+      
+      const storageRef = ref(storage, `gifs/${safeId}.gif`);
+      await uploadBytesResumable(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setEditingExercise(prev => ({...prev, gifUrl: url}));
+      showToast("GIF enviado! Salve o exercício.", "success");
+    } catch(err) {
+      showToast("Erro: " + err.message, "error");
     }
   };
 
@@ -1079,11 +1167,18 @@ export default function App() {
     }
   };
 
-  const handleGetAnatomyTip = async (exId, exName, exOriginalId) => {
+  const handleGetAnatomyTip = async (ex) => {
+    const exId = ex.id;
+    const exOriginalId = ex.originalId;
+    const exName = ex.name;
+
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
     
-    // Carregar GIF do Firebase Storage se ainda não estiver em cache
-    if (storage && gifUrls[exOriginalId] === undefined) {
+    // Check if exercise has a cloud uploaded URL first
+    if (ex.gifUrl) {
+       setGifUrls(p => ({ ...p, [exOriginalId]: ex.gifUrl }));
+    } else if (storage && gifUrls[exOriginalId] === undefined) {
+      // Carregar GIF do Firebase Storage se ainda não estiver em cache
       try {
         const url = await getDownloadURL(ref(storage, `gifs/${exOriginalId}.gif`));
         setGifUrls(p => ({ ...p, [exOriginalId]: url }));
@@ -1158,7 +1253,7 @@ export default function App() {
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
-      const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
+      const dbContext = activeDB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
 
       const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg).
       O treino selecionado para hoje é: "${dayInfo.name}".
@@ -1173,7 +1268,7 @@ export default function App() {
       - Dia "Cardio" ou "Legs 2 ou Cardio": Foco no agrupamento correspondente.
 
       Ordene a lista final para que exercícios do mesmo grupo muscular fiquem juntos em sequência.
-      IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo exatamente 7 IDs.`;
+      IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo exatamente 7 IDs correspondentes ao BD enviado.`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
@@ -1409,7 +1504,7 @@ export default function App() {
       
       {/* MODAL ALERTA MEDIDAS */}
       {showMeasureAlert && (
-        <div className="absolute inset-0 bg-black/80 z-100 flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
+        <div className="absolute inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fadeIn">
            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl max-w-md w-full text-center">
               <AlertTriangle size={48} className="text-yellow-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold mb-2">Hora de Atualizar!</h2>
@@ -1927,7 +2022,7 @@ export default function App() {
                                          const upd = {...workouts};
                                          upd[activeWorkoutDay] = {
                                            ...upd[activeWorkoutDay],
-                                           exercises: upd[activeWorkoutDay].exercises.map(x => {
+                                            exercises: upd[activeWorkoutDay].exercises.map(x => {
                                              if(x.id === ex.id) {
                                                const isComp = !x.isCompleted;
                                                if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
@@ -1949,8 +2044,8 @@ export default function App() {
                                         if(isCaliMode) setCurrentCaliExercises(prev => prev.filter(x => x.id !== ex.id));
                                         else handleRemoveExercise(ex.id);
                                      }} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
-                                     <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                                     <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name, ex.originalId)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+                                     <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: getEx(ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
+                                     <button onClick={()=>handleGetAnatomyTip(ex)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                    </div>
                                  </div>
                                  
@@ -2551,6 +2646,93 @@ export default function App() {
                   <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
                 </div>
 
+                {/* --- NOVO PAINEL DE ADMINISTRAÇÃO DA BD --- */}
+                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-white"><Database size={18}/> Gestão da Base de Dados (Nuvem)</h3>
+                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">{cloudExercises.length} Exercícios</span>
+                  </div>
+
+                  {!showAdminPanel ? (
+                    <button onClick={() => setShowAdminPanel(true)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">
+                      Abrir Painel de Administração
+                    </button>
+                  ) : (
+                    <div className="space-y-4 animate-fadeIn">
+                       {cloudExercises.length === 0 && (
+                         <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm text-blue-300 mb-4 flex justify-between items-center">
+                           <span>A nuvem está vazia.</span>
+                           <button onClick={handleMigrateDB} disabled={isMigrating} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-colors">
+                             {isMigrating ? <Loader2 size={16} className="animate-spin"/> : 'Migrar Base Inicial (100 ex)'}
+                           </button>
+                         </div>
+                       )}
+
+                       {/* Form to Add/Edit */}
+                       {editingExercise ? (
+                         <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                            <h4 className="text-emerald-400 font-bold mb-3">{editingExercise.docId ? 'Editar Exercício' : 'Novo Exercício'}</h4>
+                            <div className="space-y-3">
+                               <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Nome</label><input type="text" value={editingExercise.name||''} onChange={e=>setEditingExercise({...editingExercise, name:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" /></div>
+                               <div className="grid grid-cols-2 gap-3">
+                                 <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Alvo Muscular</label><input type="text" value={editingExercise.target||''} onChange={e=>setEditingExercise({...editingExercise, target:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" placeholder="Ex: Peitoral Maior" /></div>
+                                 <div>
+                                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Grupo</label>
+                                   <select value={editingExercise.group||''} onChange={e=>setEditingExercise({...editingExercise, group:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500">
+                                      <option value="">Selecione...</option>
+                                      <option value="Peito">Peito</option>
+                                      <option value="Costas">Costas</option>
+                                      <option value="Ombros">Ombros</option>
+                                      <option value="Braços">Braços</option>
+                                      <option value="Pernas">Pernas</option>
+                                      <option value="GAP">GAP</option>
+                                      <option value="Cardio">Cardio</option>
+                                   </select>
+                                 </div>
+                               </div>
+                               <div>
+                                 <label className="text-[10px] text-zinc-500 font-bold uppercase">GIF da Execução (Opcional)</label>
+                                 <div className="flex gap-2 items-center mt-1">
+                                   {editingExercise.gifUrl && <img src={editingExercise.gifUrl} className="h-10 w-10 object-cover rounded-lg border border-zinc-700" alt="gif" />}
+                                   <input type="file" accept="image/gif, video/mp4" onChange={(e) => handleUploadGifForCloud(e)} className="text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer"/>
+                                 </div>
+                               </div>
+                               <div className="flex gap-2 pt-2">
+                                 <button onClick={saveExercise} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition-colors">Salvar</button>
+                                 <button onClick={()=>setEditingExercise(null)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors">Cancelar</button>
+                               </div>
+                            </div>
+                         </div>
+                       ) : (
+                         <>
+                           <button onClick={() => setEditingExercise({ name: '', target: '', group: '', id: 'cstm_' + Date.now() })} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                             <Plus size={18} /> Adicionar Novo Exercício à Nuvem
+                           </button>
+
+                           <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                             {cloudExercises.map(ex => (
+                                <div key={ex.docId} className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex justify-between items-center group">
+                                   <div>
+                                     <p className="font-bold text-sm text-white">{ex.name}</p>
+                                     <p className="text-[10px] text-zinc-500 uppercase">{ex.group} • {ex.target}</p>
+                                   </div>
+                                   <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <button onClick={()=>setEditingExercise(ex)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"><Pencil size={14}/></button>
+                                     <button onClick={()=>deleteExercise(ex.docId)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash size={14}/></button>
+                                   </div>
+                                </div>
+                             ))}
+                           </div>
+                           <button onClick={() => setShowAdminPanel(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-xl text-xs font-bold transition-colors mt-2">
+                             Fechar Painel
+                           </button>
+                         </>
+                       )}
+                    </div>
+                  )}
+                </div>
+                {/* -------------------------------------- */}
+
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
                   
@@ -2632,7 +2814,6 @@ export default function App() {
                      <button onClick={async () => {
                        if (user?.email) {
                          try {
-                           // Valida a senha tentando reautenticar no Firebase
                            await signInWithEmailAndPassword(auth, user.email, resetPassAttempt);
                            localStorage.clear(); 
                            window.location.reload();
@@ -2640,7 +2821,6 @@ export default function App() {
                            showToast("Senha incorreta!", "error");
                          }
                        } else {
-                         // Fallback para utilizadores anónimos/locais
                          if (resetPassAttempt === 'admin123') {
                            localStorage.clear(); 
                            window.location.reload();
@@ -2660,7 +2840,7 @@ export default function App() {
 
           {/* MODAL EXERCÍCIO (SWAP / ADD) */}
           {exerciseModal.active && (
-            <div className="fixed inset-0 bg-black/90 z-60 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
+            <div className="fixed inset-0 bg-black/90 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
               <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-md p-6 shadow-2xl h-[85vh] md:max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 shrink-0">
                   <h3 className="font-extrabold text-xl text-white">{exerciseModal.mode === 'swap' ? 'Substituir Exercício' : 'Adicionar Exercício'}</h3>
@@ -2668,12 +2848,13 @@ export default function App() {
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                   {(() => {
-                    const swapList = exerciseModal.mode === 'swap' ? EXERCISE_DB.filter(e => e.group === exerciseModal.filterGroup) : EXERCISE_DB;
-                    const finalSwapList = swapList.length > 0 ? swapList : EXERCISE_DB;
+                    // Utilizar a base de dados em Nuvem na listagem do modal se existir, senão usa a estática
+                    const swapList = exerciseModal.mode === 'swap' ? activeDB.filter(e => e.group === exerciseModal.filterGroup) : activeDB;
+                    const finalSwapList = swapList.length > 0 ? swapList : activeDB;
                     
                     return finalSwapList.map(ex => (
                       <button key={ex.id} onClick={() => {
-                        const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
+                        const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false, gifUrl: ex.gifUrl};
                         
                         if (isCaliMode) {
                            setCurrentCaliExercises(prev => {
@@ -2718,7 +2899,7 @@ export default function App() {
 
           {/* MODAL TREINO CONCLUÍDO */}
           {showWorkoutSuccess && (
-            <div className="fixed inset-0 bg-black/90 z-70 flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
+            <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
               <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
                 <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Flame size={40} className="text-emerald-500" />
