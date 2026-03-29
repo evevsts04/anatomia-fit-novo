@@ -364,9 +364,8 @@ export default function App() {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-           await signInAnonymously(auth);
         }
+        // O login anónimo automático foi removido aqui para permitir a exibição da tela de login normal.
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
     initAuth();
