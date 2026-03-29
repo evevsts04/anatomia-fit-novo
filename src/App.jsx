@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   LayoutDashboard, Dumbbell, Utensils, UserCircle, Send, 
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
@@ -6,14 +6,14 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal
+  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal, Database, Search
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, 
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 // --- FIREBASE CONFIG ---
@@ -38,8 +38,8 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- DB EXERCÍCIOS (EXPANDIDO - 100 EXERCÍCIOS) ---
-const EXERCISE_DB = [
+// --- DB EXERCÍCIOS ESTÁTICO (FALLBACK / MIGRAÇÃO INICIAL) ---
+const INITIAL_EXERCISE_DB = [
   // --- PEITO ---
   { id: 'e1', name: 'Supino Reto (Barra)', target: 'Peitoral Maior', group: 'Peito' },
   { id: 'e2', name: 'Supino Reto (Halteres)', target: 'Peitoral Maior', group: 'Peito' },
@@ -247,24 +247,6 @@ const INITIAL_MEALS = [
 ];
 const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2 ou Cardio', 'Upper', 'Lower', 'Cardio'];
 
-const CALISTHENICS_PLANS = {
-  'Treino 01': [ { id: 'c_polichinelo', reps: '30' }, { id: 'c_barra', reps: '6' }, { id: 'c_prancha', reps: '30s' }, { id: 'c_flexao_joelhos', reps: 'Máx' }, { id: 'c_agachamento_salto', reps: '15' }, { id: 'c_pe_bunda', reps: '30s' }, { id: 'c_barra_australiana', reps: '5' }, { id: 'c_flexao_inclinada', reps: 'Máx' } ],
-  'Treino 02': [ { id: 'c_step_up', reps: '30s' }, { id: 'c_agachamento', reps: '10' }, { id: 'c_afundo', reps: '10' }, { id: 'c_agachamento_salto', reps: '10' }, { id: 'c_afundo_elevacao', reps: '10' }, { id: 'c_sumo', reps: '15' }, { id: 'c_isometria_agachamento', reps: '30s' }, { id: 'c_pantu_unilateral', reps: '15' } ],
-  'Treino 03': [ { id: 'c_skipping', reps: '30s' }, { id: 'c_dips', reps: '8' }, { id: 'c_prancha_lateral', reps: '20s' }, { id: 'c_triceps_trave', reps: 'Máx' }, { id: 'c_alternado', reps: '10' }, { id: 'c_flexao_padrao', reps: 'Máx' }, { id: 'c_flexao_inclinada', reps: 'Máx' }, { id: 'c_crunches', reps: '20' } ],
-  'Treino 04': [ { id: 'c_false_rope', reps: '30s' }, { id: 'c_barra_amf', reps: '2' }, { id: 'c_toe_touches', reps: '10' }, { id: 'c_barra_supinada', reps: '6' }, { id: 'c_prancha', reps: '40s' }, { id: 'c_barra_aust_amf', reps: '5' }, { id: 'c_leg_flutters', reps: '30s' }, { id: 'c_biceps_barra', reps: 'Máx' } ],
-  'Treino 05': [ { id: 'c_half_burpee', reps: '8' }, { id: 'c_flexao_pike', reps: 'Máx' }, { id: 'c_bike', reps: '30s' }, { id: 'c_flexao_militar', reps: '10' }, { id: 'c_side_crunches', reps: '15' }, { id: 'c_pike_caminhada', reps: '10' }, { id: 'c_prancha_alta_trave', reps: '8' }, { id: 'c_caminhada_chao', reps: '8' } ],
-  'Treino 06': [ { id: 'c_skipping', reps: '40s' }, { id: 'c_agachamento_salto', reps: '30s' }, { id: 'c_afundo_saltando', reps: '10' }, { id: 'c_step_up', reps: '45s' }, { id: 'c_afundo_explosivo', reps: '10' }, { id: 'c_sumo', reps: '25' }, { id: 'c_passada_lateral', reps: '15' }, { id: 'c_iso_afundo', reps: '20s' } ],
-  'Treino 07': [ { id: 'c_skipping', reps: '40s' }, { id: 'c_agachamento_salto', reps: '30s' }, { id: 'c_afundo_saltando', reps: '10' }, { id: 'c_step_up', reps: '45s' }, { id: 'c_afundo_explosivo', reps: '10' }, { id: 'c_sumo', reps: '25' }, { id: 'c_passada_lateral', reps: '15' }, { id: 'c_iso_afundo', reps: '20s' } ],
-  'Treino 08': [ { id: 'c_heel_taps', reps: '45s' }, { id: 'c_dips', reps: '10' }, { id: 'c_prancha_lateral', reps: '30s' }, { id: 'c_extensao_triceps', reps: '8' }, { id: 'c_knee_raises', reps: '15' }, { id: 'c_flexao_explosiva', reps: 'Máx' }, { id: 'c_triceps_trave', reps: '20' }, { id: 'c_in_outs', reps: '30s' }, { id: 'c_prancha_alcance', reps: 'Máx' } ],
-  'Treino 09': [ { id: 'c_false_rope', reps: '45s' }, { id: 'c_barra_amf', reps: '3' }, { id: 'c_alternado', reps: '15' }, { id: 'c_barra_supinada', reps: '8' }, { id: 'c_prancha', reps: '1min' }, { id: 'c_barra_aust_amf', reps: '8' }, { id: 'c_mountain_climbers', reps: '40s' }, { id: 'c_barra_aust_supinada', reps: 'Máx' }, { id: 'c_prancha_af', reps: '45s' } ],
-  'Treino 10': [ { id: 'c_half_burpee', reps: '10' }, { id: 'c_caminhada_chao', reps: 'Máx' }, { id: 'c_leg_raises', reps: '20' }, { id: 'c_pike_shoulder_tap', reps: '10' }, { id: 'c_flexao_pike_elevacao', reps: '8' }, { id: 'c_crunches', reps: '45s' }, { id: 'c_flexao_declinada', reps: 'Máx' }, { id: 'c_prancha_parede', reps: 'Máx' }, { id: 'c_dips', reps: 'Máx' } ],
-  'Treino 11': [ { id: 'c_polichinelo', reps: '50' }, { id: 'c_barra', reps: '10' }, { id: 'c_prancha_alternate', reps: '45s' }, { id: 'c_flexao_diamante', reps: 'Máx' }, { id: 'c_canivete', reps: '10' }, { id: 'c_barra_supinada', reps: '5' }, { id: 'c_caminhada_chao', reps: '3' }, { id: 'c_dips', reps: '10' }, { id: 'c_crunches', reps: '50' }, { id: 'c_barra_aust_arqueiro', reps: 'Máx' } ],
-  'Treino 12': [ { id: 'c_half_burpee', reps: '10' }, { id: 'c_afundo_saltando', reps: '30s' }, { id: 'c_afundo_elevacao', reps: '15' }, { id: 'c_pistol_suport', reps: '8' }, { id: 'c_salto_frontal', reps: '10' }, { id: 'c_agacha_afundo', reps: '8' }, { id: 'c_ponte', reps: '15' }, { id: 'c_pantu_unilateral', reps: '20' }, { id: 'c_iso_ponta_pe', reps: 'Máx' } ],
-  'Treino 13': [ { id: 'c_burpee', reps: '8' }, { id: 'c_dips', reps: '12' }, { id: 'c_prancha_jc', reps: '10' }, { id: 'c_pa_b_fm', reps: '10' }, { id: 'c_tuck_lsit', reps: 'Máx' }, { id: 'c_diamante_regular', reps: 'Máx' }, { id: 'c_mountain_climbers', reps: '40s' }, { id: 'c_flexao_inclinada_exp', reps: 'Máx' }, { id: 'c_bike', reps: '40s' }, { id: 'c_flexao_hold', reps: 'Máx' } ],
-  'Treino 14': [ { id: 'c_escapula', reps: '10' }, { id: 'c_barra', reps: '10' }, { id: 'c_corner_raises', reps: '10' }, { id: 'c_barra_trad', reps: '10' }, { id: 'c_knee_raises', reps: '15' }, { id: 'c_barra_aust_supinada', reps: '10' }, { id: 'c_leg_raises', reps: '15' }, { id: 'c_barra_aust_sup_arq', reps: 'Máx' }, { id: 'c_leg_x', reps: '40s' }, { id: 'c_biceps_barra', reps: '20' } ],
-  'Treino 15': [ { id: 'c_half_burpee', reps: '12' }, { id: 'c_flexao_pike_elevacao', reps: '10' }, { id: 'c_ombro_ombro', reps: '8' }, { id: 'c_sit_ups', reps: '15' }, { id: 'c_pike_hold', reps: 'Máx' }, { id: 'c_pike_caminhada', reps: '20' }, { id: 'c_remador', reps: '20' }, { id: 'c_hs_hold', reps: 'Máx' }, { id: 'c_flexao_militar', reps: '15' }, { id: 'c_caminhada_chao', reps: 'Máx' } ]
-};
-
 // Função utilitária para calcular o início da semana atual (Segunda-feira)
 const getStartOfCurrentWeek = () => {
   const now = new Date();
@@ -275,10 +257,6 @@ const getStartOfCurrentWeek = () => {
   monday.setHours(0, 0, 0, 0);
   return monday.getTime();
 };
-
-// Funções utilitárias
-const getEx = (id) => EXERCISE_DB.find(e => e.id === id);
-const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
 
 const MEASUREMENTS_LABELS = {
   peito: 'Peito', 
@@ -302,20 +280,34 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [appScreen, setAppScreen] = useState('loading'); 
 
-  // Sistema de Toasts (Notificações)
+  // Estado da Base de Dados de Exercícios conectada à Nuvem
+  const [exerciseDB, setExerciseDB] = useState(INITIAL_EXERCISE_DB);
+  const [isDBMigrating, setIsDBMigrating] = useState(false);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminModal, setAdminModal] = useState({ isOpen: false, mode: 'add', data: null });
+  const [adminGifFile, setAdminGifFile] = useState(null);
+  const [isAdminSaving, setIsAdminSaving] = useState(false);
+
+  const getEx = useCallback((id) => exerciseDB.find(e => e.id === id), [exerciseDB]);
+  const formatEx = useCallback((ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }), []);
+
+  const CALISTHENICS_PLANS = useMemo(() => ({
+    'Treino 01': [ { id: 'c_polichinelo', reps: '30' }, { id: 'c_barra', reps: '6' }, { id: 'c_prancha', reps: '30s' }, { id: 'c_flexao_joelhos', reps: 'Máx' }, { id: 'c_agachamento_salto', reps: '15' }, { id: 'c_pe_bunda', reps: '30s' }, { id: 'c_barra_australiana', reps: '5' }, { id: 'c_flexao_inclinada', reps: 'Máx' } ],
+    'Treino 02': [ { id: 'c_step_up', reps: '30s' }, { id: 'c_agachamento', reps: '10' }, { id: 'c_afundo', reps: '10' }, { id: 'c_agachamento_salto', reps: '10' }, { id: 'c_afundo_elevacao', reps: '10' }, { id: 'c_sumo', reps: '15' }, { id: 'c_isometria_agachamento', reps: '30s' }, { id: 'c_pantu_unilateral', reps: '15' } ],
+    'Treino 03': [ { id: 'c_skipping', reps: '30s' }, { id: 'c_dips', reps: '8' }, { id: 'c_prancha_lateral', reps: '20s' }, { id: 'c_triceps_trave', reps: 'Máx' }, { id: 'c_alternado', reps: '10' }, { id: 'c_flexao_padrao', reps: 'Máx' }, { id: 'c_flexao_inclinada', reps: 'Máx' }, { id: 'c_crunches', reps: '20' } ],
+    'Treino 04': [ { id: 'c_false_rope', reps: '30s' }, { id: 'c_barra_amf', reps: '2' }, { id: 'c_toe_touches', reps: '10' }, { id: 'c_barra_supinada', reps: '6' }, { id: 'c_prancha', reps: '40s' }, { id: 'c_barra_aust_amf', reps: '5' }, { id: 'c_leg_flutters', reps: '30s' }, { id: 'c_biceps_barra', reps: 'Máx' } ],
+    'Treino 05': [ { id: 'c_half_burpee', reps: '8' }, { id: 'c_flexao_pike', reps: 'Máx' }, { id: 'c_bike', reps: '30s' }, { id: 'c_flexao_militar', reps: '10' }, { id: 'c_side_crunches', reps: '15' }, { id: 'c_pike_caminhada', reps: '10' }, { id: 'c_prancha_alta_trave', reps: '8' }, { id: 'c_caminhada_chao', reps: '8' } ]
+  }), []);
+
   const [toasts, setToasts] = useState([]);
   const showToast = (message, type = 'info') => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
 
-  // Variável temporal para Reset 24h
   const todayStr = new Date().toLocaleDateString('pt-BR');
 
-  // Navegação
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -323,9 +315,8 @@ export default function App() {
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
 
-  // ABA BIOMETRIA
   const [bioTab, setBioTab] = useState('capture');
-  const [scanState, setScanState] = useState('idle'); // idle, scanning, done
+  const [scanState, setScanState] = useState('idle'); 
   const [scanProgress, setScanProgress] = useState(0);
   const [scanFeedback, setScanFeedback] = useState([]);
   const [estimatedMeasures, setEstimatedMeasures] = useState(null);
@@ -333,7 +324,6 @@ export default function App() {
   const [scanAiReport, setScanAiReport] = useState('');
   const [isScanningAi, setIsScanningAi] = useState(false);
 
-  // Autenticação e Config
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -347,7 +337,6 @@ export default function App() {
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
-  // IA Geral
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -355,11 +344,9 @@ export default function App() {
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   
-  // Storage de GIFs
   const [gifUrls, setGifUrls] = useState({});
   const [isUploadingGif, setIsUploadingGif] = useState({});
 
-  // FEEDBACKS IA 
   const [deepInsightText, setDeepInsightText] = useState('');
   const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [workoutFeedback, setWorkoutFeedback] = useState('');
@@ -367,7 +354,6 @@ export default function App() {
   const [nutritionFeedback, setNutritionFeedback] = useState('');
   const [isNutritionFeedbackLoading, setIsNutritionFeedbackLoading] = useState(false);
 
-  // Dados Essenciais
   const [workouts, setWorkouts] = useState({});
   const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [workoutHistory, setWorkoutHistory] = useState([]);
@@ -389,19 +375,16 @@ export default function App() {
   const [measurements, setMeasurements] = useState(initialMeasures);
   const [weightHistory, setWeightHistory] = useState([]); 
   
-  // UI & Cronômetro & Nutrição Feed
   const [expandedDesc, setExpandedDesc] = useState({});
   const [exerciseModal, setExerciseModal] = useState({ active: false, mode: 'swap', targetExId: null, filterGroup: null });
   const [timerInterval, setTimerInterval] = useState(90);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   
-  // Controle Feed Nutrição
   const [editingNutritionId, setEditingNutritionId] = useState(null);
   const [editNutritionData, setEditNutritionData] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
 
-  // Gamificação - Conquistas
   const ACHIEVEMENTS = [
     { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => h.length >= 1 },
     { id: 'a2', title: 'Consistência Diária', desc: '10 Treinos concluídos', icon: <Medal className="text-yellow-400" size={24}/>, condition: (h) => h.length >= 10 },
@@ -415,11 +398,9 @@ export default function App() {
     return ACHIEVEMENTS.filter(a => a.condition(workoutHistory));
   }, [workoutHistory]);
 
-  // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
 
-  // Lógica de Bloqueio Semanal de Treinos (Rota Sucessiva)
   const completedWorkoutsThisWeek = useMemo(() => {
     const startOfWeek = getStartOfCurrentWeek();
     return workoutHistory
@@ -430,17 +411,13 @@ export default function App() {
       .map(log => log.day);
   }, [workoutHistory]);
 
-  // Avançar automaticamente para o próximo treino se o atual estiver bloqueado
   useEffect(() => {
     if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutOrder.length) {
       const nextAvailable = workoutOrder.find(d => !completedWorkoutsThisWeek.includes(d));
-      if (nextAvailable) {
-        setActiveWorkoutDay(nextAvailable);
-      }
+      if (nextAvailable) setActiveWorkoutDay(nextAvailable);
     }
   }, [completedWorkoutsThisWeek, activeWorkoutDay, workoutOrder]);
 
-  // Sincronizar o dia ativo caso os treinos mudem completamente (ex: Restaurar plano)
   useEffect(() => {
     const keys = Object.keys(workouts);
     if (keys.length > 0 && !keys.includes(activeWorkoutDay) && workoutOrder.includes(activeWorkoutDay) === false) {
@@ -463,7 +440,6 @@ export default function App() {
     let bmr = (10 * w) + (6.25 * h) - (5 * a);
     bmr = userProfile.gender === 'M' ? bmr + 5 : bmr - 161;
     let tdee = bmr * 1.55; 
-    
     if (userProfile.goal === 'Hipertrofia') tdee += 400;
     if (userProfile.goal === 'Definição') tdee -= 400;
     
@@ -471,7 +447,6 @@ export default function App() {
     const prot = Math.round(w * 2.2);
     const fat = Math.round(w * 0.9);
     const carb = Math.round((cal - (prot*4) - (fat*9))/4);
-    
     return { calories: cal, protein: prot, fats: fat, carbs: carb };
   }, [userProfile]);
 
@@ -482,49 +457,35 @@ export default function App() {
     return '0';
   }, [userProfile.weight, userProfile.height]);
 
-  // --- NOVA ESTRUTURA COM REGRAS RÍGIDAS DE GRUPAMENTOS (EXATAMENTE 7 EXERCÍCIOS) ---
   const generateAIPlan = () => {
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
           formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12),
-          formatEx(getEx('e40'), 3, 15), 
-          formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12), 
-          formatEx(getEx('e56'), 3, 15)
+          formatEx(getEx('e40'), 3, 15), formatEx(getEx('e47'), 4, 10), formatEx(getEx('e49'), 3, 12), formatEx(getEx('e56'), 3, 15)
       ]},
       'Legs 1': { name: 'Legs Quadríceps', isLegs: true, exercises: [ 
           formatEx(getEx('e67'), 4, 8), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e73'), 3, 15), 
-          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), 
-          formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15)
+          formatEx(getEx('e77'), 4, 12), formatEx(getEx('e80'), 3, 12), formatEx(getEx('e83'), 4, 20), formatEx(getEx('e84'), 4, 15)
       ]},
       'Push': { name: 'Treino Push', isLegs: false, exercises: [ 
           formatEx(getEx('e1'), 4, 10), formatEx(getEx('e3'), 3, 12), formatEx(getEx('e8'), 3, 15), 
-          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), 
-          formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) 
+          formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) 
       ]},
       'Legs 2 ou Cardio': { name: 'Legs Posterior', isLegs: true, exercises: [ 
           formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), 
-          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), 
-          formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15)
+          formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15)
       ]},
       'Upper': { name: 'Upper Body', isLegs: false, exercises: [ 
-          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), 
-          formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), 
-          formatEx(getEx('e36'), 3, 12), 
-          formatEx(getEx('e47'), 3, 12), 
-          formatEx(getEx('e57'), 3, 12) 
+          formatEx(getEx('e19'), 3, 10), formatEx(getEx('e26'), 3, 12), formatEx(getEx('e1'), 3, 10), formatEx(getEx('e8'), 3, 12), 
+          formatEx(getEx('e36'), 3, 12), formatEx(getEx('e47'), 3, 12), formatEx(getEx('e57'), 3, 12) 
       ]},
       'Lower': { name: 'Lower Body', isLegs: true, exercises: [ 
-          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), 
-          formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), 
-          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), 
-          formatEx(getEx('e87'), 3, 12) 
+          formatEx(getEx('e67'), 3, 10), formatEx(getEx('e71'), 3, 12), formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), 
+          formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), formatEx(getEx('e87'), 3, 12) 
       ]},
       'Cardio': { name: 'Cardio & Core', isLegs: false, exercises: [ 
-          formatEx(getEx('c_polichinelo'), 3, 50),
-          formatEx(getEx('c_burpee'), 3, 10),
-          formatEx(getEx('e98'), 3, '1min'), 
-          formatEx(getEx('e94'), 3, 20),
-          formatEx(getEx('e99'), 3, 15) 
+          formatEx(getEx('c_polichinelo'), 3, 50), formatEx(getEx('c_burpee'), 3, 10), formatEx(getEx('e98'), 3, '1min'), 
+          formatEx(getEx('e94'), 3, 20), formatEx(getEx('e99'), 3, 15) 
       ].filter(e => e)}
     };
     setWorkouts(p);
@@ -532,25 +493,35 @@ export default function App() {
     saveToCloud({ workouts: p, workoutOrder: DEFAULT_WORKOUT_DAYS });
   };
 
-  // Firebase Setup
   useEffect(() => {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+           await signInAnonymously(auth);
         }
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
     initAuth();
-    
     const unsubscribe = onAuthStateChanged(auth, (u) => { 
-      setUser(u); 
-      if (!u) setAppScreen('login');
-      setIsAuthLoading(false); 
+      setUser(u); if (!u) setAppScreen('login'); setIsAuthLoading(false); 
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user || !db) return;
+    const exRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+    const unsubEx = onSnapshot(exRef, (snap) => {
+       if (!snap.empty) {
+         const cloudExercises = snap.docs.map(doc => ({ ...doc.data(), firebaseId: doc.id }));
+         setExerciseDB(cloudExercises);
+       }
+    }, (err) => console.error("Erro ao ler DB de Exercícios:", err));
+    return () => unsubEx();
+  }, [user, db]);
 
   useEffect(() => {
     if (!user || !db || firebaseError) return;
@@ -559,47 +530,20 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         if (d.workouts) setWorkouts(d.workouts);
-        if (d.workoutOrder) {
-           setWorkoutOrder(d.workoutOrder);
-        } else if (d.workouts) {
-           setWorkoutOrder(Object.keys(d.workouts));
-        }
-        
+        if (d.workoutOrder) setWorkoutOrder(d.workoutOrder); else if (d.workouts) setWorkoutOrder(Object.keys(d.workouts));
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
-        if (d.measurements) {
-          let loadedMeasures = { ...initialMeasures, ...d.measurements };
-          if (d.measurements.bracos && !d.measurements.bracoEsq) {
-              loadedMeasures.bracoEsq = d.measurements.bracos;
-              loadedMeasures.bracoDir = d.measurements.bracos;
-          }
-          if (d.measurements.pernas && !d.measurements.pernaEsq) {
-              loadedMeasures.pernaEsq = d.measurements.pernas;
-              loadedMeasures.pernaDir = d.measurements.pernas;
-          }
-          if (d.measurements.antebraco && !d.measurements.antebracoEsq) {
-              loadedMeasures.antebracoEsq = d.measurements.antebraco;
-              loadedMeasures.antebracoDir = d.measurements.antebraco;
-          }
-          if (d.measurements.panturrilha && !d.measurements.panturrilhaEsq) {
-              loadedMeasures.panturrilhaEsq = d.measurements.panturrilha;
-              loadedMeasures.panturrilhaDir = d.measurements.panturrilha;
-          }
-          setMeasurements(loadedMeasures);
-        }
+        if (d.measurements) setMeasurements({ ...initialMeasures, ...d.measurements });
         if (d.weightHistory) setWeightHistory(d.weightHistory);
         if (d.userProfile) {
           let prof = { targetWeight: '', ...d.userProfile };
-          
           if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
              let updWorkouts = { ...(d.workouts || workouts) };
              let modified = false;
              Object.keys(updWorkouts).forEach(day => {
                if (updWorkouts[day].exercises) {
-                 updWorkouts[day].exercises.forEach(ex => {
-                   if (ex.isCompleted) { ex.isCompleted = false; modified = true; }
-                 });
+                 updWorkouts[day].exercises.forEach(ex => { if (ex.isCompleted) { ex.isCompleted = false; modified = true; } });
                }
              });
              prof.lastLoginDate = todayStr;
@@ -608,24 +552,14 @@ export default function App() {
                setWorkouts(updWorkouts);
                setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), { userProfile: prof, workouts: updWorkouts }, { merge: true });
              }
-          } else {
-             setUserProfile(prof);
-          }
+          } else { setUserProfile(prof); }
 
           if (prof.onboardingCompleted) {
             setAppScreen('main');
-            if (prof.lastMeasureUpdate) {
-               const daysSince = (Date.now() - prof.lastMeasureUpdate) / (1000 * 60 * 60 * 24);
-               if (daysSince >= 7) setShowMeasureAlert(true);
-            }
-          } else {
-            setAppScreen('onboarding');
-          }
+            if (prof.lastMeasureUpdate && ((Date.now() - prof.lastMeasureUpdate) / (1000 * 60 * 60 * 24)) >= 7) setShowMeasureAlert(true);
+          } else { setAppScreen('onboarding'); }
         }
-      } else {
-        generateAIPlan();
-        setAppScreen('onboarding');
-      }
+      } else { generateAIPlan(); setAppScreen('onboarding'); }
     }, (err) => setFirebaseError(err.message));
     return () => unsub();
   }, [user, firebaseError, todayStr]);
@@ -650,157 +584,82 @@ export default function App() {
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), dataToSave, { merge: true });
-    } catch (e) { 
-      console.error(e); 
-    } finally {
-      setTimeout(() => setIsSyncing(false), 800);
-    }
+    } catch (e) { console.error(e); } finally { setTimeout(() => setIsSyncing(false), 800); }
   };
 
   const handleAuthAction = async () => {
-    setAuthErrorMsg(''); 
-    setIsProcessingAuth(true);
+    setAuthErrorMsg(''); setIsProcessingAuth(true);
     try {
-      if (isLoginMode) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
+      if (isLoginMode) await signInWithEmailAndPassword(auth, email, password);
+      else await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      if (error.code === 'auth/admin-restricted-operation') {
-        setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo" no painel do Firebase Authentication.');
-      } else if (error.code === 'auth/invalid-credential') {
-         setAuthErrorMsg('E-mail ou senha incorretos.');
-      } else if (error.code === 'auth/email-already-in-use') {
-         setAuthErrorMsg('Este e-mail já está registado.');
-      } else if (error.code === 'auth/weak-password') {
-         setAuthErrorMsg('A senha deve ter pelo menos 6 caracteres.');
-      } else {
-         setAuthErrorMsg(`Erro: ${error.message}`);
-      }
-    } finally { 
-      setIsProcessingAuth(false); 
-    }
+      if (error.code === 'auth/admin-restricted-operation') setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo".');
+      else if (error.code === 'auth/invalid-credential') setAuthErrorMsg('E-mail ou senha incorretos.');
+      else if (error.code === 'auth/email-already-in-use') setAuthErrorMsg('Este e-mail já está registado.');
+      else setAuthErrorMsg(`Erro: ${error.message}`);
+    } finally { setIsProcessingAuth(false); }
   };
 
   const handleGuestLogin = async () => {
-    setAuthErrorMsg('');
-    setIsProcessingAuth(true);
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`);
-    } finally {
-      setIsProcessingAuth(false);
-    }
+    setAuthErrorMsg(''); setIsProcessingAuth(true);
+    try { await signInAnonymously(auth); } catch (error) { setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`); } finally { setIsProcessingAuth(false); }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setUser(null);
-      setAppScreen('login');
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+  const handleLogout = async () => { try { await signOut(auth); setUser(null); setAppScreen('login'); } catch (error) { console.error("Logout failed:", error); } };
 
   const handleUnlockApiKey = async () => {
     if (user?.email) {
-      try {
-        setIsApiAuthPending(true);
-        await signInWithEmailAndPassword(auth, user.email, apiPasswordAttempt);
-        setIsApiKeyUnlocked(true);
-        setShowUnlockPrompt(false);
-        setApiPasswordAttempt('');
-      } catch (error) {
-        showToast("Senha incorreta!", "error");
-      } finally {
-        setIsApiAuthPending(false);
-      }
+      try { setIsApiAuthPending(true); await signInWithEmailAndPassword(auth, user.email, apiPasswordAttempt); setIsApiKeyUnlocked(true); setShowUnlockPrompt(false); setApiPasswordAttempt(''); } 
+      catch (error) { showToast("Senha incorreta!", "error"); } finally { setIsApiAuthPending(false); }
     } else {
-      if (apiPasswordAttempt === 'admin123') {
-        setIsApiKeyUnlocked(true);
-        setShowUnlockPrompt(false);
-        setApiPasswordAttempt('');
-      } else {
-        showToast("Senha incorreta! No modo local, digite 'admin123'.", "error");
-      }
+      if (apiPasswordAttempt === 'admin123') { setIsApiKeyUnlocked(true); setShowUnlockPrompt(false); setApiPasswordAttempt(''); } 
+      else { showToast("Senha incorreta! (Local: 'admin123')", "error"); }
     }
   };
 
   const handleSaveApiKey = () => {
      const upProf = {...userProfile, geminiApiKey: tempApiKey.trim()};
-     setUserProfile(upProf);
-     saveToCloud({ userProfile: upProf });
-     setIsApiKeyUnlocked(false);
-     showToast("Chave API salva e bloqueada com sucesso!", "success");
+     setUserProfile(upProf); saveToCloud({ userProfile: upProf });
+     setIsApiKeyUnlocked(false); showToast("Chave API bloqueada com sucesso!", "success");
   };
 
   const moveWorkoutDay = (index, direction) => {
     const newOrder = [...workoutOrder];
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= newOrder.length) return;
-    
     const temp = newOrder[index];
     newOrder[index] = newOrder[targetIndex];
     newOrder[targetIndex] = temp;
-    
-    setWorkoutOrder(newOrder);
-    saveToCloud({ workoutOrder: newOrder });
+    setWorkoutOrder(newOrder); saveToCloud({ workoutOrder: newOrder });
   };
 
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
-    let vol = 0; let durationGap = 0;
-    let completedExercises = [];
+    let vol = 0; let durationGap = 0; let completedExercises = [];
     const bw = Number(userProfile.weight) || 0;
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
     } else if (isCaliMode) {
       currentCaliExercises.forEach(ex => {
-        const w = Number(ex.weight) || 0;
-        const effW = w + bw; // Adiciona peso corporal (BW) para calistenia
+        const effW = (Number(ex.weight) || 0) + bw;
         vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
-        completedExercises.push({
-           originalId: ex.originalId,
-           name: ex.name,
-           sets: ex.sets,
-           reps: ex.reps,
-           weight: ex.weight
-        });
+        completedExercises.push({ originalId: ex.originalId, name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight });
         ex.isCompleted = false; 
       });
     } else if (cur && cur.exercises) {
       cur.exercises.forEach(ex => {
         const w = Number(ex.weight) || 0;
-        // Verifica se é exercício de peso corporal nativo para adicionar o peso do atleta no volume
         const isBodyweight = ex.group === 'GAP' || ex.group === 'Cardio' || String(ex.originalId).startsWith('c_') || ['e12','e13','e14','e17','e18','e65','e94','e95','e98','e99','e100'].includes(ex.originalId);
         const effW = isBodyweight ? (w + bw) : w;
         vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
-        completedExercises.push({
-           originalId: ex.originalId,
-           name: ex.name,
-           sets: ex.sets,
-           reps: ex.reps,
-           weight: ex.weight
-        });
+        completedExercises.push({ originalId: ex.originalId, name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight });
         ex.isCompleted = false; 
       });
     }
 
     const timestamp = Date.now();
-    const newLog = { 
-      id: timestamp, 
-      date: todayStr, 
-      timestamp, 
-      day: activeWorkoutDay, 
-      volume: vol, 
-      isGap: isGapMode, 
-      gapDuration: durationGap,
-      exercises: completedExercises 
-    };
+    const newLog = { id: timestamp, date: todayStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap, exercises: completedExercises };
     const newHist = [...workoutHistory, newLog];
     
     let newDLogs = [...dailyLogs];
@@ -810,10 +669,7 @@ export default function App() {
 
     setWorkoutHistory(newHist); setDailyLogs(newDLogs);
     saveToCloud({ workouts: workouts, workoutOrder, workoutHistory: newHist, dailyLogs: newDLogs });
-    
-    setShowWorkoutSuccess(true);
-    setIsGapMode(false);
-    setIsCaliMode(false);
+    setShowWorkoutSuccess(true); setIsGapMode(false); setIsCaliMode(false);
   };
 
   const addWater = () => {
@@ -835,9 +691,7 @@ export default function App() {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedPhotos(prev => ({ ...prev, [view]: reader.result }));
-      };
+      reader.onloadend = () => setUploadedPhotos(prev => ({ ...prev, [view]: reader.result }));
       reader.readAsDataURL(file);
     }
   };
@@ -845,101 +699,51 @@ export default function App() {
   const allPhotosUploaded = Object.values(uploadedPhotos).every(v => v !== null);
 
   const startBiometricScan = () => {
-    setScanState('scanning');
-    setScanProgress(0);
-    setScanFeedback([]);
-    setScanAiReport('');
-
+    setScanState('scanning'); setScanProgress(0); setScanFeedback([]); setScanAiReport('');
     const steps = [
       { p: 20, text: "Verificando Câmera e Iluminação [OK]" },
       { p: 40, text: "Fotos validadas e Estáveis [OK]" },
       { p: 60, text: "Ângulos: Frontal, Perfil e Costas [OK]" },
-      { p: 80, text: "Mapeando Pontos-chave do Corpo (Pose Estimation)..." },
-      { p: 100, text: "Calculando Proporções e Estimando Medidas..." }
+      { p: 80, text: "Mapeando Pontos-chave do Corpo..." },
+      { p: 100, text: "Calculando Proporções..." }
     ];
-
     let currentStep = 0;
     const interval = setInterval(() => {
       if (currentStep < steps.length) {
-        const current = steps[currentStep];
-        setScanProgress(current.p);
-        setScanFeedback(prev => [...prev, current.text]);
+        setScanProgress(steps[currentStep].p);
+        setScanFeedback(prev => [...prev, steps[currentStep].text]);
         currentStep++;
       } else {
         clearInterval(interval);
-        const h = Number(userProfile.height) || 175;
-        const w = Number(userProfile.weight) || 70;
-        setEstimatedMeasures({
-          peito: Math.round(w * 1.35),
-          cintura: Math.round(h * 0.45),
-          quadril: Math.round(w * 1.3),
-          bracos: Math.round(w * 0.48),
-          pernas: Math.round(h * 0.33)
-        });
+        const h = Number(userProfile.height) || 175; const w = Number(userProfile.weight) || 70;
+        setEstimatedMeasures({ peito: Math.round(w * 1.35), cintura: Math.round(h * 0.45), quadril: Math.round(w * 1.3), bracos: Math.round(w * 0.48), pernas: Math.round(h * 0.33) });
         setScanState('done');
       }
     }, 1200);
   };
 
   const saveBiometricMeasures = () => {
-    const newMeasures = {
-      ...measurements,
-      peito: estimatedMeasures.peito,
-      cintura: estimatedMeasures.cintura,
-      quadril: estimatedMeasures.quadril,
-      bracoEsq: estimatedMeasures.bracos,
-      bracoDir: estimatedMeasures.bracos,
-      pernaEsq: estimatedMeasures.pernas,
-      pernaDir: estimatedMeasures.pernas
-    };
-    setMeasurements(newMeasures);
-    handleUpdateMeasures();
-    setBioTab('evolution');
-    setScanState('idle');
-    setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null });
-    setScanAiReport('');
+    const newMeasures = { ...measurements, peito: estimatedMeasures.peito, cintura: estimatedMeasures.cintura, quadril: estimatedMeasures.quadril, bracoEsq: estimatedMeasures.bracos, bracoDir: estimatedMeasures.bracos, pernaEsq: estimatedMeasures.pernas, pernaDir: estimatedMeasures.pernas };
+    setMeasurements(newMeasures); handleUpdateMeasures(); setBioTab('evolution'); setScanState('idle'); setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null }); setScanAiReport('');
   };
 
   const callGemini = async (prompt, schema = null, retries = 5) => {
     const apiKey = userProfile.geminiApiKey || ""; 
     const model = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      ...(schema && {
-        generationConfig: {
-          responseMimeType: "application/json", 
-          responseSchema: schema
-        }
-      })
-    };
-
+    const payload = { contents: [{ parts: [{ text: prompt }] }], ...(schema && { generationConfig: { responseMimeType: "application/json", responseSchema: schema } }) };
     const delays = [1000, 2000, 4000, 8000, 16000];
-    
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
-        const res = await fetch(url, {
-          method: 'POST', 
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        });
-        
+        const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || "Falha na API da IA.");
-        
         let textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!textOutput) throw new Error("Resposta da IA está vazia.");
-        
-        if (schema) {
-          textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim();
-          return JSON.parse(textOutput);
-        }
+        if (schema) { textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim(); return JSON.parse(textOutput); }
         return textOutput;
       } catch (err) {
-        if (attempt === retries - 1) {
-          throw new Error("Falha na comunicação com a IA após várias tentativas. Detalhe: " + err.message);
-        }
+        if (attempt === retries - 1) throw new Error("Falha IA: " + err.message);
         await new Promise(r => setTimeout(r, delays[attempt]));
       }
     }
@@ -951,48 +755,26 @@ export default function App() {
       const recentWorkouts = workoutHistory.slice(-7);
       const workoutCount = recentWorkouts.length;
       const totalVolume = recentWorkouts.reduce((acc, w) => acc + (w.volume || 0), 0);
-      
       let totalCal = 0, totalPro = 0, totalCar = 0, totalFat = 0, daysWithFood = 0;
       const uniqueDates = [...new Set(nutritionLogs.map(n => n.date))].slice(-7);
-
       uniqueDates.forEach(date => {
         const dayLogs = nutritionLogs.filter(n => n.date === date);
         if (dayLogs.length > 0) {
             daysWithFood++;
-            dayLogs.forEach(l => {
-                totalCal += (Number(l.calories) || 0);
-                totalPro += (Number(l.protein) || 0);
-                totalCar += (Number(l.carbs) || 0);
-                totalFat += (Number(l.fats) || 0);
-            });
+            dayLogs.forEach(l => { totalCal += (Number(l.calories)||0); totalPro += (Number(l.protein)||0); totalCar += (Number(l.carbs)||0); totalFat += (Number(l.fats)||0); });
         }
       });
+      const avgCal = daysWithFood > 0 ? Math.round(totalCal/daysWithFood) : 0;
+      const avgPro = daysWithFood > 0 ? Math.round(totalPro/daysWithFood) : 0;
+      const avgCar = daysWithFood > 0 ? Math.round(totalCar/daysWithFood) : 0;
+      const avgFat = daysWithFood > 0 ? Math.round(totalFat/daysWithFood) : 0;
 
-      const avgCal = daysWithFood > 0 ? Math.round(totalCal / daysWithFood) : 0;
-      const avgPro = daysWithFood > 0 ? Math.round(totalPro / daysWithFood) : 0;
-      const avgCar = daysWithFood > 0 ? Math.round(totalCar / daysWithFood) : 0;
-      const avgFat = daysWithFood > 0 ? Math.round(totalFat / daysWithFood) : 0;
-
-      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
-
-      RESUMO DOS ÚLTIMOS 7 DIAS:
-      - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
-      - Nutrição (média diária atual): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
-      - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
-
-      TAREFA:
-      1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
-      2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
-      3. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
-      IMPORTANTE: Responda obrigatoriamente em Português de Portugal.`;
-
+      const prompt = `Atue como meu Treinador de Alta Performance. Objetivo atual: ${userProfile.goal} (${userProfile.weight}kg -> ${userProfile.targetWeight}kg).
+      ÚLTIMOS 7 DIAS: Treino: ${workoutCount} sessões, volume ${totalVolume}kg. Nutrição (média): ${avgCal}kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gord. (Metas: ${aiGoals.calories}kcal, ${aiGoals.protein}g Prot).
+      Verifique o impacto nos resultados, avalie macros e dê feedback. Responda em Português de Portugal.`;
       const res = await callGemini(prompt);
       setDeepInsightText(res);
-    } catch (error) { 
-      setDeepInsightText(`Erro IA: ${error.message}`); 
-    } finally { 
-      setIsDeepInsightLoading(false); 
-    }
+    } catch (error) { setDeepInsightText(`Erro IA: ${error.message}`); } finally { setIsDeepInsightLoading(false); }
   };
 
   const handleEvaluateWorkout = async () => {
@@ -1000,309 +782,195 @@ export default function App() {
     try {
       const dayInfo = workouts[activeWorkoutDay];
       const exerciseList = dayInfo.exercises.map(e => `${e.name} (${e.target})`).join(', ');
-
-      const prompt = `Atue como um Master Trainer. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg). 
-      Avalie a seguinte seleção de exercícios estruturada para o meu treino de ${dayInfo.name}: 
-      ${exerciseList}.
-      
-      Seja muito direto: A seleção está bem construída e equilibrada para a minha meta? Falta algum estímulo importante ou há sobreposição desnecessária? 
-      IMPORTANTE: Responda em Português de Portugal. Escreva no máximo 2 ou 3 parágrafos curtos e objetivos.`;
-
+      const prompt = `Atue como Master Trainer. Objetivo: ${userProfile.goal}. Avalie a seleção para ${dayInfo.name}: ${exerciseList}. Bem construída? Sobreposição? Responda curto em Português de Portugal.`;
       const res = await callGemini(prompt);
       setWorkoutFeedback(res);
-    } catch (error) {
-      setWorkoutFeedback(`Erro ao avaliar: ${error.message}`);
-    } finally {
-      setIsWorkoutFeedbackLoading(false);
-    }
+    } catch (error) { setWorkoutFeedback(`Erro: ${error.message}`); } finally { setIsWorkoutFeedbackLoading(false); }
   };
 
   const handleEvaluateNutrition = async () => {
     setIsNutritionFeedbackLoading(true); setNutritionFeedback('');
     try {
-      const prompt = `Atue como um Nutricionista Desportivo. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg). 
-      A minha meta diária recomendada é: ${aiGoals.calories} kcal, ${aiGoals.protein}g Proteína, ${aiGoals.carbs}g Hidratos e ${aiGoals.fats}g Gordura. 
-      Até agora (hoje), já consumi: ${totals.calories} kcal, ${totals.protein}g Proteína, ${totals.carbs}g Hidratos e ${totals.fats}g Gordura.
-      
-      Avalie o meu alinhamento com a meta no dia de hoje. Estou a comer demais/de menos? O que me sugere comer na próxima refeição para corrigir possíveis défices (se faltar proteína, ou se já passei da gordura, etc.)?
-      IMPORTANTE: Responda em Português de Portugal. Seja rápido, direto e prático (máx 2 parágrafos curtos).`;
-
+      const prompt = `Nutricionista Desportivo. Objetivo: ${userProfile.goal}. Meta diária: ${aiGoals.calories}kcal, ${aiGoals.protein}g Prot. Hoje consumido: ${totals.calories}kcal, ${totals.protein}g Prot. Avalie o alinhamento e o que corrigir na próxima refeição (curto, PT-PT).`;
       const res = await callGemini(prompt);
       setNutritionFeedback(res);
-    } catch (error) {
-      setNutritionFeedback(`Erro ao avaliar: ${error.message}`);
-    } finally {
-      setIsNutritionFeedbackLoading(false);
-    }
+    } catch (error) { setNutritionFeedback(`Erro: ${error.message}`); } finally { setIsNutritionFeedbackLoading(false); }
   };
 
   const handleGenerateBiometricReport = async () => {
-    setIsScanningAi(true);
-    setScanAiReport('');
+    setIsScanningAi(true); setScanAiReport('');
     try {
-      const prompt = `Atue como um Especialista em Biometria e Avaliação Física. O meu objetivo atual é ${userProfile.goal} (Peso: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
-      
-      No meu formulário de perfil, as minhas medidas atuais/preenchidas eram (em cm):
-      Peito: ${measurements.peito || '--'}, Cintura: ${measurements.cintura || '--'}, Quadril: ${measurements.quadril || '--'}, Braço Esq: ${measurements.bracoEsq || '--'}, Braço Dir: ${measurements.bracoDir || '--'}, Perna Esq: ${measurements.pernaEsq || '--'}, Perna Dir: ${measurements.pernaDir || '--'}.
-      
-      Acabei de realizar um "Check-up Fotográfico" de Visão Computacional e o sistema extraiu as seguintes medidas atualizadas da minha imagem (em cm):
-      Peito: ${estimatedMeasures.peito}, Cintura: ${estimatedMeasures.cintura}, Quadril: ${estimatedMeasures.quadril}, Braços (Média): ${estimatedMeasures.bracos}, Pernas (Média): ${estimatedMeasures.pernas}.
-      
-      Compare as medidas extraídas da imagem com as antigas do formulário. Faça uma análise de desempenho apontando se as proporções atuais lidas pelas fotos estão alinhadas com os padrões para alcançar a minha meta de ${userProfile.goal}.
-      Destaque o que evoluiu ou o que precisa de mais atenção nos treinos de forma muito motivadora.
-      IMPORTANTE: Responda em Português de Portugal, em no máximo 3 parágrafos diretos.`;
-      
+      const prompt = `Especialista em Biometria. Objetivo: ${userProfile.goal}. Medidas antigas: Peito ${measurements.peito}, Cintura ${measurements.cintura}. Novas medidas fotográficas: Peito ${estimatedMeasures.peito}, Cintura ${estimatedMeasures.cintura}. Compare, aponte evolução ou atenção para a meta de forma motivadora (PT-PT, 3 parágrafos).`;
       const res = await callGemini(prompt);
       setScanAiReport(res);
-    } catch (error) {
-      setScanAiReport(`Erro na análise biométrica: ${error.message}`);
-    } finally {
-      setIsScanningAi(false);
-    }
+    } catch (error) { setScanAiReport(`Erro: ${error.message}`); } finally { setIsScanningAi(false); }
   };
 
   const handleUploadGif = async (e, originalId) => {
     const file = e.target.files[0];
     if (!file || !storage) return;
-    
     setIsUploadingGif(p => ({ ...p, [originalId]: true }));
     try {
       const storageRef = ref(storage, `gifs/${originalId}.gif`);
       await uploadBytesResumable(storageRef, file);
       const url = await getDownloadURL(storageRef);
       setGifUrls(p => ({ ...p, [originalId]: url }));
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao enviar GIF: " + error.message, "error");
-    } finally {
-      setIsUploadingGif(p => ({ ...p, [originalId]: false }));
-    }
+    } catch (error) { showToast("Erro upload GIF: " + error.message, "error"); } 
+    finally { setIsUploadingGif(p => ({ ...p, [originalId]: false })); }
   };
 
   const handleGetAnatomyTip = async (exId, exName, exOriginalId) => {
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
-    
-    // Carregar GIF do Firebase Storage se ainda não estiver em cache
     if (storage && gifUrls[exOriginalId] === undefined) {
       try {
         const url = await getDownloadURL(ref(storage, `gifs/${exOriginalId}.gif`));
         setGifUrls(p => ({ ...p, [exOriginalId]: url }));
-      } catch (err) {
-        setGifUrls(p => ({ ...p, [exOriginalId]: null })); // Null significa que não existe ainda
-      }
+      } catch (err) { setGifUrls(p => ({ ...p, [exOriginalId]: null })); }
     }
-
     if (anatomyTipState[exId] === 'done') return; 
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
     try {
-      const schema = { 
-        type: "OBJECT", 
-        properties: { 
-          intro: { type: "STRING" }, 
-          musclesTarget: { type: "STRING" }, 
-          musclesAux: { type: "STRING" }, 
-          musclesStability: { type: "STRING" }, 
-          executionSteps: { type: "ARRAY", items: { type: "STRING" } }, 
-          safetyTips: { type: "ARRAY", items: { type: "STRING" } }, 
-          mistakes: { type: "ARRAY", items: { type: "STRING" } }, 
-          geminiTip: { type: "STRING" } 
-        } 
-      };
-      const res = await callGemini(`Crie um "Guia Rápido" premium para o exercício "${exName}". O foco é o aluno ter resultados sem se lesionar. 
-      Retorne estritamente o JSON preenchido: 
-      - intro: 1 frase explicativa/motivacional. 
-      - executionSteps: 3 a 4 passos práticos formatados como 'Tópico: Explicação' (ex: "Base: Pés firmes..."). 
-      - safetyTips: 2 a 3 dicas de proteção articular ou respiração. 
-      - mistakes: 2 a 4 erros muito comuns e perigosos. 
-      - geminiTip: A dica final de ouro. Em português de Portugal.`, schema);
-      
-      setAnatomyTips(p => ({ ...p, [exId]: res })); 
-      setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
-    } catch (error) { 
-      console.error(error);
-      setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
-    }
+      const schema = { type: "OBJECT", properties: { intro: { type: "STRING" }, musclesTarget: { type: "STRING" }, musclesAux: { type: "STRING" }, musclesStability: { type: "STRING" }, executionSteps: { type: "ARRAY", items: { type: "STRING" } }, safetyTips: { type: "ARRAY", items: { type: "STRING" } }, mistakes: { type: "ARRAY", items: { type: "STRING" } }, geminiTip: { type: "STRING" } } };
+      const res = await callGemini(`Guia Rápido premium para "${exName}". JSON com intro, executionSteps, safetyTips, mistakes, geminiTip (PT-PT).`, schema);
+      setAnatomyTips(p => ({ ...p, [exId]: res })); setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+    } catch (error) { setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); }
   };
 
   const handleAnalyzeFood = async () => {
     if (!chatInput.trim()) return;
     const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
-    const userText = chatInput;
     setChatInput(''); setIsAnalyzing(true);
     try {
-      const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" }, name: { type: "STRING" } } });
-      
-      const newLog = {
-        id: Date.now(),
-        date: todayStr,
-        mealId: selectedMealId,
-        text: macros.name || userText,
-        calories: macros.calories,
-        protein: macros.protein,
-        carbs: macros.carbs,
-        fats: macros.fats
-      };
-      
+      const macros = await callGemini(`Estime macros exatos para: "${chatInput}". JSON: calories, protein, carbs, fats, name.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" }, name: { type: "STRING" } } });
+      const newLog = { id: Date.now(), date: todayStr, mealId: selectedMealId, text: macros.name || chatInput, calories: macros.calories, protein: macros.protein, carbs: macros.carbs, fats: macros.fats };
       const updatedLogs = [...nutritionLogs, newLog];
-      setNutritionLogs(updatedLogs); 
-      saveToCloud({ nutritionLogs: updatedLogs });
+      setNutritionLogs(updatedLogs); saveToCloud({ nutritionLogs: updatedLogs });
       showToast(`${mealName} adicionado! 🔥 ${macros.calories} kcal`, "success");
-    } catch (error) { 
-      showToast(`Erro ao analisar dieta: ${error.message}`, "error"); 
-    } finally { 
-      setIsAnalyzing(false); 
-    }
+    } catch (error) { showToast(`Erro: ${error.message}`, "error"); } finally { setIsAnalyzing(false); }
   };
 
   const handleGenerateAIWorkout = async () => {
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
-      const dbContext = EXERCISE_DB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco Muscular:'${e.target}'`).join('\n');
-
-      const prompt = `Atue como um personal trainer especialista em hipertrofia. O objetivo do usuário é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg).
-      O treino selecionado para hoje é: "${dayInfo.name}".
-      Aqui está a lista de TODOS os exercícios disponíveis no banco de dados:
-      ${dbContext}
-
-      REGRAS OBRIGATÓRIAS DE DIVISÃO (Cada treino DEVE ter EXATAMENTE 7 exercícios, agrupados pelo Grupo Muscular, variando os Alvos Musculares entre si):
-      - Dia "Pull" (ou Treino Pull): 3 do grupo Costas, 1 do grupo Ombros (Alvo: Deltoide Posterior), 2 do grupo Braços (Alvo: Bíceps ou Braquial), e 1 do grupo Braços (Alvo: Antebraço).
-      - Dia "Push" (ou Treino Push): 3 do grupo Peito, 2 do grupo Ombros (Alvo: Anterior ou Lateral), e 2 do grupo Braços (Alvo: Tríceps).
-      - Dias "Legs" ou "Lower" (Qualquer dia de Perna): 3 do grupo Pernas (Alvo: Quadríceps), 2 do grupo Pernas (Alvo: Posterior/Isquiotibiais), 2 do grupo Pernas (Alvo: Panturrilha/Gastrocnêmio).
-      - Dia "Upper": 2 do grupo Costas, 2 do grupo Peito, 1 do grupo Ombros, 1 do grupo Braços (Alvo: Bíceps) e 1 do grupo Braços (Alvo: Tríceps).
-      - Dia "Cardio" ou "Legs 2 ou Cardio": Foco no agrupamento correspondente.
-
-      Ordene a lista final para que exercícios do mesmo grupo muscular fiquem juntos em sequência.
-      IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo exatamente 7 IDs.`;
-
+      const dbContext = exerciseDB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}' | Foco:'${e.target}'`).join('\n');
+      const prompt = `Personal Trainer Hipertrofia. Treino de hoje: "${dayInfo.name}". Exercícios disponíveis: ${dbContext}. REGRAS: Exatamente 7 exercícios de acordo com a split PPL/Upper/Lower. Retorne JSON {"exercises": ["id1", ...]}.`;
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
       const resultData = await callGemini(prompt, schema);
-      const resultIds = resultData.exercises || [];
-
-      if (Array.isArray(resultIds) && resultIds.length > 0) {
-         const newExercises = resultIds.map(id => {
-           const ex = getEx(id);
-           return ex ? formatEx(ex, 3, 10) : null; 
-         }).filter(e => e !== null);
-
+      if (resultData.exercises && resultData.exercises.length > 0) {
+         const newExercises = resultData.exercises.map(id => { const ex = getEx(id); return ex ? formatEx(ex, 3, 10) : null; }).filter(e => e !== null);
          if (newExercises.length > 0) {
-           const upd = {...workouts};
-           upd[activeWorkoutDay] = {
-             ...upd[activeWorkoutDay],
-             exercises: newExercises
-           };
-           setWorkouts(upd);
-           saveToCloud({ workouts: upd });
-         } else {
-           showToast("A IA não retornou exercícios compatíveis. Tente novamente.", "error");
+           const upd = {...workouts}; upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises: newExercises };
+           setWorkouts(upd); saveToCloud({ workouts: upd });
          }
       }
-    } catch (error) {
-      console.error(error);
-      showToast(`Erro da IA: ${error.message}`, "error");
-    } finally {
-      setIsGeneratingWorkout(false);
-    }
+    } catch (error) { showToast(`Erro IA: ${error.message}`, "error"); } finally { setIsGeneratingWorkout(false); }
   };
 
   const getFatigueColor = (groupMapArray) => {
-    let lastWorkedDate = null;
-    const now = Date.now();
-    const dayToGroups = {
-      'Pull': ['Costas', 'Bíceps', 'Braços'],
-      'Push': ['Peito', 'Ombros', 'Tríceps', 'Braços'],
-      'Legs 1': ['Pernas', 'Glúteo', 'Quadríceps', 'GAP'],
-      'Legs 2 ou Cardio': ['Pernas', 'Glúteo', 'Posterior', 'Panturrilha', 'GAP', 'Cardio'],
-      'Upper': ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Braços'],
-      'Lower': ['Pernas', 'Glúteo', 'GAP'],
-      'Cardio': ['Cardio', 'GAP', 'Core']
-    };
-
+    let lastWorkedDate = null; const now = Date.now();
+    const dayToGroups = { 'Pull': ['Costas', 'Bíceps', 'Braços'], 'Push': ['Peito', 'Ombros', 'Tríceps', 'Braços'], 'Legs 1': ['Pernas', 'Glúteo', 'Quadríceps', 'GAP'], 'Legs 2 ou Cardio': ['Pernas', 'Glúteo', 'Posterior', 'Panturrilha', 'GAP', 'Cardio'], 'Upper': ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Braços'], 'Lower': ['Pernas', 'Glúteo', 'GAP'], 'Cardio': ['Cardio', 'GAP', 'Core'] };
     for (let i = workoutHistory.length - 1; i >= 0; i--) {
-       const hist = workoutHistory[i];
-       const wGroups = dayToGroups[hist.day] || [];
-       const isMatch = groupMapArray.some(g => wGroups.includes(g));
-       if (isMatch) {
-         lastWorkedDate = hist.timestamp || new Date(hist.date.split('/').reverse().join('-')).getTime();
-         break;
-       }
+       const hist = workoutHistory[i]; const wGroups = dayToGroups[hist.day] || [];
+       if (groupMapArray.some(g => wGroups.includes(g))) { lastWorkedDate = hist.timestamp || new Date(hist.date.split('/').reverse().join('-')).getTime(); break; }
     }
     if (!lastWorkedDate) return '#10b981'; 
     const diffHours = (now - lastWorkedDate) / (1000 * 60 * 60);
-    if (diffHours < 24) return '#ef4444'; 
-    if (diffHours < 72) return '#eab308'; 
-    return '#10b981'; 
+    if (diffHours < 24) return '#ef4444'; if (diffHours < 72) return '#eab308'; return '#10b981'; 
   };
 
   const getCalendarDays = () => {
-    const days = []; 
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    let signup = new Date(today);
-    signup.setDate(today.getDate() - 6);
-
-    if (userProfile.signupTimestamp) {
-      signup = new Date(userProfile.signupTimestamp);
-      signup.setHours(0,0,0,0);
-    } else if (weightHistory.length > 0) {
-      const parts = weightHistory[0].date.split('/');
-      if (parts.length === 3) {
-        signup = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
-        signup.setHours(0,0,0,0);
-      }
-    }
-
-    const diffTime = today.getTime() - signup.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    let startDate = new Date();
-    if (diffDays >= 0 && diffDays < 7) {
-       startDate = new Date(signup);
-    } else {
-       startDate = new Date(today);
-       startDate.setDate(today.getDate() - 6);
-    }
-
+    const days = []; const today = new Date(); today.setHours(0,0,0,0);
+    let signup = new Date(today); signup.setDate(today.getDate() - 6);
+    if (userProfile.signupTimestamp) { signup = new Date(userProfile.signupTimestamp); signup.setHours(0,0,0,0); } 
+    else if (weightHistory.length > 0) { const parts = weightHistory[0].date.split('/'); if (parts.length === 3) { signup = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`); signup.setHours(0,0,0,0); } }
+    const diffTime = today.getTime() - signup.getTime(); const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    let startDate = new Date(); if (diffDays >= 0 && diffDays < 7) startDate = new Date(signup); else { startDate = new Date(today); startDate.setDate(today.getDate() - 6); }
     for(let i=0; i<7; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      const dStr = d.toLocaleDateString('pt-BR');
-      const log = dailyLogs.find(l => l.date === dStr);
-      
-      const isFuture = d > today;
-      const isBeforeSignup = d < signup;
-
-      days.push({ 
-        dateNum: d.getDate(), 
-        dayStr: d.toLocaleDateString('pt-BR', {weekday:'short'}), 
-        hasWorkout: !!log?.workout,
-        isFuture,
-        isBeforeSignup
-      });
+      const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dStr = d.toLocaleDateString('pt-BR');
+      days.push({ dateNum: d.getDate(), dayStr: d.toLocaleDateString('pt-BR', {weekday:'short'}), hasWorkout: !!dailyLogs.find(l => l.date === dStr)?.workout, isFuture: d > today, isBeforeSignup: d < signup });
     }
     return days;
   };
 
   const handleExerciseChange = (id, field, value) => {
-    const upd = {...workouts};
-    upd[activeWorkoutDay] = {
-      ...upd[activeWorkoutDay],
-      exercises: upd[activeWorkoutDay].exercises.map(x =>
-        x.id === id ? { ...x, [field]: value } : x
-      )
-    };
+    const upd = {...workouts}; upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises: upd[activeWorkoutDay].exercises.map(x => x.id === id ? { ...x, [field]: value } : x) };
     setWorkouts(upd);
   };
-
   const handleRemoveExercise = (id) => {
-    const upd = {...workouts};
-    upd[activeWorkoutDay] = {
-      ...upd[activeWorkoutDay],
-      exercises: upd[activeWorkoutDay].exercises.filter(ex => ex.id !== id)
-    };
-    setWorkouts(upd);
-    saveToCloud({ workouts: upd });
+    const upd = {...workouts}; upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises: upd[activeWorkoutDay].exercises.filter(ex => ex.id !== id) };
+    setWorkouts(upd); saveToCloud({ workouts: upd });
+  };
+
+  // --- LÓGICA DO PAINEL ADMIN ---
+  const handleMigrateDB = async () => {
+     if(!db) return;
+     setIsDBMigrating(true);
+     try {
+        const exRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+        for (const ex of INITIAL_EXERCISE_DB) {
+           await addDoc(exRef, ex);
+        }
+        showToast("Base de Dados migrada para a Cloud com sucesso!", "success");
+     } catch (e) {
+        showToast("Erro ao migrar a DB: " + e.message, "error");
+     } finally {
+        setIsDBMigrating(false);
+     }
+  };
+
+  const handleSaveAdminEx = async (e) => {
+     e.preventDefault();
+     if (!db) return;
+     setIsAdminSaving(true);
+     try {
+         let exId = adminModal.data.id;
+         if (adminModal.mode === 'add') exId = `e_${Date.now()}`;
+
+         const exData = {
+             id: exId,
+             name: adminModal.data.name,
+             target: adminModal.data.target,
+             group: adminModal.data.group
+         };
+
+         const exRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
+         if (adminModal.mode === 'add') {
+             await addDoc(exRef, exData);
+             showToast("Novo Exercício criado na Cloud!", "success");
+         } else {
+             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'exercises', adminModal.data.firebaseId);
+             await updateDoc(docRef, exData);
+             showToast("Exercício atualizado!", "success");
+         }
+
+         if (adminGifFile && storage) {
+             showToast("A enviar GIF...", "info");
+             const storageRef = ref(storage, `gifs/${exId}.gif`);
+             await uploadBytesResumable(storageRef, adminGifFile);
+             showToast("GIF guardado com sucesso!", "success");
+         }
+
+         setAdminModal({ isOpen: false, mode: 'add', data: null });
+         setAdminGifFile(null);
+     } catch (err) {
+         showToast("Erro ao guardar no Admin: " + err.message, "error");
+     } finally {
+         setIsAdminSaving(false);
+     }
+  };
+
+  const handleDeleteAdminEx = async (firebaseId) => {
+     if(!db) return;
+     if(window.confirm("Deseja mesmo remover este exercício permanentemente de todos os utilizadores?")) {
+        try {
+           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'exercises', firebaseId);
+           await deleteDoc(docRef);
+           showToast("Exercício removido da base de dados.", "success");
+        } catch (err) {
+           showToast("Erro ao remover: " + err.message, "error");
+        }
+     }
   };
 
   const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
@@ -1445,7 +1113,7 @@ export default function App() {
           <SidebarBtn a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={20}/>} l="Treino" />
           <SidebarBtn a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={20}/>} l="Nutrição" />
           <SidebarBtn a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={20}/>} l="Check-up" />
-          <SidebarBtn a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
+          <SidebarBtn a={activeTab==='perfil' || activeTab === 'admin_db'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
         </nav>
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
       </aside>
@@ -1458,7 +1126,61 @@ export default function App() {
         </div>
         
         <div className="max-w-4xl mx-auto p-5 md:p-8 w-full mt-2">
-          
+
+          {/* PAINEL ADMIN DE EXERCÍCIOS */}
+          {activeTab === 'admin_db' && (
+             <div className="space-y-6 animate-fadeIn pb-12">
+                <header className="flex items-center justify-between mb-8">
+                  <div>
+                    <h1 className="text-3xl font-extrabold flex items-center gap-3"><Database className="text-emerald-500" /> Base de Dados Cloud</h1>
+                    <p className="text-zinc-400 font-medium">Faça a gestão global dos exercícios</p>
+                  </div>
+                  <button onClick={() => setActiveTab('perfil')} className="bg-zinc-900 border border-zinc-800 p-2 rounded-xl text-zinc-400 hover:text-white transition-colors"><X size={24}/></button>
+                </header>
+
+                {/* Migração Card (se parece que ainda usa a DB estática) */}
+                {exerciseDB.length > 0 && !exerciseDB[0].firebaseId && (
+                   <div className="bg-emerald-950/30 border border-emerald-900/50 p-6 rounded-3xl flex items-center justify-between gap-4 animate-fadeIn">
+                      <div>
+                        <h3 className="font-bold text-white text-lg">Migração Necessária</h3>
+                        <p className="text-zinc-400 text-sm">Os seus exercícios ainda estão guardados localmente. Sincronize para a Nuvem.</p>
+                      </div>
+                      <button onClick={handleMigrateDB} disabled={isDBMigrating} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg flex gap-2 items-center">
+                         {isDBMigrating ? <Loader2 className="animate-spin" size={18}/> : <Upload size={18} />} Sincronizar
+                      </button>
+                   </div>
+                )}
+
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
+                   <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
+                      <div className="relative flex-1 w-full">
+                         <Search className="absolute left-4 top-3.5 text-zinc-500" size={18} />
+                         <input type="text" value={adminSearch} onChange={e=>setAdminSearch(e.target.value)} placeholder="Procurar exercício..." className="w-full bg-zinc-950 py-3 pl-12 pr-4 rounded-xl border border-zinc-800 focus:border-emerald-500 outline-none text-white transition-colors" />
+                      </div>
+                      <button onClick={() => setAdminModal({isOpen: true, mode: 'add', data: {name:'', target:'', group:'Peito'}})} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+                        <Plus size={18}/> Adicionar Novo
+                      </button>
+                   </div>
+
+                   <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                      {exerciseDB.filter(ex => ex.name.toLowerCase().includes(adminSearch.toLowerCase()) || ex.group.toLowerCase().includes(adminSearch.toLowerCase())).map(ex => (
+                         <div key={ex.id} className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 flex items-center justify-between hover:border-zinc-700 transition-colors">
+                            <div>
+                               <p className="font-bold text-white">{ex.name}</p>
+                               <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{ex.target} • <span className="text-emerald-500">{ex.group}</span></p>
+                            </div>
+                            <div className="flex gap-2">
+                               <button onClick={() => setAdminModal({isOpen: true, mode: 'edit', data: ex})} className="text-zinc-400 bg-zinc-900 hover:bg-zinc-800 p-2 rounded-lg transition-colors"><Pencil size={18}/></button>
+                               <button onClick={() => handleDeleteAdminEx(ex.firebaseId)} className="text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 p-2 rounded-lg transition-colors"><Trash size={18}/></button>
+                            </div>
+                         </div>
+                      ))}
+                      {exerciseDB.length === 0 && <p className="text-center text-zinc-500 italic py-10">Nenhum exercício encontrado na base de dados.</p>}
+                   </div>
+                </div>
+             </div>
+          )}
+
           {/* TELA: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fadeIn">
@@ -1710,6 +1432,7 @@ export default function App() {
             </div>
           )}
 
+          {/* TELA: TREINO */}
           {activeTab === 'treino' && (
              <div className="space-y-6 animate-fadeIn">
                <header className="flex flex-col gap-4 mb-2">
@@ -1949,7 +1672,7 @@ export default function App() {
                                         if(isCaliMode) setCurrentCaliExercises(prev => prev.filter(x => x.id !== ex.id));
                                         else handleRemoveExercise(ex.id);
                                      }} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
-                                     <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
+                                     <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: exerciseDB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
                                      <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name, ex.originalId)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                    </div>
                                  </div>
@@ -2108,6 +1831,7 @@ export default function App() {
              </div>
           )}
 
+          {/* TELA: NUTRIÇÃO */}
           {activeTab === 'nutricao' && (
              <div className="space-y-6 animate-fadeIn pb-12">
                <h1 className="text-3xl font-extrabold">Nutrição</h1>
@@ -2228,6 +1952,7 @@ export default function App() {
              </div>
           )}
 
+          {/* TELA: BIOMETRIA */}
           {activeTab === 'biometria' && (
             <div className="space-y-6 animate-fadeIn pb-12">
               <header className="flex justify-between items-end mb-6">
@@ -2507,238 +2232,7 @@ export default function App() {
               )}
             </div>
           )}
-
-          {activeTab === 'perfil' && (
-             <div className="space-y-6 animate-fadeIn pb-10">
-                <h1 className="text-3xl font-extrabold text-white">Perfil do Atleta</h1>
-                
-                <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 p-8 rounded-3xl border border-zinc-800 flex flex-col md:flex-row items-center gap-8 shadow-xl">
-                  <div className="w-28 h-28 bg-emerald-500/10 rounded-full flex items-center justify-center border-4 border-emerald-500/20 shadow-inner">
-                    <UserCircle size={56} className="text-emerald-500" />
-                  </div>
-                  <div className="text-center md:text-left flex-1">
-                    <h2 className="text-3xl font-black text-white tracking-tight">{userProfile.name}</h2>
-                    <p className="text-zinc-400 font-medium mb-4">{user?.email || "Modo Local"}</p>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                       <span className="bg-zinc-800 px-3 py-1 rounded-lg text-xs font-bold text-zinc-300">{userProfile.age} Anos</span>
-                       <span className="bg-zinc-800 px-3 py-1 rounded-lg text-xs font-bold text-zinc-300">{userProfile.gender === 'M' ? 'Masculino' : 'Feminino'}</span>
-                       <span className="bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs font-bold text-emerald-400">Objetivo: {userProfile.goal}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 text-center">
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">Peso Atual / Desejado</p>
-                    <p className="text-3xl font-black text-white">{userProfile.weight} <span className="text-lg text-zinc-500">/ {userProfile.targetWeight || '--'} kg</span></p>
-                  </div>
-                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 text-center">
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">IMC IA</p>
-                    <p className={`text-3xl font-black ${bmi > 25 ? 'text-yellow-500' : 'text-emerald-500'}`}>{bmi}</p>
-                  </div>
-                </div>
-
-                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Ruler size={18}/> Medidas Corporais</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Object.keys(MEASUREMENTS_LABELS).map(key => (
-                      <div key={key} className="bg-zinc-950 p-3 rounded-2xl border border-zinc-800 text-center">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]}</span>
-                        <p className="font-bold text-lg text-zinc-200">{measurements[key] || '--'} cm</p>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
-                </div>
-
-                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
-                  
-                  {!isApiKeyUnlocked ? (
-                    <div className="space-y-4">
-                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Chave API Atual</label>
-                      <div className="w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-zinc-500 text-center tracking-widest">
-                        {userProfile.geminiApiKey ? '••••••••••••••••••••••••••••••••' : 'Nenhuma chave configurada'}
-                      </div>
-                      
-                      {!showUnlockPrompt ? (
-                        <button 
-                          onClick={() => setShowUnlockPrompt(true)}
-                          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors"
-                        >
-                          Desbloquear para Editar
-                        </button>
-                      ) : (
-                        <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 animate-fadeIn mt-4">
-                           <p className="text-xs text-zinc-400 mb-3 font-bold">Confirme a sua senha de login para desbloquear:</p>
-                           <div className="flex flex-col sm:flex-row gap-2">
-                             <input 
-                               type="password" 
-                               value={apiPasswordAttempt} 
-                               onChange={e => setApiPasswordAttempt(e.target.value)} 
-                               placeholder="Sua senha..." 
-                               className="bg-zinc-900 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-emerald-500"
-                             />
-                             <button 
-                               onClick={handleUnlockApiKey}
-                               disabled={isApiAuthPending || !apiPasswordAttempt}
-                               className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center"
-                             >
-                               {isApiAuthPending ? <Loader2 size={18} className="animate-spin" /> : "Validar"}
-                             </button>
-                           </div>
-                           <button onClick={() => {setShowUnlockPrompt(false); setApiPasswordAttempt('');}} className="w-full mt-3 text-xs text-zinc-500 hover:text-zinc-300">Cancelar</button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4 animate-fadeIn">
-                      <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider flex gap-2 items-center"><Key size={14}/> Configurar Chave</label>
-                      <div className="relative">
-                        <input 
-                          type={showApiKey ? "text" : "password"} 
-                          value={tempApiKey} 
-                          onChange={e => setTempApiKey(e.target.value)} 
-                          placeholder="Cole a sua chave aqui..." 
-                          className="w-full bg-zinc-950 p-4 pr-12 rounded-2xl outline-none font-medium text-emerald-400 border border-emerald-900/50 focus:border-emerald-500 transition-colors" 
-                        />
-                        <button 
-                          onClick={() => setShowApiKey(!showApiKey)} 
-                          className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                          {showApiKey ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-zinc-500 font-bold mb-4">Ao salvar, a chave será ocultada e bloqueada para edições acidentais.</p>
-
-                      <button 
-                        onClick={handleSaveApiKey}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Save size={18}/> Salvar e Bloquear
-                      </button>
-                      {userProfile.geminiApiKey && (
-                         <button onClick={() => {setIsApiKeyUnlocked(false); setTempApiKey(userProfile.geminiApiKey); setShowUnlockPrompt(false);}} className="w-full text-xs text-zinc-500 hover:text-zinc-300 mt-2">Cancelar Edição</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-red-950/20 p-6 rounded-3xl border border-red-900/30">
-                   <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2"><AlertCircle size={18}/> Zona de Perigo</h3>
-                   <p className="text-xs text-zinc-400 mb-4">Para apagar todos os dados locais, digite a sua senha de login e confirme.</p>
-                   <div className="flex gap-2">
-                     <input type="password" value={resetPassAttempt} onChange={e=>setResetPassAttempt(e.target.value)} placeholder="Senha..." className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-red-500"/>
-                     <button onClick={async () => {
-                       if (user?.email) {
-                         try {
-                           // Valida a senha tentando reautenticar no Firebase
-                           await signInWithEmailAndPassword(auth, user.email, resetPassAttempt);
-                           localStorage.clear(); 
-                           window.location.reload();
-                         } catch (error) {
-                           showToast("Senha incorreta!", "error");
-                         }
-                       } else {
-                         // Fallback para utilizadores anónimos/locais
-                         if (resetPassAttempt === 'admin123') {
-                           localStorage.clear(); 
-                           window.location.reload();
-                         } else {
-                           showToast("Senha incorreta! No modo local, digite 'admin123'.", "error");
-                         }
-                       }
-                     }} className="bg-red-600 text-white px-4 rounded-xl font-bold">Reset</button>
-                   </div>
-                </div>
-
-                <button onClick={handleLogout} className="w-full py-5 bg-zinc-900 text-zinc-400 hover:text-white rounded-3xl font-bold border border-zinc-800 flex items-center justify-center gap-2 transition-colors">
-                  <LogOut size={20} /> Terminar Sessão
-                </button>
-             </div>
-          )}
-
-          {/* MODAL EXERCÍCIO (SWAP / ADD) */}
-          {exerciseModal.active && (
-            <div className="fixed inset-0 bg-black/90 z-60 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
-              <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-md p-6 shadow-2xl h-[85vh] md:max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6 shrink-0">
-                  <h3 className="font-extrabold text-xl text-white">{exerciseModal.mode === 'swap' ? 'Substituir Exercício' : 'Adicionar Exercício'}</h3>
-                  <button onClick={()=>setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null})} className="bg-zinc-800 p-2 rounded-full text-zinc-400 hover:text-white transition-colors"><X size={20}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-                  {(() => {
-                    const swapList = exerciseModal.mode === 'swap' ? EXERCISE_DB.filter(e => e.group === exerciseModal.filterGroup) : EXERCISE_DB;
-                    const finalSwapList = swapList.length > 0 ? swapList : EXERCISE_DB;
-                    
-                    return finalSwapList.map(ex => (
-                      <button key={ex.id} onClick={() => {
-                        const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
-                        
-                        if (isCaliMode) {
-                           setCurrentCaliExercises(prev => {
-                              const exercises = [...prev];
-                              if (exerciseModal.mode === 'swap') {
-                                const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
-                                if (i > -1) exercises[i] = newEx;
-                              } else {
-                                exercises.push(newEx);
-                              }
-                              return exercises;
-                           });
-                        } else {
-                           const upd = {...workouts};
-                           const exercises = [...(upd[activeWorkoutDay].exercises || [])];
-
-                           if (exerciseModal.mode === 'swap') {
-                             const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
-                             if (i > -1) exercises[i] = newEx;
-                           } else {
-                             exercises.push(newEx);
-                           }
-                           
-                           upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
-                           setWorkouts(upd); 
-                           saveToCloud({ workouts: upd }); 
-                        }
-                        setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
-                      }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
-                        <div>
-                          <p className="font-extrabold text-white group-hover:text-emerald-400 transition-colors text-lg">{ex.name}</p>
-                          <p className="text-xs text-zinc-500 font-medium mt-1">{ex.target} • {ex.group}</p>
-                        </div>
-                        {exerciseModal.mode === 'swap' ? <RefreshCw size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/> : <Plus size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/>}
-                      </button>
-                    ));
-                  })()}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MODAL TREINO CONCLUÍDO */}
-          {showWorkoutSuccess && (
-            <div className="fixed inset-0 bg-black/90 z-70 flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
-                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Flame size={40} className="text-emerald-500" />
-                </div>
-                <h2 className="text-3xl font-black text-white mb-2">Parabéns! 🎉</h2>
-                <p className="text-zinc-400 mb-8 text-sm">Treino registado com sucesso. Excelente trabalho em manter a consistência!</p>
-                <button 
-                  onClick={() => {
-                    setShowWorkoutSuccess(false);
-                    setActiveTab('dashboard');
-                    setDashTab('weekly');
-                  }} 
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold text-lg transition-transform active:scale-95"
-                >
-                  Ver Minhas Conquistas
-                </button>
-              </div>
-            </div>
-          )}
-
+          
         </div>
       </main>
       
@@ -2748,7 +2242,7 @@ export default function App() {
         <MobileNavButton a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={24}/>} l="Treino" />
         <MobileNavButton a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={24}/>} l="Nutrição" />
         <MobileNavButton a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={24}/>} l="Check-up" />
-        <MobileNavButton a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={24}/>} l="Perfil" />
+        <MobileNavButton a={activeTab==='perfil' || activeTab === 'admin_db'} o={()=>setActiveTab('perfil')} i={<UserCircle size={24}/>} l="Perfil" />
       </nav>
     </div>
   );
