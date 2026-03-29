@@ -11,7 +11,8 @@ import {
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, 
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+  EmailAuthProvider, linkWithCredential
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -38,203 +39,9 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- DB EXERCÍCIOS ESTÁTICOS (USADOS PARA MIGRAÇÃO/FALLBACK) ---
-const EXERCISE_DB = [
-  // --- PEITO ---
-  { id: 'e1', name: 'Supino Reto (Barra)', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e2', name: 'Supino Reto (Halteres)', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e3', name: 'Supino Inclinado (Barra)', target: 'Peitoral Superior', group: 'Peito' },
-  { id: 'e4', name: 'Supino Inclinado (Halteres)', target: 'Peitoral Superior', group: 'Peito' },
-  { id: 'e5', name: 'Supino Declinado (Barra)', target: 'Peitoral Inferior', group: 'Peito' },
-  { id: 'e6', name: 'Crucifixo Reto (Halteres)', target: 'Peitoral (Isolado)', group: 'Peito' },
-  { id: 'e7', name: 'Crucifixo Inclinado (Halteres)', target: 'Peitoral Superior (Isolado)', group: 'Peito' },
-  { id: 'e8', name: 'Crossover (Polia Alta)', target: 'Peitoral Inferior/Médio', group: 'Peito' },
-  { id: 'e9', name: 'Crossover (Polia Média)', target: 'Peitoral Maior/Miolo', group: 'Peito' },
-  { id: 'e10', name: 'Crossover (Polia Baixa)', target: 'Peitoral Superior', group: 'Peito' },
-  { id: 'e11', name: 'Voador (Peck Deck)', target: 'Peitoral (Isolado)', group: 'Peito' },
-  { id: 'e12', name: 'Flexão de Braços (Padrão)', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e13', name: 'Flexão Declinada (Pés Elevados)', target: 'Peitoral Superior', group: 'Peito' },
-  { id: 'e14', name: 'Mergulho nas Paralelas', target: 'Peitoral Inferior/Tríceps', group: 'Peito' },
-  { id: 'e15', name: 'Supino Articulado (Máquina)', target: 'Peitoral Maior', group: 'Peito' },
-  { id: 'e16', name: 'Pullover (Halter)', target: 'Peitoral/Dorsal', group: 'Peito' },
-
-  // --- COSTAS ---
-  { id: 'e17', name: 'Barra Fixa (Pronada)', target: 'Grande Dorsal', group: 'Costas' },
-  { id: 'e18', name: 'Barra Fixa (Supinada)', target: 'Dorsal/Bíceps', group: 'Costas' },
-  { id: 'e19', name: 'Puxada Anterior (Pronada)', target: 'Dorsal (Largura)', group: 'Costas' },
-  { id: 'e20', name: 'Puxada Anterior (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
-  { id: 'e21', name: 'Puxada com Triângulo', target: 'Dorsal (Miolo)', group: 'Costas' },
-  { id: 'e22', name: 'Remada Curvada (Barra)', target: 'Dorsal e Romboides', group: 'Costas' },
-  { id: 'e23', name: 'Remada Curvada (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
-  { id: 'e24', name: 'Remada Unilateral (Serrote)', target: 'Dorsal Unilateral', group: 'Costas' },
-  { id: 'e25', name: 'Remada Cavalinho (Barra T)', target: 'Espessura das Costas', group: 'Costas' },
-  { id: 'e26', name: 'Remada Sentada (Triângulo)', target: 'Costas (Média/Miolo)', group: 'Costas' },
-  { id: 'e27', name: 'Remada Sentada (Barra Aberta)', target: 'Dorsal Posterior', group: 'Costas' },
-  { id: 'e28', name: 'Pulldown (Polia Alta/Corda)', target: 'Grande Dorsal (Isolado)', group: 'Costas' },
-  { id: 'e29', name: 'Levantamento Terra', target: 'Costas Completas/Lombar', group: 'Costas' },
-  { id: 'e30', name: 'Extensão Lombar (Banco)', target: 'Lombar', group: 'Costas' },
-  { id: 'e31', name: 'Remada Articulada (Máquina)', target: 'Dorsal Maior', group: 'Costas' },
-
-  // --- OMBROS ---
-  { id: 'e32', name: 'Desenvolvimento (Barra)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
-  { id: 'e33', name: 'Desenvolvimento (Halteres)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
-  { id: 'e34', name: 'Desenvolvimento Arnold', target: 'Deltoide Completo', group: 'Ombros' },
-  { id: 'e35', name: 'Desenvolvimento (Máquina)', target: 'Deltoide Anterior', group: 'Ombros' },
-  { id: 'e36', name: 'Elevação Lateral (Halteres)', target: 'Deltoide Lateral', group: 'Ombros' },
-  { id: 'e37', name: 'Elevação Lateral (Polia)', target: 'Deltoide Lateral (Tensão Contínua)', group: 'Ombros' },
-  { id: 'e38', name: 'Elevação Frontal (Halteres)', target: 'Deltoide Anterior', group: 'Ombros' },
-  { id: 'e39', name: 'Elevação Frontal (Barra/Polia)', target: 'Deltoide Anterior', group: 'Ombros' },
-  { id: 'e40', name: 'Crucifixo Invertido (Halteres)', target: 'Deltoide Posterior', group: 'Ombros' },
-  { id: 'e41', name: 'Crucifixo Invertido (Polia)', target: 'Deltoide Posterior', group: 'Ombros' },
-  { id: 'e42', name: 'Crucifixo Invertido (Máquina)', target: 'Deltoide Posterior', group: 'Ombros' },
-  { id: 'e43', name: 'Remada Alta (Barra)', target: 'Deltoide Lateral/Trapézio', group: 'Ombros' },
-  { id: 'e44', name: 'Remada Alta (Polia)', target: 'Deltoide Lateral', group: 'Ombros' },
-  { id: 'e45', name: 'Encolhimento (Barra)', target: 'Trapézio', group: 'Ombros' },
-  { id: 'e46', name: 'Encolhimento (Halteres)', target: 'Trapézio', group: 'Ombros' },
-
-  // --- BRAÇOS (BÍCEPS, TRÍCEPS E ANTEBRAÇO) ---
-  { id: 'e47', name: 'Rosca Direta (Barra Reta)', target: 'Bíceps Braquial', group: 'Braços' },
-  { id: 'e48', name: 'Rosca Direta (Barra W)', target: 'Bíceps (Cabeça Longa)', group: 'Braços' },
-  { id: 'e49', name: 'Rosca Alternada (Halteres)', target: 'Bíceps Braquial', group: 'Braços' },
-  { id: 'e50', name: 'Rosca Martelo (Halteres)', target: 'Braquial/Antebraço', group: 'Braços' },
-  { id: 'e51', name: 'Rosca Martelo (Corda/Polia)', target: 'Braquial', group: 'Braços' },
-  { id: 'e52', name: 'Rosca Scott (Máquina/Barra)', target: 'Bíceps Braquial (Isolado)', group: 'Braços' },
-  { id: 'e53', name: 'Rosca Concentrada (Halter)', target: 'Pico do Bíceps', group: 'Braços' },
-  { id: 'e54', name: 'Rosca na Polia Baixa', target: 'Bíceps Braquial', group: 'Braços' },
-  { id: 'e55', name: 'Rosca Inversa (Barra/Polia)', target: 'Antebraço/Braquiorradial', group: 'Braços' },
-  { id: 'e56', name: 'Flexão de Punho (Barra/Halter)', target: 'Antebraço', group: 'Braços' },
-  { id: 'e57', name: 'Tríceps Pulley (Barra Reta)', target: 'Tríceps (Cabeça Lateral)', group: 'Braços' },
-  { id: 'e58', name: 'Tríceps Pulley (Corda)', target: 'Tríceps (Cabeça Longa)', group: 'Braços' },
-  { id: 'e59', name: 'Tríceps Testa (Barra W)', target: 'Tríceps Completo', group: 'Braços' },
-  { id: 'e60', name: 'Tríceps Testa (Halteres)', target: 'Tríceps Completo', group: 'Braços' },
-  { id: 'e61', name: 'Tríceps Francês (Halter Unilateral)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
-  { id: 'e62', name: 'Tríceps Francês (Corda/Polia)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
-  { id: 'e63', name: 'Tríceps Coice (Halter/Polia)', target: 'Tríceps (Isolado)', group: 'Braços' },
-  { id: 'e64', name: 'Mergulho em Máquina', target: 'Tríceps/Peito', group: 'Braços' },
-  { id: 'e65', name: 'Repulsão entre Bancos', target: 'Tríceps', group: 'Braços' },
-  { id: 'e66', name: 'Supino Fechado', target: 'Tríceps/Peitoral Miolo', group: 'Braços' },
-
-  // --- PERNAS (QUADRÍCEPS, POSTERIOR E PANTURRILHA) ---
-  { id: 'e67', name: 'Agachamento Livre (Barra)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
-  { id: 'e68', name: 'Agachamento Frontal', target: 'Quadríceps (Foco Alto)', group: 'Pernas' },
-  { id: 'e69', name: 'Agachamento Hack', target: 'Quadríceps', group: 'Pernas' },
-  { id: 'e70', name: 'Agachamento Búlgaro', target: 'Quadríceps/Glúteos Unilateral', group: 'Pernas' },
-  { id: 'e71', name: 'Leg Press 45°', target: 'Quadríceps/Posterior', group: 'Pernas' },
-  { id: 'e72', name: 'Leg Press Horizontal', target: 'Quadríceps', group: 'Pernas' },
-  { id: 'e73', name: 'Cadeira Extensora', target: 'Quadríceps (Isolado)', group: 'Pernas' },
-  { id: 'e74', name: 'Sissy Squat (Máquina)', target: 'Quadríceps', group: 'Pernas' },
-  { id: 'e75', name: 'Passada/Avanço (Halteres)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
-  { id: 'e76', name: 'Afundo (No Lugar)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
-  { id: 'e77', name: 'Mesa Flexora', target: 'Isquiotibiais (Posterior)', group: 'Pernas' },
-  { id: 'e78', name: 'Cadeira Flexora', target: 'Isquiotibiais', group: 'Pernas' },
-  { id: 'e79', name: 'Flexora em Pé (Unilateral)', target: 'Isquiotibiais Unilateral', group: 'Pernas' },
-  { id: 'e80', name: 'Stiff (Barra/Halteres)', target: 'Posterior/Glúteos', group: 'Pernas' },
-  { id: 'e81', name: 'Levantamento Terra Romeno', target: 'Posterior da Coxa', group: 'Pernas' },
-  { id: 'e82', name: 'Bom Dia (Good Morning)', target: 'Posterior/Lombar', group: 'Pernas' },
-  { id: 'e83', name: 'Panturrilha em Pé (Máquina)', target: 'Gastrocnêmio', group: 'Pernas' },
-  { id: 'e84', name: 'Panturrilha Sentado (Máquina)', target: 'Sóleo', group: 'Pernas' },
-  { id: 'e85', name: 'Panturrilha no Leg Press', target: 'Gastrocnêmio', group: 'Pernas' },
-  { id: 'e86', name: 'Panturrilha Livre (Degrau/Unilateral)', target: 'Gastrocnêmio', group: 'Pernas' },
-
-  // --- GAP (GLÚTEOS E ABDÔMEN/CORE) ---
-  { id: 'e87', name: 'Elevação Pélvica (Barra)', target: 'Glúteo Máximo', group: 'GAP' },
-  { id: 'e88', name: 'Elevação Pélvica (Máquina)', target: 'Glúteo Máximo', group: 'GAP' },
-  { id: 'e89', name: 'Cadeira Abdutora', target: 'Glúteo Médio', group: 'GAP' },
-  { id: 'e90', name: 'Cadeira Adutora', target: 'Adutores da Coxa', group: 'GAP' },
-  { id: 'e91', name: 'Glúteo na Polia (Cabo)', target: 'Glúteo Máximo', group: 'GAP' },
-  { id: 'e92', name: 'Glúteo 4 Apoios (Caneleira)', target: 'Glúteo Máximo', group: 'GAP' },
-  { id: 'e93', name: 'Agachamento Sumô (Halter)', target: 'Glúteo/Adutores', group: 'GAP' },
-  { id: 'e94', name: 'Abdominal Supra (Solo)', target: 'Reto Abdominal', group: 'GAP' },
-  { id: 'e95', name: 'Abdominal Infra (Elevação Pernas)', target: 'Abdômen Inferior', group: 'GAP' },
-  { id: 'e96', name: 'Abdominal Supra (Polia)', target: 'Reto Abdominal (Com Carga)', group: 'GAP' },
-  { id: 'e97', name: 'Abdominal Oblíquo (Polia/Halter)', target: 'Oblíquos', group: 'GAP' },
-  { id: 'e98', name: 'Prancha Isométrica', target: 'Core/Estabilização', group: 'GAP' },
-  { id: 'e99', name: 'Roda Abdominal (Rolinho)', target: 'Core Completo', group: 'GAP' },
-  { id: 'e100', name: 'Elevação de Pernas em Suspensão', target: 'Abdômen Infra/Core', group: 'GAP' },
-
-  // --- CALISTENIA (MÓDULO 1) ---
-  { id: 'c_polichinelo', name: 'Polichinelo', target: 'Cardio/Full Body', group: 'Cardio' },
-  { id: 'c_barra', name: 'Barra Fixa', target: 'Dorsal', group: 'Costas' },
-  { id: 'c_prancha', name: 'Prancha', target: 'Core', group: 'GAP' },
-  { id: 'c_flexao_joelhos', name: 'Flexão de Joelhos', target: 'Peitoral', group: 'Peito' },
-  { id: 'c_agachamento_salto', name: 'Agachamento c/ Salto', target: 'Quadríceps/Potência', group: 'Pernas' },
-  { id: 'c_pe_bunda', name: 'Pé na Bunda', target: 'Cardio', group: 'Cardio' },
-  { id: 'c_barra_australiana', name: 'Barra Australiana', target: 'Dorsal', group: 'Costas' },
-  { id: 'c_flexao_inclinada', name: 'Flexão Inclinada', target: 'Peitoral Inferior', group: 'Peito' },
-  { id: 'c_step_up', name: 'Step-up', target: 'Pernas', group: 'Pernas' },
-  { id: 'c_agachamento', name: 'Agachamento (Livres)', target: 'Pernas', group: 'Pernas' },
-  { id: 'c_afundo', name: 'Afundo', target: 'Pernas/Glúteos', group: 'Pernas' },
-  { id: 'c_afundo_elevacao', name: 'Afundo c/ Elevação', target: 'Pernas/Equilíbrio', group: 'Pernas' },
-  { id: 'c_sumo', name: 'Agachamento Sumô', target: 'Adutores/Glúteos', group: 'Pernas' },
-  { id: 'c_isometria_agachamento', name: 'Isometria no Agachamento', target: 'Pernas', group: 'Pernas' },
-  { id: 'c_pantu_unilateral', name: 'Panturrilha Unilateral', target: 'Panturrilha', group: 'Pernas' },
-  { id: 'c_skipping', name: 'Skipping', target: 'Cardio', group: 'Cardio' },
-  { id: 'c_dips', name: 'Dips (Paralelas Livres)', target: 'Tríceps/Peito', group: 'Braços' },
-  { id: 'c_prancha_lateral', name: 'Prancha Lateral', target: 'Oblíquos', group: 'GAP' },
-  { id: 'c_triceps_trave', name: 'Tríceps na Trave', target: 'Tríceps', group: 'Braços' },
-  { id: 'c_alternado', name: 'Abdominal Alternado', target: 'Core', group: 'GAP' },
-  { id: 'c_flexao_padrao', name: 'Flexão Padrão', target: 'Peitoral', group: 'Peito' },
-  { id: 'c_crunches', name: 'Crunches (Abdominal Curto)', target: 'Abdômen', group: 'GAP' },
-  { id: 'c_false_rope', name: 'False Rope (Corda Falsa)', target: 'Cardio', group: 'Cardio' },
-  { id: 'c_barra_amf', name: 'Barra (A,M,F)', target: 'Dorsal Completa', group: 'Costas' },
-  { id: 'c_toe_touches', name: 'Toe Touches', target: 'Core', group: 'GAP' },
-  { id: 'c_barra_supinada', name: 'Barra Supinada', target: 'Costas/Bíceps', group: 'Costas' },
-  { id: 'c_barra_aust_amf', name: 'Barra Aust. (A,M,F)', target: 'Dorsal', group: 'Costas' },
-  { id: 'c_leg_flutters', name: 'Leg Flutters', target: 'Abdômen Inferior', group: 'GAP' },
-  { id: 'c_biceps_barra', name: 'Bíceps na Barra', target: 'Bíceps', group: 'Braços' },
-  { id: 'c_half_burpee', name: 'Half Burpee', target: 'Cardio/Core', group: 'Cardio' },
-  { id: 'c_flexao_pike', name: 'Flexão Pike', target: 'Ombros', group: 'Ombros' },
-  { id: 'c_bike', name: 'Abdominal Bike', target: 'Oblíquos/Core', group: 'GAP' },
-  { id: 'c_flexao_militar', name: 'Flexão Militar', target: 'Peito/Ombros', group: 'Peito' },
-  { id: 'c_side_crunches', name: 'Side Crunches', target: 'Oblíquos', group: 'GAP' },
-  { id: 'c_pike_caminhada', name: 'Pike Caminhada', target: 'Ombros/Core', group: 'Ombros' },
-  { id: 'c_prancha_alta_trave', name: 'Prancha Alta p/ Trave', target: 'Core', group: 'GAP' },
-  { id: 'c_caminhada_chao', name: 'Caminhada no Chão', target: 'Core/Ombros', group: 'GAP' },
-  { id: 'c_afundo_saltando', name: 'Afundo Saltando', target: 'Pernas/Potência', group: 'Pernas' },
-  { id: 'c_afundo_explosivo', name: 'Afundo Explosivo', target: 'Pernas/Potência', group: 'Pernas' },
-  { id: 'c_passada_lateral', name: 'Passada Lateral', target: 'Pernas/Glúteos', group: 'Pernas' },
-  { id: 'c_iso_afundo', name: 'Isometria no Afundo', target: 'Pernas', group: 'Pernas' },
-  { id: 'c_heel_taps', name: 'Heel Taps', target: 'Oblíquos', group: 'GAP' },
-  { id: 'c_extensao_triceps', name: 'Extensão de Tríceps', target: 'Tríceps', group: 'Braços' },
-  { id: 'c_knee_raises', name: 'Knee Raises', target: 'Abdômen Inferior', group: 'GAP' },
-  { id: 'c_flexao_explosiva', name: 'Flexão Explosiva', target: 'Peitoral/Potência', group: 'Peito' },
-  { id: 'c_in_outs', name: 'In & Outs A/F', target: 'Core', group: 'GAP' },
-  { id: 'c_prancha_alcance', name: 'Prancha com Alcance', target: 'Core', group: 'GAP' },
-  { id: 'c_mountain_climbers', name: 'Mountain Climbers', target: 'Cardio/Core', group: 'Cardio' },
-  { id: 'c_barra_aust_supinada', name: 'Barra Aust. Supinada', target: 'Costas/Bíceps', group: 'Costas' },
-  { id: 'c_prancha_af', name: 'Prancha A/F', target: 'Core', group: 'GAP' },
-  { id: 'c_leg_raises', name: 'Leg Raises', target: 'Abdômen Inferior', group: 'GAP' },
-  { id: 'c_pike_shoulder_tap', name: 'Pike Shoulder Tap', target: 'Ombros/Core', group: 'Ombros' },
-  { id: 'c_flexao_pike_elevacao', name: 'Flexão Pike c/ Elevação', target: 'Ombros/Peitoral Sup.', group: 'Ombros' },
-  { id: 'c_flexao_declinada', name: 'Flexão Declinada', target: 'Peitoral Superior', group: 'Peito' },
-  { id: 'c_prancha_parede', name: 'Prancha na Parede', target: 'Ombros/Core', group: 'Ombros' },
-  { id: 'c_prancha_alternate', name: 'Prancha Alternate', target: 'Core', group: 'GAP' },
-  { id: 'c_flexao_diamante', name: 'Flexão Diamante', target: 'Tríceps/Peitoral Interno', group: 'Braços' },
-  { id: 'c_canivete', name: 'Abdominal Canivete', target: 'Core Completo', group: 'GAP' },
-  { id: 'c_barra_aust_arqueiro', name: 'Barra Aust. Arqueiro', target: 'Costas', group: 'Costas' },
-  { id: 'c_pistol_suport', name: 'Pistol c/ Suporte', target: 'Pernas Unilateral', group: 'Pernas' },
-  { id: 'c_salto_frontal', name: 'Salto Frontal', target: 'Pernas/Potência', group: 'Pernas' },
-  { id: 'c_agacha_afundo', name: 'Agacha + Afundo', target: 'Pernas', group: 'Pernas' },
-  { id: 'c_ponte', name: 'Ponte de Glúteos', target: 'Glúteos/Lombar', group: 'GAP' },
-  { id: 'c_iso_ponta_pe', name: 'Isometria Ponta do Pé', target: 'Panturrilha', group: 'Pernas' },
-  { id: 'c_burpee', name: 'Burpee Completo', target: 'Cardio/Full Body', group: 'Cardio' },
-  { id: 'c_prancha_jc', name: 'Prancha J/C', target: 'Core', group: 'GAP' },
-  { id: 'c_pa_b_fm', name: 'P.A p/ Baixa + Flexão', target: 'Peito/Core', group: 'Peito' },
-  { id: 'c_tuck_lsit', name: 'Tuck L-sit', target: 'Core', group: 'GAP' },
-  { id: 'c_diamante_regular', name: 'Diamante p/ Regular', target: 'Tríceps/Peito', group: 'Braços' },
-  { id: 'c_flexao_inclinada_exp', name: 'Flexão Inclinada Exp.', target: 'Peitoral Inferior/Potência', group: 'Peito' },
-  { id: 'c_flexao_hold', name: 'Flexão Hold', target: 'Peitoral/Core', group: 'Peito' },
-  { id: 'c_escapula', name: 'Tração Escapular', target: 'Dorsal/Escápulas', group: 'Costas' },
-  { id: 'c_corner_raises', name: 'Corner Raises', target: 'Ombros', group: 'Ombros' },
-  { id: 'c_barra_trad', name: 'Barra Tradicional', target: 'Dorsal', group: 'Costas' },
-  { id: 'c_barra_aust_sup_arq', name: 'Barra Aust. Sup. Arqueiro', target: 'Costas/Bíceps', group: 'Costas' },
-  { id: 'c_leg_x', name: 'Leg X', target: 'Core', group: 'GAP' },
-  { id: 'c_ombro_ombro', name: 'Ombro p/ Ombro', target: 'Ombros', group: 'Ombros' },
-  { id: 'c_sit_ups', name: 'Sit-ups', target: 'Core', group: 'GAP' },
-  { id: 'c_pike_hold', name: 'Pike Hold', target: 'Ombros', group: 'Ombros' },
-  { id: 'c_remador', name: 'Abdominal Remador', target: 'Core', group: 'GAP' },
-  { id: 'c_hs_hold', name: 'Handstand Hold', target: 'Ombros/Equilíbrio', group: 'Ombros' }
-];
+// --- DB EXERCÍCIOS ESTÁTICOS (LIMPO PARA DEIXAR O CÓDIGO ENXUTO) ---
+// Todos os exercícios vêm agora 100% do Firebase Firestore.
+const EXERCISE_DB = [];
 
 const INITIAL_MEALS = [
   { id: 'm1', name: 'Café da Manhã' },
@@ -276,7 +83,7 @@ const getStartOfCurrentWeek = () => {
   return monday.getTime();
 };
 
-const formatEx = (ex, sets, reps) => ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false });
+const formatEx = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
 
 const MEASUREMENTS_LABELS = {
   peito: 'Peito', 
@@ -300,15 +107,21 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [appScreen, setAppScreen] = useState('loading'); 
 
-  // --- NOVA ESTRUTURA: DATABASE NA NUVEM ---
+  // --- ESTRUTURA DATABASE NA NUVEM ---
   const [cloudExercises, setCloudExercises] = useState([]);
+  const [isCloudDBLoaded, setIsCloudDBLoaded] = useState(false);
+  const [needsToGeneratePlan, setNeedsToGeneratePlan] = useState(false);
+
   const [isMigrating, setIsMigrating] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
 
   // Derivação Dinâmica da BD Activa
-  const activeDB = cloudExercises.length > 0 ? cloudExercises : EXERCISE_DB;
-  const getEx = (id) => activeDB.find(e => e.id === id) || EXERCISE_DB.find(e => e.id === id);
+  const activeDB = cloudExercises; // 100% dependente da Nuvem
+  const getEx = (id) => activeDB.find(e => e.id === id);
+
+  // ADMIN LOGIN CHECK
+  const isAdmin = user?.email?.toLowerCase() === 'admin@anatomiafit.com';
 
   // Sistema de Toasts (Notificações)
   const [toasts, setToasts] = useState([]);
@@ -354,6 +167,11 @@ export default function App() {
   const [isApiAuthPending, setIsApiAuthPending] = useState(false);
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
+
+  // Upgrade Account State
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkPassword, setLinkPassword] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
 
   // IA Geral
   const [chatInput, setChatInput] = useState('');
@@ -485,6 +303,12 @@ export default function App() {
   }, [userProfile.weight, userProfile.height]);
 
   const generateAIPlan = () => {
+    // A base agora é dinâmica da Nuvem. Se não houver exercícios, avisa.
+    if (cloudExercises.length === 0) {
+      showToast("A base de dados na Nuvem está vazia. O Admin precisa adicionar os exercícios.", "error");
+      return;
+    }
+
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
           formatEx(getEx('e19'), 4, 10), formatEx(getEx('e22'), 3, 10), formatEx(getEx('e26'), 3, 12),
@@ -562,7 +386,11 @@ export default function App() {
     const unsubEx = onSnapshot(exRef, (snap) => {
       const data = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
       setCloudExercises(data);
-    }, (err) => console.error("Erro ao escutar exercícios:", err));
+      setIsCloudDBLoaded(true);
+    }, (err) => {
+      console.error("Erro ao escutar exercícios:", err);
+      setIsCloudDBLoaded(true); // Prevenir bloqueio
+    });
     return () => unsubEx();
   }, [user]);
 
@@ -638,12 +466,21 @@ export default function App() {
           }
         }
       } else {
-        generateAIPlan();
-        setAppScreen('onboarding');
+        // Marca que precisa de gerar plano (espera pela DB da Nuvem)
+        setNeedsToGeneratePlan(true);
       }
     }, (err) => setFirebaseError(err.message));
     return () => unsub();
   }, [user, firebaseError, todayStr]);
+
+  // GERAÇÃO DE PLANO SEGURA (Aguarda Nuvem)
+  useEffect(() => {
+    if (needsToGeneratePlan && isCloudDBLoaded) {
+       generateAIPlan();
+       setAppScreen('onboarding');
+       setNeedsToGeneratePlan(false);
+    }
+  }, [needsToGeneratePlan, isCloudDBLoaded, cloudExercises]);
 
   useEffect(() => {
     let int = null;
@@ -675,6 +512,12 @@ export default function App() {
   // --- ADMIN & CLOUD DB LOGIC ---
   const handleMigrateDB = async () => {
     if(!user || !db) return;
+    
+    if (EXERCISE_DB.length === 0) {
+      showToast("O banco local já foi removido para deixar o código enxuto. Adicione manualmente pelo painel.", "error");
+      return;
+    }
+
     setIsMigrating(true);
     try {
       const batch = writeBatch(db);
@@ -790,6 +633,25 @@ export default function App() {
       setAppScreen('login');
     } catch (error) {
       console.error("Logout failed:", error);
+    }
+  };
+
+  const handleLinkAccount = async () => {
+    if (!linkEmail || !linkPassword) {
+      showToast("Preencha email e senha", "error");
+      return;
+    }
+    setIsLinking(true);
+    try {
+      const credential = EmailAuthProvider.credential(linkEmail, linkPassword);
+      await linkWithCredential(auth.currentUser, credential);
+      showToast("Conta promovida com sucesso! Agora é permanente.", "success");
+      setLinkEmail('');
+      setLinkPassword('');
+    } catch (error) {
+      showToast("Erro ao vincular: " + error.message, "error");
+    } finally {
+      setIsLinking(false);
     }
   };
 
@@ -1403,7 +1265,7 @@ export default function App() {
   const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
 
   // --- SCREENS ---
-  if (isAuthLoading || appScreen === 'loading') return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
+  if (isAuthLoading || appScreen === 'loading' || !isCloudDBLoaded) return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
   if (firebaseError) return <div className="p-8 bg-zinc-950 text-white"><AlertCircle className="text-red-500 mb-4" size={48}/>{firebaseError}</div>;
 
   if (!user || appScreen === 'login') return (
@@ -2633,7 +2495,21 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
+                {user?.isAnonymous && (
+                  <div className="bg-blue-950/20 p-6 rounded-3xl border border-blue-900/30 mt-6">
+                    <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2"><UserCircle size={18}/> Salvar Conta Anónima</h3>
+                    <p className="text-xs text-zinc-400 mb-4">A sua conta atual é temporária. Para virar <strong>Administrador</strong> e não perder os seus treinos atuais, promova a sua conta criando a credencial <code>admin@anatomiafit.com</code> abaixo:</p>
+                    <div className="flex flex-col gap-3">
+                      <input type="email" value={linkEmail} onChange={e=>setLinkEmail(e.target.value)} placeholder="E-mail (ex: admin@anatomiafit.com)" className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-blue-500" />
+                      <input type="password" value={linkPassword} onChange={e=>setLinkPassword(e.target.value)} placeholder="Nova Senha" className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-blue-500" />
+                      <button onClick={handleLinkAccount} disabled={isLinking} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white py-3 rounded-xl font-bold transition-colors flex justify-center items-center gap-2">
+                        {isLinking ? <Loader2 size={18} className="animate-spin"/> : <Save size={18}/>} Transformar em Conta Permanente
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Ruler size={18}/> Medidas Corporais</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {Object.keys(MEASUREMENTS_LABELS).map(key => (
@@ -2646,91 +2522,96 @@ export default function App() {
                   <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
                 </div>
 
-                {/* --- NOVO PAINEL DE ADMINISTRAÇÃO DA BD --- */}
-                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold flex items-center gap-2 text-white"><Database size={18}/> Gestão da Base de Dados (Nuvem)</h3>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">{cloudExercises.length} Exercícios</span>
-                  </div>
-
-                  {!showAdminPanel ? (
-                    <button onClick={() => setShowAdminPanel(true)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">
-                      Abrir Painel de Administração
-                    </button>
-                  ) : (
-                    <div className="space-y-4 animate-fadeIn">
-                       {cloudExercises.length === 0 && (
-                         <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm text-blue-300 mb-4 flex justify-between items-center">
-                           <span>A nuvem está vazia.</span>
-                           <button onClick={handleMigrateDB} disabled={isMigrating} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold transition-colors">
-                             {isMigrating ? <Loader2 size={16} className="animate-spin"/> : 'Migrar Base Inicial (100 ex)'}
-                           </button>
-                         </div>
-                       )}
-
-                       {/* Form to Add/Edit */}
-                       {editingExercise ? (
-                         <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
-                            <h4 className="text-emerald-400 font-bold mb-3">{editingExercise.docId ? 'Editar Exercício' : 'Novo Exercício'}</h4>
-                            <div className="space-y-3">
-                               <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Nome</label><input type="text" value={editingExercise.name||''} onChange={e=>setEditingExercise({...editingExercise, name:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" /></div>
-                               <div className="grid grid-cols-2 gap-3">
-                                 <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Alvo Muscular</label><input type="text" value={editingExercise.target||''} onChange={e=>setEditingExercise({...editingExercise, target:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" placeholder="Ex: Peitoral Maior" /></div>
-                                 <div>
-                                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Grupo</label>
-                                   <select value={editingExercise.group||''} onChange={e=>setEditingExercise({...editingExercise, group:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500">
-                                      <option value="">Selecione...</option>
-                                      <option value="Peito">Peito</option>
-                                      <option value="Costas">Costas</option>
-                                      <option value="Ombros">Ombros</option>
-                                      <option value="Braços">Braços</option>
-                                      <option value="Pernas">Pernas</option>
-                                      <option value="GAP">GAP</option>
-                                      <option value="Cardio">Cardio</option>
-                                   </select>
-                                 </div>
-                               </div>
-                               <div>
-                                 <label className="text-[10px] text-zinc-500 font-bold uppercase">GIF da Execução (Opcional)</label>
-                                 <div className="flex gap-2 items-center mt-1">
-                                   {editingExercise.gifUrl && <img src={editingExercise.gifUrl} className="h-10 w-10 object-cover rounded-lg border border-zinc-700" alt="gif" />}
-                                   <input type="file" accept="image/gif, video/mp4" onChange={(e) => handleUploadGifForCloud(e)} className="text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer"/>
-                                 </div>
-                               </div>
-                               <div className="flex gap-2 pt-2">
-                                 <button onClick={saveExercise} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition-colors">Salvar</button>
-                                 <button onClick={()=>setEditingExercise(null)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors">Cancelar</button>
-                               </div>
-                            </div>
-                         </div>
-                       ) : (
-                         <>
-                           <button onClick={() => setEditingExercise({ name: '', target: '', group: '', id: 'cstm_' + Date.now() })} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                             <Plus size={18} /> Adicionar Novo Exercício à Nuvem
-                           </button>
-
-                           <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                             {cloudExercises.map(ex => (
-                                <div key={ex.docId} className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex justify-between items-center group">
-                                   <div>
-                                     <p className="font-bold text-sm text-white">{ex.name}</p>
-                                     <p className="text-[10px] text-zinc-500 uppercase">{ex.group} • {ex.target}</p>
-                                   </div>
-                                   <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <button onClick={()=>setEditingExercise(ex)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"><Pencil size={14}/></button>
-                                     <button onClick={()=>deleteExercise(ex.docId)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash size={14}/></button>
-                                   </div>
-                                </div>
-                             ))}
-                           </div>
-                           <button onClick={() => setShowAdminPanel(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-xl text-xs font-bold transition-colors mt-2">
-                             Fechar Painel
-                           </button>
-                         </>
-                       )}
+                {/* --- PAINEL DE ADMINISTRAÇÃO DA BD (PROTEGIDO) --- */}
+                {isAdmin && (
+                  <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-400"><Database size={18}/> Gestão da Base de Dados (Admin)</h3>
+                      <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-lg font-bold">{cloudExercises.length} Exercícios</span>
                     </div>
-                  )}
-                </div>
+
+                    {!showAdminPanel ? (
+                      <button onClick={() => setShowAdminPanel(true)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">
+                        Abrir Painel de Administração
+                      </button>
+                    ) : (
+                      <div className="space-y-4 animate-fadeIn">
+                         {cloudExercises.length === 0 && (
+                           <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm text-blue-300 mb-4 flex flex-col gap-3 justify-between items-center text-center">
+                             <span>A nuvem está vazia. O array estático no código foi apagado. Precisa adicionar os exercícios manualmente pelo botão abaixo.</span>
+                           </div>
+                         )}
+
+                         {/* Form to Add/Edit */}
+                         {editingExercise ? (
+                           <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                              <h4 className="text-emerald-400 font-bold mb-3">{editingExercise.docId ? 'Editar Exercício' : 'Novo Exercício'}</h4>
+                              <div className="space-y-3">
+                                 <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Nome</label><input type="text" value={editingExercise.name||''} onChange={e=>setEditingExercise({...editingExercise, name:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" /></div>
+                                 <div className="grid grid-cols-2 gap-3">
+                                   <div><label className="text-[10px] text-zinc-500 font-bold uppercase">Alvo Muscular</label><input type="text" value={editingExercise.target||''} onChange={e=>setEditingExercise({...editingExercise, target:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500" placeholder="Ex: Peitoral Maior" /></div>
+                                   <div>
+                                     <label className="text-[10px] text-zinc-500 font-bold uppercase">Grupo</label>
+                                     <select value={editingExercise.group||''} onChange={e=>setEditingExercise({...editingExercise, group:e.target.value})} className="w-full bg-zinc-900 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500">
+                                        <option value="">Selecione...</option>
+                                        <option value="Peito">Peito</option>
+                                        <option value="Costas">Costas</option>
+                                        <option value="Ombros">Ombros</option>
+                                        <option value="Braços">Braços</option>
+                                        <option value="Pernas">Pernas</option>
+                                        <option value="GAP">GAP</option>
+                                        <option value="Cardio">Cardio</option>
+                                     </select>
+                                   </div>
+                                 </div>
+                                 <div>
+                                   <label className="text-[10px] text-zinc-500 font-bold uppercase">GIF da Execução (Opcional)</label>
+                                   <div className="flex gap-2 items-center mt-1">
+                                     {editingExercise.gifUrl && <img src={editingExercise.gifUrl} className="h-10 w-10 object-cover rounded-lg border border-zinc-700" alt="gif" />}
+                                     <input type="file" accept="image/gif, video/mp4" onChange={(e) => handleUploadGifForCloud(e)} className="text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer"/>
+                                   </div>
+                                 </div>
+                                 <div className="flex gap-2 pt-2">
+                                   <button onClick={saveExercise} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition-colors">Salvar</button>
+                                   <button onClick={()=>setEditingExercise(null)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition-colors">Cancelar</button>
+                                 </div>
+                              </div>
+                           </div>
+                         ) : (
+                           <>
+                             <button onClick={() => setEditingExercise({ name: '', target: '', group: '', id: 'cstm_' + Date.now() })} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
+                               <Plus size={18} /> Adicionar Novo Exercício à Nuvem
+                             </button>
+
+                             <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                               {cloudExercises.map(ex => (
+                                  <div key={ex.docId} className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex justify-between items-center group">
+                                     <div>
+                                       <p className="font-bold text-sm text-white">{ex.name}</p>
+                                       <p className="text-[10px] text-zinc-500 uppercase">{ex.group} • {ex.target}</p>
+                                     </div>
+                                     <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                       <button onClick={()=>setEditingExercise(ex)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"><Pencil size={14}/></button>
+                                       <button onClick={()=>deleteExercise(ex.docId)} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg"><Trash size={14}/></button>
+                                     </div>
+                                  </div>
+                               ))}
+                             </div>
+                             
+                             <div className="flex flex-col gap-2 mt-4">
+                                <button onClick={handleMigrateDB} className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-500 py-2 rounded-xl text-xs font-bold transition-colors">
+                                  Migrar Local para Nuvem (Aviso: Estático já foi apagado)
+                                </button>
+                                <button onClick={() => setShowAdminPanel(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-xl text-xs font-bold transition-colors">
+                                  Fechar Painel
+                                </button>
+                             </div>
+                           </>
+                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* -------------------------------------- */}
 
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
@@ -2848,7 +2729,7 @@ export default function App() {
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                   {(() => {
-                    // Utilizar a base de dados em Nuvem na listagem do modal se existir, senão usa a estática
+                    // Utilizar a base de dados em Nuvem na listagem do modal se existir, senão usa a estática (neste caso a nuvem é mandatória)
                     const swapList = exerciseModal.mode === 'swap' ? activeDB.filter(e => e.group === exerciseModal.filterGroup) : activeDB;
                     const finalSwapList = swapList.length > 0 ? swapList : activeDB;
                     
