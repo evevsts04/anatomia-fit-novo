@@ -2691,13 +2691,15 @@ export default function App() {
 
                 <div className="bg-red-950/20 p-6 rounded-3xl border border-red-900/30">
                    <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2"><AlertCircle size={18}/> Zona de Perigo</h3>
-                   <p className="text-xs text-zinc-400 mb-4">Para apagar todos os dados locais, digite a sua senha de login e confirme.</p>
+                   <p className="text-xs text-zinc-400 mb-4">Para apagar <strong>apenas os seus dados pessoais</strong> (histórico de treinos, biometria e dieta), digite a sua senha de login. <span className="text-emerald-400">A base de dados de exercícios na Nuvem permanecerá 100% intacta.</span></p>
                    <div className="flex gap-2">
                      <input type="password" value={resetPassAttempt} onChange={e=>setResetPassAttempt(e.target.value)} placeholder="Senha..." className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-red-500"/>
                      <button onClick={async () => {
                        if (user?.email) {
                          try {
                            await signInWithEmailAndPassword(auth, user.email, resetPassAttempt);
+                           // Apaga exclusivamente o documento de dados pessoais do utilizador
+                           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'));
                            localStorage.clear(); 
                            window.location.reload();
                          } catch (error) {
@@ -2705,6 +2707,8 @@ export default function App() {
                          }
                        } else {
                          if (resetPassAttempt === 'admin123') {
+                           // Apaga exclusivamente o documento de dados pessoais do utilizador
+                           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'));
                            localStorage.clear(); 
                            window.location.reload();
                          } else {
