@@ -6,7 +6,7 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, Info, GripHorizontal
+  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -302,6 +302,16 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [appScreen, setAppScreen] = useState('loading'); 
 
+  // Sistema de Toasts (Notificações)
+  const [toasts, setToasts] = useState([]);
+  const showToast = (message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
   // Variável temporal para Reset 24h
   const todayStr = new Date().toLocaleDateString('pt-BR');
 
@@ -390,6 +400,20 @@ export default function App() {
   const [editingNutritionId, setEditingNutritionId] = useState(null);
   const [editNutritionData, setEditNutritionData] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
+
+  // Gamificação - Conquistas
+  const ACHIEVEMENTS = [
+    { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => h.length >= 1 },
+    { id: 'a2', title: 'Consistência Diária', desc: '10 Treinos concluídos', icon: <Medal className="text-yellow-400" size={24}/>, condition: (h) => h.length >= 10 },
+    { id: 'a3', title: 'Força Bruta', desc: '10.000kg movidos', icon: <Trophy className="text-emerald-500" size={24}/>, condition: (h) => h.reduce((a,b)=>a+(b.volume||0),0) >= 10000 },
+    { id: 'a4', title: 'Mestre da Gravidade', desc: '5 Treinos Calistenia', icon: <Activity className="text-blue-500" size={24}/>, condition: (h) => h.filter(x => x.exercises?.some(e => String(e.originalId).startsWith('c_'))).length >= 5 },
+    { id: 'a5', title: 'Foco no Core', desc: '5 Aulas GAP', icon: <Sparkles className="text-purple-500" size={24}/>, condition: (h) => h.filter(x => x.isGap).length >= 5 },
+    { id: 'a6', title: 'Deus do Olimpo', desc: '100.000kg movidos', icon: <Cpu className="text-red-500" size={24}/>, condition: (h) => h.reduce((a,b)=>a+(b.volume||0),0) >= 100000 }
+  ];
+
+  const unlockedAchievements = useMemo(() => {
+    return ACHIEVEMENTS.filter(a => a.condition(workoutHistory));
+  }, [workoutHistory]);
 
   // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
@@ -690,7 +714,7 @@ export default function App() {
         setShowUnlockPrompt(false);
         setApiPasswordAttempt('');
       } catch (error) {
-        alert("Senha incorreta!");
+        showToast("Senha incorreta!", "error");
       } finally {
         setIsApiAuthPending(false);
       }
@@ -700,7 +724,7 @@ export default function App() {
         setShowUnlockPrompt(false);
         setApiPasswordAttempt('');
       } else {
-        alert("Senha incorreta! No modo local, digite 'admin123'.");
+        showToast("Senha incorreta! No modo local, digite 'admin123'.", "error");
       }
     }
   };
@@ -710,7 +734,7 @@ export default function App() {
      setUserProfile(upProf);
      saveToCloud({ userProfile: upProf });
      setIsApiKeyUnlocked(false);
-     alert("Chave API salva e bloqueada com sucesso!");
+     showToast("Chave API salva e bloqueada com sucesso!", "success");
   };
 
   const moveWorkoutDay = (index, direction) => {
@@ -730,13 +754,17 @@ export default function App() {
     const cur = workouts[activeWorkoutDay];
     let vol = 0; let durationGap = 0;
     let completedExercises = [];
+    const bw = Number(userProfile.weight) || 0;
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
     } else if (isCaliMode) {
       currentCaliExercises.forEach(ex => {
-        vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
+        const w = Number(ex.weight) || 0;
+        const effW = w + bw; // Adiciona peso corporal (BW) para calistenia
+        vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
         completedExercises.push({
+           originalId: ex.originalId,
            name: ex.name,
            sets: ex.sets,
            reps: ex.reps,
@@ -746,8 +774,13 @@ export default function App() {
       });
     } else if (cur && cur.exercises) {
       cur.exercises.forEach(ex => {
-        vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
+        const w = Number(ex.weight) || 0;
+        // Verifica se é exercício de peso corporal nativo para adicionar o peso do atleta no volume
+        const isBodyweight = ex.group === 'GAP' || ex.group === 'Cardio' || String(ex.originalId).startsWith('c_') || ['e12','e13','e14','e17','e18','e65','e94','e95','e98','e99','e100'].includes(ex.originalId);
+        const effW = isBodyweight ? (w + bw) : w;
+        vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
         completedExercises.push({
+           originalId: ex.originalId,
            name: ex.name,
            sets: ex.sets,
            reps: ex.reps,
@@ -1040,7 +1073,7 @@ export default function App() {
       setGifUrls(p => ({ ...p, [originalId]: url }));
     } catch (error) {
       console.error(error);
-      alert("Erro ao enviar GIF: " + error.message);
+      showToast("Erro ao enviar GIF: " + error.message, "error");
     } finally {
       setIsUploadingGif(p => ({ ...p, [originalId]: false }));
     }
@@ -1113,9 +1146,9 @@ export default function App() {
       const updatedLogs = [...nutritionLogs, newLog];
       setNutritionLogs(updatedLogs); 
       saveToCloud({ nutritionLogs: updatedLogs });
-      alert(`Adicionado ao feed de ${mealName}!\n🔥 ${macros.calories} kcal | 🥩 ${macros.protein}g P | 🍚 ${macros.carbs}g C | 🥑 ${macros.fats}g G`);
+      showToast(`${mealName} adicionado! 🔥 ${macros.calories} kcal`, "success");
     } catch (error) { 
-      alert(`Erro ao analisar dieta: ${error.message}`); 
+      showToast(`Erro ao analisar dieta: ${error.message}`, "error"); 
     } finally { 
       setIsAnalyzing(false); 
     }
@@ -1161,12 +1194,12 @@ export default function App() {
            setWorkouts(upd);
            saveToCloud({ workouts: upd });
          } else {
-           alert("A IA não retornou exercícios compatíveis com o nosso banco de dados. Tente novamente.");
+           showToast("A IA não retornou exercícios compatíveis. Tente novamente.", "error");
          }
       }
     } catch (error) {
       console.error(error);
-      alert(`Erro da IA: ${error.message}`);
+      showToast(`Erro da IA: ${error.message}`, "error");
     } finally {
       setIsGeneratingWorkout(false);
     }
@@ -1280,6 +1313,7 @@ export default function App() {
 
   if (!user || appScreen === 'login') return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-zinc-950 text-white relative overflow-hidden">
+      <ToastContainer toasts={toasts} />
       <div className="max-w-md w-full bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 z-10 text-center shadow-2xl shadow-emerald-500/10">
         <Dumbbell size={48} className="text-emerald-500 mx-auto mb-6" />
         <h1 className="text-3xl font-extrabold mb-2">{isLoginMode ? 'AnatomiaFit' : 'Criar Conta'}</h1>
@@ -1302,6 +1336,7 @@ export default function App() {
 
   if (appScreen === 'onboarding') return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white p-6 justify-center">
+      <ToastContainer toasts={toasts} />
       <div className="max-w-md w-full mx-auto bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
         <div className="flex mb-8 gap-2">
            <div className={`h-2 flex-1 rounded-full ${onboardingStep>=1 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
@@ -1360,6 +1395,7 @@ export default function App() {
                const prof = {...userProfile, onboardingCompleted:true, lastMeasureUpdate: Date.now(), lastLoginDate: todayStr};
                setUserProfile(prof); setAppScreen('main');
                saveToCloud({ userProfile: prof, measurements, weightHistory: [{date: todayStr, weight: Number(userProfile.weight)}] });
+               showToast("Perfil configurado com sucesso!", "success");
              }} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold mt-4">Concluir Setup</button>
           </div>
         )}
@@ -1369,6 +1405,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
+      <ToastContainer toasts={toasts} />
       
       {/* MODAL ALERTA MEDIDAS */}
       {showMeasureAlert && (
@@ -1554,45 +1591,70 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Feed Semanal de Treinos */}
-                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Dumbbell size={18} className="text-emerald-500"/> Histórico da Semana</h3>
-                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                      {workoutHistory.length === 0 ? (
-                        <p className="text-sm text-zinc-500 italic text-center py-4">Nenhum treino registado ainda.</p>
-                      ) : (
-                        workoutHistory.slice(-7).reverse().map(log => (
-                          <div key={log.id} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 transition-all hover:border-zinc-700 shadow-sm">
-                            <div className="flex justify-between items-center mb-3 border-b border-zinc-800/50 pb-3">
-                               <div className="flex items-center gap-2">
-                                 <span className="font-black text-white text-lg">{log.day}</span>
-                                 {log.isGap && <span className="text-[9px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">GAP</span>}
+                  {/* Grid Gamificação & Feed */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                     {/* Gamificação / Conquistas */}
+                     <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 h-full">
+                       <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Trophy size={18} className="text-emerald-500"/> Minhas Conquistas</h3>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
+                         {ACHIEVEMENTS.map(ach => {
+                           const isUnlocked = unlockedAchievements.some(u => u.id === ach.id);
+                           return (
+                             <div key={ach.id} className={`p-4 rounded-2xl border flex items-center gap-4 transition-all relative ${isUnlocked ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-950/30 border-zinc-900 opacity-50 grayscale'}`}>
+                               <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isUnlocked ? 'bg-zinc-900 shadow-inner shadow-black/50' : 'bg-zinc-900'}`}>
+                                 {ach.icon}
                                </div>
-                               <span className="text-xs text-zinc-500 font-bold">{log.date}</span>
-                            </div>
-                            {log.isGap ? (
-                               <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">🔥 Aula GAP • {log.gapDuration} minutos</p>
-                            ) : (
                                <div>
-                                 <p className="text-[10px] text-zinc-500 mb-3 font-bold uppercase tracking-widest">Volume Movimentado: <span className="text-emerald-400">{log.volume} kg</span></p>
-                                 {log.exercises && log.exercises.length > 0 ? (
-                                   <ul className="space-y-2">
-                                     {log.exercises.map((ex, i) => (
-                                       <li key={i} className="text-xs flex justify-between items-center bg-zinc-900/40 p-2 rounded-lg">
-                                         <span className="text-zinc-300 font-medium">{ex.name}</span>
-                                         <span className="text-zinc-500 font-bold">{ex.sets}x{ex.reps} {ex.weight ? <span className="text-emerald-500">@{ex.weight}kg</span> : ''}</span>
-                                       </li>
-                                     ))}
-                                   </ul>
-                                 ) : (
-                                   <p className="text-xs text-zinc-600 italic">Detalhes dos exercícios não foram registados neste dia.</p>
-                                 )}
+                                 <p className={`font-extrabold text-sm leading-tight ${isUnlocked ? 'text-white' : 'text-zinc-600'}`}>{ach.title}</p>
+                                 <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-wider">{ach.desc}</p>
                                </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
+                               {isUnlocked && <CheckCircle size={14} className="text-emerald-500/30 absolute top-3 right-3" />}
+                             </div>
+                           )
+                         })}
+                       </div>
+                     </div>
+
+                     {/* Feed Semanal de Treinos */}
+                     <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 h-full">
+                       <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Dumbbell size={18} className="text-emerald-500"/> Histórico da Semana</h3>
+                       <div className="space-y-4 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
+                         {workoutHistory.length === 0 ? (
+                           <p className="text-sm text-zinc-500 italic text-center py-4">Nenhum treino registado ainda.</p>
+                         ) : (
+                           workoutHistory.slice(-7).reverse().map(log => (
+                             <div key={log.id} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 transition-all hover:border-zinc-700 shadow-sm">
+                               <div className="flex justify-between items-center mb-3 border-b border-zinc-800/50 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-white text-lg">{log.day}</span>
+                                    {log.isGap && <span className="text-[9px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">GAP</span>}
+                                  </div>
+                                  <span className="text-xs text-zinc-500 font-bold">{log.date}</span>
+                               </div>
+                               {log.isGap ? (
+                                  <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">🔥 Aula GAP • {log.gapDuration} minutos</p>
+                               ) : (
+                                  <div>
+                                    <p className="text-[10px] text-zinc-500 mb-3 font-bold uppercase tracking-widest">Volume Movimentado: <span className="text-emerald-400">{log.volume} kg</span></p>
+                                    {log.exercises && log.exercises.length > 0 ? (
+                                      <ul className="space-y-2">
+                                        {log.exercises.map((ex, i) => (
+                                          <li key={i} className="text-xs flex justify-between items-center bg-zinc-900/40 p-2 rounded-lg">
+                                            <span className="text-zinc-300 font-medium">{ex.name}</span>
+                                            <span className="text-zinc-500 font-bold">{ex.sets}x{ex.reps} {ex.weight ? <span className="text-emerald-500">@{ex.weight}kg</span> : ''}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs text-zinc-600 italic">Detalhes dos exercícios não foram registados neste dia.</p>
+                                    )}
+                                  </div>
+                               )}
+                             </div>
+                           ))
+                         )}
+                       </div>
+                     </div>
                   </div>
 
                   {/* Feed Semanal de Nutrição */}
@@ -1904,7 +1966,7 @@ export default function App() {
                                     <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => {
                                        if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x));
                                        else handleExerciseChange(ex.id, 'weight', e.target.value);
-                                    }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
+                                    }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" placeholder="+0" title="Carga extra para além do peso corporal" /></div>
                                  </div>
 
                                  {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
@@ -2575,7 +2637,7 @@ export default function App() {
                            localStorage.clear(); 
                            window.location.reload();
                          } catch (error) {
-                           alert("Senha incorreta!");
+                           showToast("Senha incorreta!", "error");
                          }
                        } else {
                          // Fallback para utilizadores anónimos/locais
@@ -2583,7 +2645,7 @@ export default function App() {
                            localStorage.clear(); 
                            window.location.reload();
                          } else {
-                           alert("Senha incorreta! No modo local, digite 'admin123'.");
+                           showToast("Senha incorreta! No modo local, digite 'admin123'.", "error");
                          }
                        }
                      }} className="bg-red-600 text-white px-4 rounded-xl font-bold">Reset</button>
@@ -2667,11 +2729,11 @@ export default function App() {
                   onClick={() => {
                     setShowWorkoutSuccess(false);
                     setActiveTab('dashboard');
-                    setDashTab('daily');
+                    setDashTab('weekly');
                   }} 
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold text-lg transition-transform active:scale-95"
                 >
-                  Ver Meu Desempenho
+                  Ver Minhas Conquistas
                 </button>
               </div>
             </div>
@@ -2690,6 +2752,26 @@ export default function App() {
       </nav>
     </div>
   );
+}
+
+function ToastContainer({ toasts }) {
+  if (!toasts || toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-24 md:bottom-10 right-4 z-[100] flex flex-col gap-2">
+      {toasts.map(t => (
+        <div key={t.id} className={`px-4 py-3 rounded-xl shadow-2xl border animate-fadeIn flex items-center gap-3 text-sm font-bold min-w-64 max-w-sm ${
+          t.type === 'error' ? 'bg-red-950/90 border-red-900 text-red-100' : 
+          t.type === 'success' ? 'bg-emerald-950/90 border-emerald-900 text-emerald-100' : 
+          'bg-zinc-900/90 border-zinc-800 text-white'
+        }`}>
+          {t.type === 'error' ? <AlertCircle size={18} className="text-red-500 shrink-0" /> : 
+           t.type === 'success' ? <CheckCircle size={18} className="text-emerald-500 shrink-0" /> : 
+           <Info size={18} className="text-blue-500 shrink-0" />}
+          <span className="leading-snug">{t.message}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function MacroBar({ label, current, target, color }) {
