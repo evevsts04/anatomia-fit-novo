@@ -100,6 +100,53 @@ const MEASUREMENTS_LABELS = {
   panturrilhaDir: 'Panturrilha Dir.'
 };
 
+// --- COMPONENTE AVATAR PARAMÉTRICO DINÂMICO ---
+function DynamicAvatar({ chest, waist, hips, color, opacity = 1, showGrid = false }) {
+  // Limites de segurança para evitar quebra do SVG (normalização)
+  const nChest = Math.max(70, Math.min(150, chest || 100));
+  const nWaist = Math.max(50, Math.min(130, waist || 80));
+  const nHips = Math.max(70, Math.min(140, hips || 95));
+
+  // Cálculos de Proporção Baseados no centro (50px)
+  const cW = (nChest / 100) * 16; 
+  const wW = (nWaist / 80) * 12;
+  const hW = (nHips / 95) * 15;
+
+  const pLeftChest = 50 - cW;
+  const pRightChest = 50 + cW;
+  const pLeftWaist = 50 - wW;
+  const pRightWaist = 50 + wW;
+  const pLeftHip = 50 - hW;
+  const pRightHip = 50 + hW;
+
+  return (
+    <svg viewBox="0 0 100 200" className="w-24 h-48 relative z-10 transition-all duration-1000 ease-in-out" style={{ opacity }}>
+       {/* Cabeça */}
+       <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke={color} strokeWidth="2"/>
+       
+       {/* Braços Adaptáveis à Largura do Peito */}
+       <path d={`M ${pLeftChest} 60 L ${pLeftChest - 12} 75 L ${pLeftChest - 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+       <path d={`M ${pRightChest} 60 L ${pRightChest + 12} 75 L ${pRightChest + 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+       
+       {/* Tronco Paramétrico (Peito, Cintura, Quadril) */}
+       <path d={`M ${pLeftChest} 60 C ${pLeftWaist - 5} 90, ${pLeftWaist} 120, ${pLeftHip} 140 C ${50 - hW/2} 145, ${50 + hW/2} 145, ${pRightHip} 140 C ${pRightWaist} 120, ${pRightWaist + 5} 90, ${pRightChest} 60 Z`} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+       
+       {/* Pernas Adaptáveis ao Quadril */}
+       <path d={`M ${pLeftHip} 140 L ${pLeftHip - 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+       <path d={`M ${pRightHip} 140 L ${pRightHip + 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+
+       {/* Detalhes de Definição Muscular Interna (Se aplicável) */}
+       {showGrid && (
+         <>
+           <path d={`M ${pLeftWaist + 2} 85 C 50 95, 50 95, ${pRightWaist - 2} 85`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1"/>
+           <path d={`M ${pLeftWaist + 4} 115 C 50 120, 50 120, ${pRightWaist - 4} 115`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1"/>
+           <path d={`M 50 60 L 50 140`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 3"/>
+         </>
+       )}
+    </svg>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -1368,6 +1415,14 @@ export default function App() {
     </div>
   );
 
+  // Cálculos Dinâmicos para os Avatares
+  const initialW = weightHistory.length > 0 ? Number(weightHistory[0].weight) : Number(userProfile.weight);
+  const currentW = Number(userProfile.weight) || 1;
+  const wRatio = (initialW && currentW) ? (initialW / currentW) : 1.05;
+  const symmetryScore = measurements.peito && measurements.cintura 
+    ? Math.min(99, Math.max(0, Math.round(100 - Math.abs(1.4 - (Number(measurements.peito) / Number(measurements.cintura))) * 50))) 
+    : 94;
+
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
       <ToastContainer toasts={toasts} />
@@ -2371,8 +2426,8 @@ export default function App() {
                   <div className="bg-gradient-to-r from-zinc-900 to-emerald-950/20 border border-zinc-800 p-6 rounded-3xl flex items-center justify-between">
                      <div>
                        <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-1">Score IA Exclusivo</p>
-                       <h3 className="text-2xl font-black text-white">Índice de Simetria: <span className="text-emerald-500">94%</span></h3>
-                       <p className="text-zinc-400 text-xs mt-2 max-w-xs">Baseado na proporção de cintura vs. ombros extraída das suas fotos.</p>
+                       <h3 className="text-2xl font-black text-white">Índice de Simetria: <span className="text-emerald-500">{symmetryScore}%</span></h3>
+                       <p className="text-zinc-400 text-xs mt-2 max-w-xs">Baseado na proporção de cintura vs. peitoral extraída das suas medidas.</p>
                      </div>
                      <div className="w-16 h-16 bg-zinc-950 rounded-full border-4 border-emerald-500 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                        <Activity size={24} className="text-emerald-400" />
@@ -2386,47 +2441,35 @@ export default function App() {
                        {/* Linha conectora de fundo */}
                        <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-zinc-800 border-t border-dashed border-zinc-700 z-0"></div>
 
-                       {/* Semana 1 (Mais Largo/Sem Definição) */}
+                       {/* Semana 1 (Calculado baseado no diferencial de peso) */}
                        <div className="relative z-10 flex flex-col items-center">
                           <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 mb-3 shadow-lg">
-                             <svg viewBox="0 0 100 200" className="w-24 h-48 opacity-60">
-                               <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Head */}
-                               <path d="M 35 60 L 20 70 L 15 110" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Arm L */}
-                               <path d="M 65 60 L 80 70 L 85 110" fill="none" stroke="#52525b" strokeWidth="2"/> {/* Arm R */}
-                               {/* Torso - wider */}
-                               <path d="M 35 60 C 20 80, 25 120, 30 140 C 40 145, 60 145, 70 140 C 75 120, 80 80, 65 60 Z" fill="none" stroke="#52525b" strokeWidth="2"/>
-                               {/* Legs */}
-                               <path d="M 30 140 L 30 190" fill="none" stroke="#52525b" strokeWidth="2"/>
-                               <path d="M 70 140 L 70 190" fill="none" stroke="#52525b" strokeWidth="2"/>
-                               {/* Grid lines to simulate 3D surface */}
-                               <path d="M 25 90 C 40 100, 60 100, 75 90" fill="none" stroke="#3f3f46" strokeWidth="1"/>
-                               <path d="M 28 115 C 40 125, 60 125, 72 115" fill="none" stroke="#3f3f46" strokeWidth="1"/>
-                             </svg>
+                             <DynamicAvatar 
+                               chest={Number(measurements.peito) * wRatio} 
+                               waist={Number(measurements.cintura) * wRatio} 
+                               hips={Number(measurements.quadril) * wRatio} 
+                               color="#52525b" 
+                               opacity={0.6}
+                               showGrid={false} 
+                             />
                           </div>
-                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-md">Semana 1</span>
+                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-md">Início</span>
                        </div>
 
                        <ArrowRight size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
 
-                       {/* Semana 8 (Fit/Cintura fina) */}
+                       {/* Atual (Com medidas precisas) */}
                        <div className="relative z-10 flex flex-col items-center">
                           <div className="bg-zinc-950 p-4 rounded-2xl border border-emerald-500/30 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative overflow-hidden">
                              {/* Brilho fundo */}
                              <div className="absolute inset-0 bg-radial-gradient from-emerald-500/10 to-transparent"></div>
-                             <svg viewBox="0 0 100 200" className="w-24 h-48 relative z-10">
-                               <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Head */}
-                               <path d="M 35 60 L 22 70 L 18 110" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Arm L (more V-shape) */}
-                               <path d="M 65 60 L 78 70 L 82 110" fill="none" stroke="#10b981" strokeWidth="2"/> {/* Arm R */}
-                               {/* Torso - Leaner V-Taper */}
-                               <path d="M 35 60 C 25 80, 35 110, 40 140 C 45 142, 55 142, 60 140 C 65 110, 75 80, 65 60 Z" fill="none" stroke="#10b981" strokeWidth="2"/>
-                               {/* Legs */}
-                               <path d="M 40 140 L 35 190" fill="none" stroke="#10b981" strokeWidth="2"/>
-                               <path d="M 60 140 L 65 190" fill="none" stroke="#10b981" strokeWidth="2"/>
-                               {/* Grid lines - deeper curves for muscle definition */}
-                               <path d="M 30 85 C 45 100, 55 100, 70 85" fill="none" stroke="#047857" strokeWidth="1"/>
-                               <path d="M 35 115 C 45 120, 55 120, 65 115" fill="none" stroke="#047857" strokeWidth="1"/>
-                               <path d="M 50 60 L 50 140" fill="none" stroke="#047857" strokeWidth="1" strokeDasharray="2 2"/> {/* Linha Alba */}
-                             </svg>
+                             <DynamicAvatar 
+                               chest={Number(measurements.peito)} 
+                               waist={Number(measurements.cintura)} 
+                               hips={Number(measurements.quadril)} 
+                               color="#10b981" 
+                               showGrid={true} 
+                             />
                           </div>
                           <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-md">Atual</span>
                        </div>
