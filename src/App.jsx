@@ -13,6 +13,7 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
@@ -24,12 +25,13 @@ const firebaseConfig = {
   appId: "1:786814321049:web:3068c8bc6927d3b8b19308"
 };
 
-let app, auth, db, appId = 'hypertrophy-app';
+let app, auth, db, storage, appId = 'hypertrophy-app';
 try {
   const configToUse = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : firebaseConfig;
   app = initializeApp(configToUse);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
   appId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '_') : 'hypertrophy-app';
 } catch (e) {
   console.error("Erro ao configurar Firebase:", e);
@@ -147,7 +149,90 @@ const EXERCISE_DB = [
   { id: 'e97', name: 'Abdominal Oblíquo (Polia/Halter)', target: 'Oblíquos', group: 'GAP' },
   { id: 'e98', name: 'Prancha Isométrica', target: 'Core/Estabilização', group: 'GAP' },
   { id: 'e99', name: 'Roda Abdominal (Rolinho)', target: 'Core Completo', group: 'GAP' },
-  { id: 'e100', name: 'Elevação de Pernas em Suspensão', target: 'Abdômen Infra/Core', group: 'GAP' }
+  { id: 'e100', name: 'Elevação de Pernas em Suspensão', target: 'Abdômen Infra/Core', group: 'GAP' },
+
+  // --- CALISTENIA (MÓDULO 1) ---
+  { id: 'c_polichinelo', name: 'Polichinelo', target: 'Cardio/Full Body', group: 'Cardio' },
+  { id: 'c_barra', name: 'Barra Fixa', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_prancha', name: 'Prancha', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_joelhos', name: 'Flexão de Joelhos', target: 'Peitoral', group: 'Peito' },
+  { id: 'c_agachamento_salto', name: 'Agachamento c/ Salto', target: 'Quadríceps/Potência', group: 'Pernas' },
+  { id: 'c_pe_bunda', name: 'Pé na Bunda', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_barra_australiana', name: 'Barra Australiana', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_flexao_inclinada', name: 'Flexão Inclinada', target: 'Peitoral Inferior', group: 'Peito' },
+  { id: 'c_step_up', name: 'Step-up', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_agachamento', name: 'Agachamento (Livres)', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_afundo', name: 'Afundo', target: 'Pernas/Glúteos', group: 'Pernas' },
+  { id: 'c_afundo_elevacao', name: 'Afundo c/ Elevação', target: 'Pernas/Equilíbrio', group: 'Pernas' },
+  { id: 'c_sumo', name: 'Agachamento Sumô', target: 'Adutores/Glúteos', group: 'Pernas' },
+  { id: 'c_isometria_agachamento', name: 'Isometria no Agachamento', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_pantu_unilateral', name: 'Panturrilha Unilateral', target: 'Panturrilha', group: 'Pernas' },
+  { id: 'c_skipping', name: 'Skipping', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_dips', name: 'Dips (Paralelas Livres)', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'c_prancha_lateral', name: 'Prancha Lateral', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_triceps_trave', name: 'Tríceps na Trave', target: 'Tríceps', group: 'Braços' },
+  { id: 'c_alternado', name: 'Abdominal Alternado', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_padrao', name: 'Flexão Padrão', target: 'Peitoral', group: 'Peito' },
+  { id: 'c_crunches', name: 'Crunches (Abdominal Curto)', target: 'Abdômen', group: 'GAP' },
+  { id: 'c_false_rope', name: 'False Rope (Corda Falsa)', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_barra_amf', name: 'Barra (A,M,F)', target: 'Dorsal Completa', group: 'Costas' },
+  { id: 'c_toe_touches', name: 'Toe Touches', target: 'Core', group: 'GAP' },
+  { id: 'c_barra_supinada', name: 'Barra Supinada', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_barra_aust_amf', name: 'Barra Aust. (A,M,F)', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_leg_flutters', name: 'Leg Flutters', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_biceps_barra', name: 'Bíceps na Barra', target: 'Bíceps', group: 'Braços' },
+  { id: 'c_half_burpee', name: 'Half Burpee', target: 'Cardio/Core', group: 'Cardio' },
+  { id: 'c_flexao_pike', name: 'Flexão Pike', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_bike', name: 'Abdominal Bike', target: 'Oblíquos/Core', group: 'GAP' },
+  { id: 'c_flexao_militar', name: 'Flexão Militar', target: 'Peito/Ombros', group: 'Peito' },
+  { id: 'c_side_crunches', name: 'Side Crunches', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_pike_caminhada', name: 'Pike Caminhada', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_prancha_alta_trave', name: 'Prancha Alta p/ Trave', target: 'Core', group: 'GAP' },
+  { id: 'c_caminhada_chao', name: 'Caminhada no Chão', target: 'Core/Ombros', group: 'GAP' },
+  { id: 'c_afundo_saltando', name: 'Afundo Saltando', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_afundo_explosivo', name: 'Afundo Explosivo', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_passada_lateral', name: 'Passada Lateral', target: 'Pernas/Glúteos', group: 'Pernas' },
+  { id: 'c_iso_afundo', name: 'Isometria no Afundo', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_heel_taps', name: 'Heel Taps', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_extensao_triceps', name: 'Extensão de Tríceps', target: 'Tríceps', group: 'Braços' },
+  { id: 'c_knee_raises', name: 'Knee Raises', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_flexao_explosiva', name: 'Flexão Explosiva', target: 'Peitoral/Potência', group: 'Peito' },
+  { id: 'c_in_outs', name: 'In & Outs A/F', target: 'Core', group: 'GAP' },
+  { id: 'c_prancha_alcance', name: 'Prancha com Alcance', target: 'Core', group: 'GAP' },
+  { id: 'c_mountain_climbers', name: 'Mountain Climbers', target: 'Cardio/Core', group: 'Cardio' },
+  { id: 'c_barra_aust_supinada', name: 'Barra Aust. Supinada', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_prancha_af', name: 'Prancha A/F', target: 'Core', group: 'GAP' },
+  { id: 'c_leg_raises', name: 'Leg Raises', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_pike_shoulder_tap', name: 'Pike Shoulder Tap', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_flexao_pike_elevacao', name: 'Flexão Pike c/ Elevação', target: 'Ombros/Peitoral Sup.', group: 'Ombros' },
+  { id: 'c_flexao_declinada', name: 'Flexão Declinada', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'c_prancha_parede', name: 'Prancha na Parede', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_prancha_alternate', name: 'Prancha Alternate', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_diamante', name: 'Flexão Diamante', target: 'Tríceps/Peitoral Interno', group: 'Braços' },
+  { id: 'c_canivete', name: 'Abdominal Canivete', target: 'Core Completo', group: 'GAP' },
+  { id: 'c_barra_aust_arqueiro', name: 'Barra Aust. Arqueiro', target: 'Costas', group: 'Costas' },
+  { id: 'c_pistol_suport', name: 'Pistol c/ Suporte', target: 'Pernas Unilateral', group: 'Pernas' },
+  { id: 'c_salto_frontal', name: 'Salto Frontal', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_agacha_afundo', name: 'Agacha + Afundo', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_ponte', name: 'Ponte de Glúteos', target: 'Glúteos/Lombar', group: 'GAP' },
+  { id: 'c_iso_ponta_pe', name: 'Isometria Ponta do Pé', target: 'Panturrilha', group: 'Pernas' },
+  { id: 'c_burpee', name: 'Burpee Completo', target: 'Cardio/Full Body', group: 'Cardio' },
+  { id: 'c_prancha_jc', name: 'Prancha J/C', target: 'Core', group: 'GAP' },
+  { id: 'c_pa_b_fm', name: 'P.A p/ Baixa + Flexão', target: 'Peito/Core', group: 'Peito' },
+  { id: 'c_tuck_lsit', name: 'Tuck L-sit', target: 'Core', group: 'GAP' },
+  { id: 'c_diamante_regular', name: 'Diamante p/ Regular', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'c_flexao_inclinada_exp', name: 'Flexão Inclinada Exp.', target: 'Peitoral Inferior/Potência', group: 'Peito' },
+  { id: 'c_flexao_hold', name: 'Flexão Hold', target: 'Peitoral/Core', group: 'Peito' },
+  { id: 'c_escapula', name: 'Tração Escapular', target: 'Dorsal/Escápulas', group: 'Costas' },
+  { id: 'c_corner_raises', name: 'Corner Raises', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_barra_trad', name: 'Barra Tradicional', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_barra_aust_sup_arq', name: 'Barra Aust. Sup. Arqueiro', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_leg_x', name: 'Leg X', target: 'Core', group: 'GAP' },
+  { id: 'c_ombro_ombro', name: 'Ombro p/ Ombro', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_sit_ups', name: 'Sit-ups', target: 'Core', group: 'GAP' },
+  { id: 'c_pike_hold', name: 'Pike Hold', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_remador', name: 'Abdominal Remador', target: 'Core', group: 'GAP' },
+  { id: 'c_hs_hold', name: 'Handstand Hold', target: 'Ombros/Equilíbrio', group: 'Ombros' }
 ];
 
 const INITIAL_MEALS = [
@@ -159,7 +244,7 @@ const INITIAL_MEALS = [
   { id: 'm6', name: 'Jantar' },
   { id: 'm7', name: 'Ceia' },
 ];
-const WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2', 'Upper', 'Lower'];
+const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2', 'Upper', 'Lower'];
 
 // Função utilitária para calcular o início da semana atual (Segunda-feira)
 const getStartOfCurrentWeek = () => {
@@ -240,6 +325,10 @@ export default function App() {
   const [anatomyTips, setAnatomyTips] = useState({});
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
+  
+  // Storage de GIFs
+  const [gifUrls, setGifUrls] = useState({});
+  const [isUploadingGif, setIsUploadingGif] = useState({});
 
   // FEEDBACKS IA 
   const [deepInsightText, setDeepInsightText] = useState('');
@@ -279,6 +368,12 @@ export default function App() {
   const [editNutritionData, setEditNutritionData] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
 
+  // Dias de treino dinâmicos com base no programa atual
+  const workoutDays = useMemo(() => {
+    const keys = Object.keys(workouts);
+    return keys.length > 0 ? keys : DEFAULT_WORKOUT_DAYS;
+  }, [workouts]);
+
   // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
@@ -296,13 +391,21 @@ export default function App() {
 
   // Avançar automaticamente para o próximo treino se o atual estiver bloqueado
   useEffect(() => {
-    if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < WORKOUT_DAYS.length) {
-      const nextAvailable = WORKOUT_DAYS.find(d => !completedWorkoutsThisWeek.includes(d));
+    if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutDays.length) {
+      const nextAvailable = workoutDays.find(d => !completedWorkoutsThisWeek.includes(d));
       if (nextAvailable) {
         setActiveWorkoutDay(nextAvailable);
       }
     }
-  }, [completedWorkoutsThisWeek, activeWorkoutDay]);
+  }, [completedWorkoutsThisWeek, activeWorkoutDay, workoutDays]);
+
+  // Sincronizar o dia ativo caso os treinos mudem completamente (ex: Calistenia vs PPL)
+  useEffect(() => {
+    const keys = Object.keys(workouts);
+    if (keys.length > 0 && !keys.includes(activeWorkoutDay)) {
+      setActiveWorkoutDay(keys[0]);
+    }
+  }, [workouts, activeWorkoutDay]);
 
   const todayNutrition = nutritionLogs.filter(log => log.date === todayStr);
   const totals = todayNutrition.reduce((acc, log) => ({ 
@@ -377,6 +480,82 @@ export default function App() {
       ]}
     };
     setWorkouts(p);
+    saveToCloud({ workouts: p });
+  };
+
+  // --- CARREGAR PLANO CALISTENIA (MÓDULO 1) ---
+  const loadCalisthenicsPlan = () => {
+    const getCEx = (id, reps) => {
+      const ex = getEx(id);
+      return ex ? formatEx(ex, 3, reps) : null;
+    };
+    
+    const plan = {
+      'Treino 01': { name: 'Módulo 1 - Treino 01', isLegs: false, exercises: [
+        getCEx('c_polichinelo', '30'), getCEx('c_barra', '6'), getCEx('c_prancha', '30s'), getCEx('c_flexao_joelhos', 'Máx'),
+        getCEx('c_agachamento_salto', '15'), getCEx('c_pe_bunda', '30s'), getCEx('c_barra_australiana', '5'), getCEx('c_flexao_inclinada', 'Máx')
+      ].filter(e=>e)},
+      'Treino 02': { name: 'Módulo 1 - Treino 02', isLegs: true, exercises: [
+        getCEx('c_step_up', '30s'), getCEx('c_agachamento', '10'), getCEx('c_afundo', '10'), getCEx('c_agachamento_salto', '10'),
+        getCEx('c_afundo_elevacao', '10'), getCEx('c_sumo', '15'), getCEx('c_isometria_agachamento', '30s'), getCEx('c_pantu_unilateral', '15')
+      ].filter(e=>e)},
+      'Treino 03': { name: 'Módulo 1 - Treino 03', isLegs: false, exercises: [
+        getCEx('c_skipping', '30s'), getCEx('c_dips', '8'), getCEx('c_prancha_lateral', '20s'), getCEx('c_triceps_trave', 'Máx'),
+        getCEx('c_alternado', '10'), getCEx('c_flexao_padrao', 'Máx'), getCEx('c_flexao_inclinada', 'Máx'), getCEx('c_crunches', '20')
+      ].filter(e=>e)},
+      'Treino 04': { name: 'Módulo 1 - Treino 04', isLegs: false, exercises: [
+        getCEx('c_false_rope', '30s'), getCEx('c_barra_amf', '2'), getCEx('c_toe_touches', '10'), getCEx('c_barra_supinada', '6'),
+        getCEx('c_prancha', '40s'), getCEx('c_barra_aust_amf', '5'), getCEx('c_leg_flutters', '30s'), getCEx('c_biceps_barra', 'Máx')
+      ].filter(e=>e)},
+      'Treino 05': { name: 'Módulo 1 - Treino 05', isLegs: false, exercises: [
+        getCEx('c_half_burpee', '8'), getCEx('c_flexao_pike', 'Máx'), getCEx('c_bike', '30s'), getCEx('c_flexao_militar', '10'),
+        getCEx('c_side_crunches', '15'), getCEx('c_pike_caminhada', '10'), getCEx('c_prancha_alta_trave', '8'), getCEx('c_caminhada_chao', '8')
+      ].filter(e=>e)},
+      'Treino 06': { name: 'Módulo 1 - Treino 06', isLegs: true, exercises: [
+        getCEx('c_skipping', '40s'), getCEx('c_agachamento_salto', '30s'), getCEx('c_afundo_saltando', '10'), getCEx('c_step_up', '45s'),
+        getCEx('c_afundo_explosivo', '10'), getCEx('c_sumo', '25'), getCEx('c_passada_lateral', '15'), getCEx('c_iso_afundo', '20s')
+      ].filter(e=>e)},
+      'Treino 07': { name: 'Módulo 1 - Treino 07', isLegs: true, exercises: [
+        getCEx('c_skipping', '40s'), getCEx('c_agachamento_salto', '30s'), getCEx('c_afundo_saltando', '10'), getCEx('c_step_up', '45s'),
+        getCEx('c_afundo_explosivo', '10'), getCEx('c_sumo', '25'), getCEx('c_passada_lateral', '15'), getCEx('c_iso_afundo', '20s')
+      ].filter(e=>e)},
+      'Treino 08': { name: 'Módulo 1 - Treino 08', isLegs: false, exercises: [
+        getCEx('c_heel_taps', '45s'), getCEx('c_dips', '10'), getCEx('c_prancha_lateral', '30s'), getCEx('c_extensao_triceps', '8'),
+        getCEx('c_knee_raises', '15'), getCEx('c_flexao_explosiva', 'Máx'), getCEx('c_triceps_trave', '20'), getCEx('c_in_outs', '30s'), getCEx('c_prancha_alcance', 'Máx')
+      ].filter(e=>e)},
+      'Treino 09': { name: 'Módulo 1 - Treino 09', isLegs: false, exercises: [
+        getCEx('c_false_rope', '45s'), getCEx('c_barra_amf', '3'), getCEx('c_alternado', '15'), getCEx('c_barra_supinada', '8'),
+        getCEx('c_prancha', '1min'), getCEx('c_barra_aust_amf', '8'), getCEx('c_mountain_climbers', '40s'), getCEx('c_barra_aust_supinada', 'Máx'), getCEx('c_prancha_af', '45s')
+      ].filter(e=>e)},
+      'Treino 10': { name: 'Módulo 1 - Treino 10', isLegs: false, exercises: [
+        getCEx('c_half_burpee', '10'), getCEx('c_caminhada_chao', 'Máx'), getCEx('c_leg_raises', '20'), getCEx('c_pike_shoulder_tap', '10'),
+        getCEx('c_flexao_pike_elevacao', '8'), getCEx('c_crunches', '45s'), getCEx('c_flexao_declinada', 'Máx'), getCEx('c_prancha_parede', 'Máx'), getCEx('c_dips', 'Máx')
+      ].filter(e=>e)},
+      'Treino 11': { name: 'Módulo 1 - Treino 11', isLegs: false, exercises: [
+        getCEx('c_polichinelo', '50'), getCEx('c_barra', '10'), getCEx('c_prancha_alternate', '45s'), getCEx('c_flexao_diamante', 'Máx'),
+        getCEx('c_canivete', '10'), getCEx('c_barra_supinada', '5'), getCEx('c_caminhada_chao', '3'), getCEx('c_dips', '10'), getCEx('c_crunches', '50'), getCEx('c_barra_aust_arqueiro', 'Máx')
+      ].filter(e=>e)},
+      'Treino 12': { name: 'Módulo 1 - Treino 12', isLegs: true, exercises: [
+        getCEx('c_half_burpee', '10'), getCEx('c_afundo_saltando', '30s'), getCEx('c_afundo_elevacao', '15'), getCEx('c_pistol_suport', '8'),
+        getCEx('c_salto_frontal', '10'), getCEx('c_agacha_afundo', '8'), getCEx('c_ponte', '15'), getCEx('c_pantu_unilateral', '20'), getCEx('c_iso_ponta_pe', 'Máx')
+      ].filter(e=>e)},
+      'Treino 13': { name: 'Módulo 1 - Treino 13', isLegs: false, exercises: [
+        getCEx('c_burpee', '8'), getCEx('c_dips', '12'), getCEx('c_prancha_jc', '10'), getCEx('c_pa_b_fm', '10'),
+        getCEx('c_tuck_lsit', 'Máx'), getCEx('c_diamante_regular', 'Máx'), getCEx('c_mountain_climbers', '40s'), getCEx('c_flexao_inclinada_exp', 'Máx'), getCEx('c_bike', '40s'), getCEx('c_flexao_hold', 'Máx')
+      ].filter(e=>e)},
+      'Treino 14': { name: 'Módulo 1 - Treino 14', isLegs: false, exercises: [
+        getCEx('c_escapula', '10'), getCEx('c_barra', '10'), getCEx('c_corner_raises', '10'), getCEx('c_barra_trad', '10'),
+        getCEx('c_knee_raises', '15'), getCEx('c_barra_aust_supinada', '10'), getCEx('c_leg_raises', '15'), getCEx('c_barra_aust_sup_arq', 'Máx'), getCEx('c_leg_x', '40s'), getCEx('c_biceps_barra', '20')
+      ].filter(e=>e)},
+      'Treino 15': { name: 'Módulo 1 - Treino 15', isLegs: false, exercises: [
+        getCEx('c_half_burpee', '12'), getCEx('c_flexao_pike_elevacao', '10'), getCEx('c_ombro_ombro', '8'), getCEx('c_sit_ups', '15'),
+        getCEx('c_pike_hold', 'Máx'), getCEx('c_pike_caminhada', '20'), getCEx('c_remador', '20'), getCEx('c_hs_hold', 'Máx'), getCEx('c_flexao_militar', '15'), getCEx('c_caminhada_chao', 'Máx')
+      ].filter(e=>e)}
+    };
+    
+    setWorkouts(plan);
+    saveToCloud({ workouts: plan });
+    alert("Módulo 1 de Calistenia carregado com sucesso!");
   };
 
   // Firebase Setup
@@ -878,8 +1057,37 @@ export default function App() {
     }
   };
 
-  const handleGetAnatomyTip = async (exId, exName) => {
+  const handleUploadGif = async (e, originalId) => {
+    const file = e.target.files[0];
+    if (!file || !storage) return;
+    
+    setIsUploadingGif(p => ({ ...p, [originalId]: true }));
+    try {
+      const storageRef = ref(storage, `gifs/${originalId}.gif`);
+      await uploadBytesResumable(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setGifUrls(p => ({ ...p, [originalId]: url }));
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao enviar GIF: " + error.message);
+    } finally {
+      setIsUploadingGif(p => ({ ...p, [originalId]: false }));
+    }
+  };
+
+  const handleGetAnatomyTip = async (exId, exName, exOriginalId) => {
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
+    
+    // Carregar GIF do Firebase Storage se ainda não estiver em cache
+    if (storage && gifUrls[exOriginalId] === undefined) {
+      try {
+        const url = await getDownloadURL(ref(storage, `gifs/${exOriginalId}.gif`));
+        setGifUrls(p => ({ ...p, [exOriginalId]: url }));
+      } catch (err) {
+        setGifUrls(p => ({ ...p, [exOriginalId]: null })); // Null significa que não existe ainda
+      }
+    }
+
     if (anatomyTipState[exId] === 'done') return; 
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
     try {
@@ -1472,13 +1680,18 @@ export default function App() {
 
           {activeTab === 'treino' && (
              <div className="space-y-6 animate-fadeIn">
-               <header className="flex justify-between items-center">
-                 <h1 className="text-3xl font-extrabold">Workouts</h1>
-                 <button onClick={generateAIPlan} className="bg-zinc-900 border border-zinc-800 p-2 rounded-xl text-zinc-400 hover:text-white transition-colors" title="Restaurar treino padrão"><RefreshCw size={18}/></button>
+               <header className="flex flex-col gap-4 mb-4">
+                 <div className="flex justify-between items-center">
+                   <h1 className="text-3xl font-extrabold">Workouts</h1>
+                   <button onClick={generateAIPlan} className="bg-zinc-900 border border-zinc-800 p-2 rounded-xl text-zinc-400 hover:text-white transition-colors" title="Restaurar treino PPL padrão"><RefreshCw size={18}/></button>
+                 </div>
+                 <button onClick={loadCalisthenicsPlan} className="w-full bg-emerald-900/40 text-emerald-400 border border-emerald-500/30 py-3 rounded-2xl text-sm font-bold hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2">
+                   <Flame size={18} /> Carregar Módulo 1 (Calistenia)
+                 </button>
                </header>
                
                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                 {WORKOUT_DAYS.map(d => {
+                 {workoutDays.map(d => {
                    const isLocked = completedWorkoutsThisWeek.includes(d);
                    return (
                      <button 
@@ -1507,7 +1720,7 @@ export default function App() {
 
                {completedWorkoutsThisWeek.includes(activeWorkoutDay) ? (
                  <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mt-8">
-                   {completedWorkoutsThisWeek.length === WORKOUT_DAYS.length ? (
+                   {completedWorkoutsThisWeek.length === workoutDays.length ? (
                      <>
                        <Smile size={48} className="text-emerald-500 mx-auto mb-4" />
                        <h3 className="text-2xl font-extrabold mb-2">Semana Concluída! 🎉</h3>
@@ -1611,7 +1824,7 @@ export default function App() {
                                    <div className="flex gap-2">
                                      <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
                                      <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                                     <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+                                     <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name, ex.originalId)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                    </div>
                                  </div>
                                  
@@ -1633,6 +1846,38 @@ export default function App() {
                                            <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
                                          </div>
                                          
+                                         {/* Exibição do GIF ou Upload Directo */}
+                                         <div className="mb-4 bg-zinc-950 rounded-2xl border border-zinc-800/50 flex flex-col justify-center items-center overflow-hidden p-4 shadow-inner">
+                                           {gifUrls[ex.originalId] ? (
+                                             <div className="relative group w-full flex justify-center">
+                                               <img 
+                                                 src={gifUrls[ex.originalId]} 
+                                                 alt={`Execução de ${ex.name}`}
+                                                 className="max-w-full max-h-64 object-contain rounded-xl"
+                                               />
+                                               <label className="absolute top-2 right-2 bg-black/80 hover:bg-emerald-600 p-2.5 rounded-xl cursor-pointer opacity-0 group-hover:opacity-100 transition-all shadow-lg border border-zinc-700 hover:border-emerald-500">
+                                                  <Pencil size={16} className="text-white" />
+                                                  <input type="file" accept="image/gif, image/jpeg, image/png, video/mp4" className="hidden" onChange={(e) => handleUploadGif(e, ex.originalId)} />
+                                               </label>
+                                             </div>
+                                           ) : (
+                                             <div className="text-center py-8 w-full border-2 border-dashed border-zinc-800 rounded-xl hover:border-emerald-500/50 transition-colors bg-zinc-900/30">
+                                               {isUploadingGif[ex.originalId] ? (
+                                                 <div className="flex flex-col items-center gap-3 text-emerald-500">
+                                                   <Loader2 className="animate-spin" size={28}/>
+                                                   <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Enviando para a Nuvem...</span>
+                                                 </div>
+                                               ) : (
+                                                 <label className="cursor-pointer flex flex-col items-center gap-3 text-zinc-500 hover:text-emerald-400 transition-colors w-full h-full">
+                                                   <div className="p-3 bg-zinc-900 rounded-full shadow-sm"><Upload size={24} /></div>
+                                                   <span className="text-xs font-bold uppercase tracking-widest">Anexar GIF de Demonstração</span>
+                                                   <input type="file" accept="image/gif, image/jpeg, image/png, video/mp4" className="hidden" onChange={(e) => handleUploadGif(e, ex.originalId)} />
+                                                 </label>
+                                               )}
+                                             </div>
+                                           )}
+                                         </div>
+
                                          <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
 
                                          <div>
@@ -2287,33 +2532,38 @@ export default function App() {
                   <button onClick={()=>setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null})} className="bg-zinc-800 p-2 rounded-full text-zinc-400 hover:text-white transition-colors"><X size={20}/></button>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-                  {(exerciseModal.mode === 'swap' ? EXERCISE_DB.filter(e => e.group === exerciseModal.filterGroup) : EXERCISE_DB).map(ex => (
-                    <button key={ex.id} onClick={() => {
-                      const upd = {...workouts};
-                      const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
-                      
-                      const exercises = [...(upd[activeWorkoutDay].exercises || [])];
+                  {(() => {
+                    const swapList = exerciseModal.mode === 'swap' ? EXERCISE_DB.filter(e => e.group === exerciseModal.filterGroup) : EXERCISE_DB;
+                    const finalSwapList = swapList.length > 0 ? swapList : EXERCISE_DB;
+                    
+                    return finalSwapList.map(ex => (
+                      <button key={ex.id} onClick={() => {
+                        const upd = {...workouts};
+                        const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
+                        
+                        const exercises = [...(upd[activeWorkoutDay].exercises || [])];
 
-                      if (exerciseModal.mode === 'swap') {
-                        const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
-                        if (i > -1) exercises[i] = newEx;
-                      } else {
-                        exercises.push(newEx);
-                      }
-                      
-                      upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
-                      
-                      setWorkouts(upd); 
-                      saveToCloud({ workouts: upd }); 
-                      setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
-                    }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
-                      <div>
-                        <p className="font-extrabold text-white group-hover:text-emerald-400 transition-colors text-lg">{ex.name}</p>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">{ex.target} • {ex.group}</p>
-                      </div>
-                      {exerciseModal.mode === 'swap' ? <RefreshCw size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/> : <Plus size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/>}
-                    </button>
-                  ))}
+                        if (exerciseModal.mode === 'swap') {
+                          const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
+                          if (i > -1) exercises[i] = newEx;
+                        } else {
+                          exercises.push(newEx);
+                        }
+                        
+                        upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
+                        
+                        setWorkouts(upd); 
+                        saveToCloud({ workouts: upd }); 
+                        setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
+                      }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
+                        <div>
+                          <p className="font-extrabold text-white group-hover:text-emerald-400 transition-colors text-lg">{ex.name}</p>
+                          <p className="text-xs text-zinc-500 font-medium mt-1">{ex.target} • {ex.group}</p>
+                        </div>
+                        {exerciseModal.mode === 'swap' ? <RefreshCw size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/> : <Plus size={20} className="text-zinc-600 group-hover:text-emerald-500 transition-colors"/>}
+                      </button>
+                    ));
+                  })()}
                 </div>
               </div>
             </div>
