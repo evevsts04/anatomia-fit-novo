@@ -5,7 +5,8 @@ import {
   Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
-  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key
+  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
+  ChevronLeft, ChevronRight, Info, GripHorizontal
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -244,7 +245,25 @@ const INITIAL_MEALS = [
   { id: 'm6', name: 'Jantar' },
   { id: 'm7', name: 'Ceia' },
 ];
-const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2', 'Upper', 'Lower'];
+const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2 ou Cardio', 'Upper', 'Lower', 'Cardio'];
+
+const CALISTHENICS_PLANS = {
+  'Treino 01': [ { id: 'c_polichinelo', reps: '30' }, { id: 'c_barra', reps: '6' }, { id: 'c_prancha', reps: '30s' }, { id: 'c_flexao_joelhos', reps: 'Máx' }, { id: 'c_agachamento_salto', reps: '15' }, { id: 'c_pe_bunda', reps: '30s' }, { id: 'c_barra_australiana', reps: '5' }, { id: 'c_flexao_inclinada', reps: 'Máx' } ],
+  'Treino 02': [ { id: 'c_step_up', reps: '30s' }, { id: 'c_agachamento', reps: '10' }, { id: 'c_afundo', reps: '10' }, { id: 'c_agachamento_salto', reps: '10' }, { id: 'c_afundo_elevacao', reps: '10' }, { id: 'c_sumo', reps: '15' }, { id: 'c_isometria_agachamento', reps: '30s' }, { id: 'c_pantu_unilateral', reps: '15' } ],
+  'Treino 03': [ { id: 'c_skipping', reps: '30s' }, { id: 'c_dips', reps: '8' }, { id: 'c_prancha_lateral', reps: '20s' }, { id: 'c_triceps_trave', reps: 'Máx' }, { id: 'c_alternado', reps: '10' }, { id: 'c_flexao_padrao', reps: 'Máx' }, { id: 'c_flexao_inclinada', reps: 'Máx' }, { id: 'c_crunches', reps: '20' } ],
+  'Treino 04': [ { id: 'c_false_rope', reps: '30s' }, { id: 'c_barra_amf', reps: '2' }, { id: 'c_toe_touches', reps: '10' }, { id: 'c_barra_supinada', reps: '6' }, { id: 'c_prancha', reps: '40s' }, { id: 'c_barra_aust_amf', reps: '5' }, { id: 'c_leg_flutters', reps: '30s' }, { id: 'c_biceps_barra', reps: 'Máx' } ],
+  'Treino 05': [ { id: 'c_half_burpee', reps: '8' }, { id: 'c_flexao_pike', reps: 'Máx' }, { id: 'c_bike', reps: '30s' }, { id: 'c_flexao_militar', reps: '10' }, { id: 'c_side_crunches', reps: '15' }, { id: 'c_pike_caminhada', reps: '10' }, { id: 'c_prancha_alta_trave', reps: '8' }, { id: 'c_caminhada_chao', reps: '8' } ],
+  'Treino 06': [ { id: 'c_skipping', reps: '40s' }, { id: 'c_agachamento_salto', reps: '30s' }, { id: 'c_afundo_saltando', reps: '10' }, { id: 'c_step_up', reps: '45s' }, { id: 'c_afundo_explosivo', reps: '10' }, { id: 'c_sumo', reps: '25' }, { id: 'c_passada_lateral', reps: '15' }, { id: 'c_iso_afundo', reps: '20s' } ],
+  'Treino 07': [ { id: 'c_skipping', reps: '40s' }, { id: 'c_agachamento_salto', reps: '30s' }, { id: 'c_afundo_saltando', reps: '10' }, { id: 'c_step_up', reps: '45s' }, { id: 'c_afundo_explosivo', reps: '10' }, { id: 'c_sumo', reps: '25' }, { id: 'c_passada_lateral', reps: '15' }, { id: 'c_iso_afundo', reps: '20s' } ],
+  'Treino 08': [ { id: 'c_heel_taps', reps: '45s' }, { id: 'c_dips', reps: '10' }, { id: 'c_prancha_lateral', reps: '30s' }, { id: 'c_extensao_triceps', reps: '8' }, { id: 'c_knee_raises', reps: '15' }, { id: 'c_flexao_explosiva', reps: 'Máx' }, { id: 'c_triceps_trave', reps: '20' }, { id: 'c_in_outs', reps: '30s' }, { id: 'c_prancha_alcance', reps: 'Máx' } ],
+  'Treino 09': [ { id: 'c_false_rope', reps: '45s' }, { id: 'c_barra_amf', reps: '3' }, { id: 'c_alternado', reps: '15' }, { id: 'c_barra_supinada', reps: '8' }, { id: 'c_prancha', reps: '1min' }, { id: 'c_barra_aust_amf', reps: '8' }, { id: 'c_mountain_climbers', reps: '40s' }, { id: 'c_barra_aust_supinada', reps: 'Máx' }, { id: 'c_prancha_af', reps: '45s' } ],
+  'Treino 10': [ { id: 'c_half_burpee', reps: '10' }, { id: 'c_caminhada_chao', reps: 'Máx' }, { id: 'c_leg_raises', reps: '20' }, { id: 'c_pike_shoulder_tap', reps: '10' }, { id: 'c_flexao_pike_elevacao', reps: '8' }, { id: 'c_crunches', reps: '45s' }, { id: 'c_flexao_declinada', reps: 'Máx' }, { id: 'c_prancha_parede', reps: 'Máx' }, { id: 'c_dips', reps: 'Máx' } ],
+  'Treino 11': [ { id: 'c_polichinelo', reps: '50' }, { id: 'c_barra', reps: '10' }, { id: 'c_prancha_alternate', reps: '45s' }, { id: 'c_flexao_diamante', reps: 'Máx' }, { id: 'c_canivete', reps: '10' }, { id: 'c_barra_supinada', reps: '5' }, { id: 'c_caminhada_chao', reps: '3' }, { id: 'c_dips', reps: '10' }, { id: 'c_crunches', reps: '50' }, { id: 'c_barra_aust_arqueiro', reps: 'Máx' } ],
+  'Treino 12': [ { id: 'c_half_burpee', reps: '10' }, { id: 'c_afundo_saltando', reps: '30s' }, { id: 'c_afundo_elevacao', reps: '15' }, { id: 'c_pistol_suport', reps: '8' }, { id: 'c_salto_frontal', reps: '10' }, { id: 'c_agacha_afundo', reps: '8' }, { id: 'c_ponte', reps: '15' }, { id: 'c_pantu_unilateral', reps: '20' }, { id: 'c_iso_ponta_pe', reps: 'Máx' } ],
+  'Treino 13': [ { id: 'c_burpee', reps: '8' }, { id: 'c_dips', reps: '12' }, { id: 'c_prancha_jc', reps: '10' }, { id: 'c_pa_b_fm', reps: '10' }, { id: 'c_tuck_lsit', reps: 'Máx' }, { id: 'c_diamante_regular', reps: 'Máx' }, { id: 'c_mountain_climbers', reps: '40s' }, { id: 'c_flexao_inclinada_exp', reps: 'Máx' }, { id: 'c_bike', reps: '40s' }, { id: 'c_flexao_hold', reps: 'Máx' } ],
+  'Treino 14': [ { id: 'c_escapula', reps: '10' }, { id: 'c_barra', reps: '10' }, { id: 'c_corner_raises', reps: '10' }, { id: 'c_barra_trad', reps: '10' }, { id: 'c_knee_raises', reps: '15' }, { id: 'c_barra_aust_supinada', reps: '10' }, { id: 'c_leg_raises', reps: '15' }, { id: 'c_barra_aust_sup_arq', reps: 'Máx' }, { id: 'c_leg_x', reps: '40s' }, { id: 'c_biceps_barra', reps: '20' } ],
+  'Treino 15': [ { id: 'c_half_burpee', reps: '12' }, { id: 'c_flexao_pike_elevacao', reps: '10' }, { id: 'c_ombro_ombro', reps: '8' }, { id: 'c_sit_ups', reps: '15' }, { id: 'c_pike_hold', reps: 'Máx' }, { id: 'c_pike_caminhada', reps: '20' }, { id: 'c_remador', reps: '20' }, { id: 'c_hs_hold', reps: 'Máx' }, { id: 'c_flexao_militar', reps: '15' }, { id: 'c_caminhada_chao', reps: 'Máx' } ]
+};
 
 // Função utilitária para calcular o início da semana atual (Segunda-feira)
 const getStartOfCurrentWeek = () => {
@@ -340,12 +359,16 @@ export default function App() {
 
   // Dados Essenciais
   const [workouts, setWorkouts] = useState({});
+  const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [dailyLogs, setDailyLogs] = useState([]); 
   const [nutritionLogs, setNutritionLogs] = useState([]); 
   const [activeWorkoutDay, setActiveWorkoutDay] = useState('Pull');
   const [isGapMode, setIsGapMode] = useState(false);
   const [gapDuration, setGapDuration] = useState(45);
+  const [isCaliMode, setIsCaliMode] = useState(false);
+  const [selectedCaliPlan, setSelectedCaliPlan] = useState('Treino 01');
+  const [currentCaliExercises, setCurrentCaliExercises] = useState([]);
   
   const [userProfile, setUserProfile] = useState({ 
     name: '', age: '', gender: 'M', height: '', weight: '', targetWeight: '', goal: 'Hipertrofia', 
@@ -368,12 +391,6 @@ export default function App() {
   const [editNutritionData, setEditNutritionData] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
 
-  // Dias de treino dinâmicos com base no programa atual
-  const workoutDays = useMemo(() => {
-    const keys = Object.keys(workouts);
-    return keys.length > 0 ? keys : DEFAULT_WORKOUT_DAYS;
-  }, [workouts]);
-
   // Cálculos Derivados (Reset a cada 24h automaticamente baseado no todayStr)
   const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
@@ -391,21 +408,21 @@ export default function App() {
 
   // Avançar automaticamente para o próximo treino se o atual estiver bloqueado
   useEffect(() => {
-    if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutDays.length) {
-      const nextAvailable = workoutDays.find(d => !completedWorkoutsThisWeek.includes(d));
+    if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutOrder.length) {
+      const nextAvailable = workoutOrder.find(d => !completedWorkoutsThisWeek.includes(d));
       if (nextAvailable) {
         setActiveWorkoutDay(nextAvailable);
       }
     }
-  }, [completedWorkoutsThisWeek, activeWorkoutDay, workoutDays]);
+  }, [completedWorkoutsThisWeek, activeWorkoutDay, workoutOrder]);
 
-  // Sincronizar o dia ativo caso os treinos mudem completamente (ex: Calistenia vs PPL)
+  // Sincronizar o dia ativo caso os treinos mudem completamente (ex: Restaurar plano)
   useEffect(() => {
     const keys = Object.keys(workouts);
-    if (keys.length > 0 && !keys.includes(activeWorkoutDay)) {
-      setActiveWorkoutDay(keys[0]);
+    if (keys.length > 0 && !keys.includes(activeWorkoutDay) && workoutOrder.includes(activeWorkoutDay) === false) {
+      setActiveWorkoutDay(workoutOrder[0] || keys[0]);
     }
-  }, [workouts, activeWorkoutDay]);
+  }, [workouts, activeWorkoutDay, workoutOrder]);
 
   const todayNutrition = nutritionLogs.filter(log => log.date === todayStr);
   const totals = todayNutrition.reduce((acc, log) => ({ 
@@ -460,7 +477,7 @@ export default function App() {
           formatEx(getEx('e32'), 4, 10), formatEx(getEx('e36'), 4, 12), 
           formatEx(getEx('e57'), 4, 12), formatEx(getEx('e59'), 3, 12) 
       ]},
-      'Legs 2': { name: 'Legs Posterior', isLegs: true, exercises: [ 
+      'Legs 2 ou Cardio': { name: 'Legs Posterior', isLegs: true, exercises: [ 
           formatEx(getEx('e69'), 4, 8), formatEx(getEx('e72'), 3, 12), formatEx(getEx('e74'), 3, 15), 
           formatEx(getEx('e78'), 4, 12), formatEx(getEx('e81'), 3, 12), 
           formatEx(getEx('e85'), 4, 20), formatEx(getEx('e86'), 4, 15)
@@ -477,85 +494,18 @@ export default function App() {
           formatEx(getEx('e77'), 3, 12), formatEx(getEx('e80'), 3, 12), 
           formatEx(getEx('e83'), 4, 15), formatEx(getEx('e84'), 4, 15), 
           formatEx(getEx('e87'), 3, 12) 
-      ]}
+      ]},
+      'Cardio': { name: 'Cardio & Core', isLegs: false, exercises: [ 
+          formatEx(getEx('c_polichinelo'), 3, 50),
+          formatEx(getEx('c_burpee'), 3, 10),
+          formatEx(getEx('e98'), 3, '1min'), 
+          formatEx(getEx('e94'), 3, 20),
+          formatEx(getEx('e99'), 3, 15) 
+      ].filter(e => e)}
     };
     setWorkouts(p);
-    saveToCloud({ workouts: p });
-  };
-
-  // --- CARREGAR PLANO CALISTENIA (MÓDULO 1) ---
-  const loadCalisthenicsPlan = () => {
-    const getCEx = (id, reps) => {
-      const ex = getEx(id);
-      return ex ? formatEx(ex, 3, reps) : null;
-    };
-    
-    const plan = {
-      'Treino 01': { name: 'Módulo 1 - Treino 01', isLegs: false, exercises: [
-        getCEx('c_polichinelo', '30'), getCEx('c_barra', '6'), getCEx('c_prancha', '30s'), getCEx('c_flexao_joelhos', 'Máx'),
-        getCEx('c_agachamento_salto', '15'), getCEx('c_pe_bunda', '30s'), getCEx('c_barra_australiana', '5'), getCEx('c_flexao_inclinada', 'Máx')
-      ].filter(e=>e)},
-      'Treino 02': { name: 'Módulo 1 - Treino 02', isLegs: true, exercises: [
-        getCEx('c_step_up', '30s'), getCEx('c_agachamento', '10'), getCEx('c_afundo', '10'), getCEx('c_agachamento_salto', '10'),
-        getCEx('c_afundo_elevacao', '10'), getCEx('c_sumo', '15'), getCEx('c_isometria_agachamento', '30s'), getCEx('c_pantu_unilateral', '15')
-      ].filter(e=>e)},
-      'Treino 03': { name: 'Módulo 1 - Treino 03', isLegs: false, exercises: [
-        getCEx('c_skipping', '30s'), getCEx('c_dips', '8'), getCEx('c_prancha_lateral', '20s'), getCEx('c_triceps_trave', 'Máx'),
-        getCEx('c_alternado', '10'), getCEx('c_flexao_padrao', 'Máx'), getCEx('c_flexao_inclinada', 'Máx'), getCEx('c_crunches', '20')
-      ].filter(e=>e)},
-      'Treino 04': { name: 'Módulo 1 - Treino 04', isLegs: false, exercises: [
-        getCEx('c_false_rope', '30s'), getCEx('c_barra_amf', '2'), getCEx('c_toe_touches', '10'), getCEx('c_barra_supinada', '6'),
-        getCEx('c_prancha', '40s'), getCEx('c_barra_aust_amf', '5'), getCEx('c_leg_flutters', '30s'), getCEx('c_biceps_barra', 'Máx')
-      ].filter(e=>e)},
-      'Treino 05': { name: 'Módulo 1 - Treino 05', isLegs: false, exercises: [
-        getCEx('c_half_burpee', '8'), getCEx('c_flexao_pike', 'Máx'), getCEx('c_bike', '30s'), getCEx('c_flexao_militar', '10'),
-        getCEx('c_side_crunches', '15'), getCEx('c_pike_caminhada', '10'), getCEx('c_prancha_alta_trave', '8'), getCEx('c_caminhada_chao', '8')
-      ].filter(e=>e)},
-      'Treino 06': { name: 'Módulo 1 - Treino 06', isLegs: true, exercises: [
-        getCEx('c_skipping', '40s'), getCEx('c_agachamento_salto', '30s'), getCEx('c_afundo_saltando', '10'), getCEx('c_step_up', '45s'),
-        getCEx('c_afundo_explosivo', '10'), getCEx('c_sumo', '25'), getCEx('c_passada_lateral', '15'), getCEx('c_iso_afundo', '20s')
-      ].filter(e=>e)},
-      'Treino 07': { name: 'Módulo 1 - Treino 07', isLegs: true, exercises: [
-        getCEx('c_skipping', '40s'), getCEx('c_agachamento_salto', '30s'), getCEx('c_afundo_saltando', '10'), getCEx('c_step_up', '45s'),
-        getCEx('c_afundo_explosivo', '10'), getCEx('c_sumo', '25'), getCEx('c_passada_lateral', '15'), getCEx('c_iso_afundo', '20s')
-      ].filter(e=>e)},
-      'Treino 08': { name: 'Módulo 1 - Treino 08', isLegs: false, exercises: [
-        getCEx('c_heel_taps', '45s'), getCEx('c_dips', '10'), getCEx('c_prancha_lateral', '30s'), getCEx('c_extensao_triceps', '8'),
-        getCEx('c_knee_raises', '15'), getCEx('c_flexao_explosiva', 'Máx'), getCEx('c_triceps_trave', '20'), getCEx('c_in_outs', '30s'), getCEx('c_prancha_alcance', 'Máx')
-      ].filter(e=>e)},
-      'Treino 09': { name: 'Módulo 1 - Treino 09', isLegs: false, exercises: [
-        getCEx('c_false_rope', '45s'), getCEx('c_barra_amf', '3'), getCEx('c_alternado', '15'), getCEx('c_barra_supinada', '8'),
-        getCEx('c_prancha', '1min'), getCEx('c_barra_aust_amf', '8'), getCEx('c_mountain_climbers', '40s'), getCEx('c_barra_aust_supinada', 'Máx'), getCEx('c_prancha_af', '45s')
-      ].filter(e=>e)},
-      'Treino 10': { name: 'Módulo 1 - Treino 10', isLegs: false, exercises: [
-        getCEx('c_half_burpee', '10'), getCEx('c_caminhada_chao', 'Máx'), getCEx('c_leg_raises', '20'), getCEx('c_pike_shoulder_tap', '10'),
-        getCEx('c_flexao_pike_elevacao', '8'), getCEx('c_crunches', '45s'), getCEx('c_flexao_declinada', 'Máx'), getCEx('c_prancha_parede', 'Máx'), getCEx('c_dips', 'Máx')
-      ].filter(e=>e)},
-      'Treino 11': { name: 'Módulo 1 - Treino 11', isLegs: false, exercises: [
-        getCEx('c_polichinelo', '50'), getCEx('c_barra', '10'), getCEx('c_prancha_alternate', '45s'), getCEx('c_flexao_diamante', 'Máx'),
-        getCEx('c_canivete', '10'), getCEx('c_barra_supinada', '5'), getCEx('c_caminhada_chao', '3'), getCEx('c_dips', '10'), getCEx('c_crunches', '50'), getCEx('c_barra_aust_arqueiro', 'Máx')
-      ].filter(e=>e)},
-      'Treino 12': { name: 'Módulo 1 - Treino 12', isLegs: true, exercises: [
-        getCEx('c_half_burpee', '10'), getCEx('c_afundo_saltando', '30s'), getCEx('c_afundo_elevacao', '15'), getCEx('c_pistol_suport', '8'),
-        getCEx('c_salto_frontal', '10'), getCEx('c_agacha_afundo', '8'), getCEx('c_ponte', '15'), getCEx('c_pantu_unilateral', '20'), getCEx('c_iso_ponta_pe', 'Máx')
-      ].filter(e=>e)},
-      'Treino 13': { name: 'Módulo 1 - Treino 13', isLegs: false, exercises: [
-        getCEx('c_burpee', '8'), getCEx('c_dips', '12'), getCEx('c_prancha_jc', '10'), getCEx('c_pa_b_fm', '10'),
-        getCEx('c_tuck_lsit', 'Máx'), getCEx('c_diamante_regular', 'Máx'), getCEx('c_mountain_climbers', '40s'), getCEx('c_flexao_inclinada_exp', 'Máx'), getCEx('c_bike', '40s'), getCEx('c_flexao_hold', 'Máx')
-      ].filter(e=>e)},
-      'Treino 14': { name: 'Módulo 1 - Treino 14', isLegs: false, exercises: [
-        getCEx('c_escapula', '10'), getCEx('c_barra', '10'), getCEx('c_corner_raises', '10'), getCEx('c_barra_trad', '10'),
-        getCEx('c_knee_raises', '15'), getCEx('c_barra_aust_supinada', '10'), getCEx('c_leg_raises', '15'), getCEx('c_barra_aust_sup_arq', 'Máx'), getCEx('c_leg_x', '40s'), getCEx('c_biceps_barra', '20')
-      ].filter(e=>e)},
-      'Treino 15': { name: 'Módulo 1 - Treino 15', isLegs: false, exercises: [
-        getCEx('c_half_burpee', '12'), getCEx('c_flexao_pike_elevacao', '10'), getCEx('c_ombro_ombro', '8'), getCEx('c_sit_ups', '15'),
-        getCEx('c_pike_hold', 'Máx'), getCEx('c_pike_caminhada', '20'), getCEx('c_remador', '20'), getCEx('c_hs_hold', 'Máx'), getCEx('c_flexao_militar', '15'), getCEx('c_caminhada_chao', 'Máx')
-      ].filter(e=>e)}
-    };
-    
-    setWorkouts(plan);
-    saveToCloud({ workouts: plan });
-    alert("Módulo 1 de Calistenia carregado com sucesso!");
+    setWorkoutOrder(DEFAULT_WORKOUT_DAYS);
+    saveToCloud({ workouts: p, workoutOrder: DEFAULT_WORKOUT_DAYS });
   };
 
   // Firebase Setup
@@ -566,7 +516,6 @@ export default function App() {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
            await signInWithCustomToken(auth, __initial_auth_token);
         }
-        // O login anónimo automático foi removido para forçar a exibição da tela de login
       } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
     };
     initAuth();
@@ -586,12 +535,17 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         if (d.workouts) setWorkouts(d.workouts);
+        if (d.workoutOrder) {
+           setWorkoutOrder(d.workoutOrder);
+        } else if (d.workouts) {
+           setWorkoutOrder(Object.keys(d.workouts));
+        }
+        
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
         if (d.measurements) {
           let loadedMeasures = { ...initialMeasures, ...d.measurements };
-          // Migração de dados de utilizadores antigos
           if (d.measurements.bracos && !d.measurements.bracoEsq) {
               loadedMeasures.bracoEsq = d.measurements.bracos;
               loadedMeasures.bracoDir = d.measurements.bracos;
@@ -670,7 +624,7 @@ export default function App() {
     if (!user || !db) return;
     setIsSyncing(true);
     try {
-      const dataToSave = overrideData || { workouts, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
+      const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), dataToSave, { merge: true });
     } catch (e) { 
       console.error(e); 
@@ -759,6 +713,19 @@ export default function App() {
      alert("Chave API salva e bloqueada com sucesso!");
   };
 
+  const moveWorkoutDay = (index, direction) => {
+    const newOrder = [...workoutOrder];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return;
+    
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[targetIndex];
+    newOrder[targetIndex] = temp;
+    
+    setWorkoutOrder(newOrder);
+    saveToCloud({ workoutOrder: newOrder });
+  };
+
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
     let vol = 0; let durationGap = 0;
@@ -766,6 +733,17 @@ export default function App() {
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
+    } else if (isCaliMode) {
+      currentCaliExercises.forEach(ex => {
+        vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
+        completedExercises.push({
+           name: ex.name,
+           sets: ex.sets,
+           reps: ex.reps,
+           weight: ex.weight
+        });
+        ex.isCompleted = false; 
+      });
     } else if (cur && cur.exercises) {
       cur.exercises.forEach(ex => {
         vol += (Number(ex.weight)||0) * (Number(ex.reps)||0) * (Number(ex.sets)||0);
@@ -798,10 +776,11 @@ export default function App() {
     else newDLogs.push({ date: todayStr, workout: activeWorkoutDay, water: 0, calories: totals.calories });
 
     setWorkoutHistory(newHist); setDailyLogs(newDLogs);
-    saveToCloud({ workouts: workouts, workoutHistory: newHist, dailyLogs: newDLogs });
+    saveToCloud({ workouts: workouts, workoutOrder, workoutHistory: newHist, dailyLogs: newDLogs });
     
     setShowWorkoutSuccess(true);
     setIsGapMode(false);
+    setIsCaliMode(false);
   };
 
   const addWater = () => {
@@ -819,11 +798,9 @@ export default function App() {
     saveToCloud({ userProfile: upProf, measurements, weightHistory: wHist });
   };
 
-  // --- Função Simulação Escaneamento Biométrico ---
   const handlePhotoUpload = (view, e) => {
     const file = e.target.files[0];
     if (file) {
-      // Converte ficheiro para Base64 para garantir total suporte de imagem no preview de iframe e evitar erros de recursos (400)
       const reader = new FileReader();
       reader.onloadend = () => {
         setUploadedPhotos(prev => ({ ...prev, [view]: reader.result }));
@@ -838,7 +815,7 @@ export default function App() {
     setScanState('scanning');
     setScanProgress(0);
     setScanFeedback([]);
-    setScanAiReport(''); // Reseta o relatório anterior
+    setScanAiReport('');
 
     const steps = [
       { p: 20, text: "Verificando Câmera e Iluminação [OK]" },
@@ -857,7 +834,6 @@ export default function App() {
         currentStep++;
       } else {
         clearInterval(interval);
-        // Gerar Medidas Estimadas Baseadas no Perfil
         const h = Number(userProfile.height) || 175;
         const w = Number(userProfile.weight) || 70;
         setEstimatedMeasures({
@@ -886,15 +862,13 @@ export default function App() {
     setMeasurements(newMeasures);
     handleUpdateMeasures();
     setBioTab('evolution');
-    setScanState('idle'); // reseta estado para futuras medições
+    setScanState('idle');
     setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null });
     setScanAiReport('');
   };
 
-  // --- NATIVA INTEGRAÇÃO IA (Gemini) COM RETENTATIVA (Exponential Backoff) ---
   const callGemini = async (prompt, schema = null, retries = 5) => {
-    const apiKey = userProfile.geminiApiKey || ""; // Utiliza a chave do utilizador ou vazio para injeção automática no ambiente
-    // Ajuste dinâmico: Usa a versão pública se tiver chave própria, ou a versão preview no ambiente de desenvolvimento
+    const apiKey = userProfile.geminiApiKey || ""; 
     const model = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
@@ -938,7 +912,6 @@ export default function App() {
     }
   };
 
-  // 1. Feedback Holístico (Painel Semanal) atualizado com volumes e médias exatas
   const handleGenerateDeepInsight = async () => {
     setIsDeepInsightLoading(true); setDeepInsightText('');
     try {
@@ -989,7 +962,6 @@ export default function App() {
     }
   };
 
-  // 2. Feedback de Treino (Aba Treino)
   const handleEvaluateWorkout = async () => {
     setIsWorkoutFeedbackLoading(true); setWorkoutFeedback('');
     try {
@@ -1012,7 +984,6 @@ export default function App() {
     }
   };
 
-  // 3. Feedback de Nutrição (Aba Nutrição)
   const handleEvaluateNutrition = async () => {
     setIsNutritionFeedbackLoading(true); setNutritionFeedback('');
     try {
@@ -1150,7 +1121,6 @@ export default function App() {
     }
   };
 
-  // --- GERAR TREINO COM IA: REGRAS APLICADAS ---
   const handleGenerateAIWorkout = async () => {
     setIsGeneratingWorkout(true);
     try {
@@ -1167,6 +1137,7 @@ export default function App() {
       - Dia "Push" (ou Treino Push): 3 do grupo Peito, 2 do grupo Ombros (Alvo: Anterior ou Lateral), e 2 do grupo Braços (Alvo: Tríceps).
       - Dias "Legs" ou "Lower" (Qualquer dia de Perna): 3 do grupo Pernas (Alvo: Quadríceps), 2 do grupo Pernas (Alvo: Posterior/Isquiotibiais), 2 do grupo Pernas (Alvo: Panturrilha/Gastrocnêmio).
       - Dia "Upper": 2 do grupo Costas, 2 do grupo Peito, 1 do grupo Ombros, 1 do grupo Braços (Alvo: Bíceps) e 1 do grupo Braços (Alvo: Tríceps).
+      - Dia "Cardio" ou "Legs 2 ou Cardio": Foco no agrupamento correspondente.
 
       Ordene a lista final para que exercícios do mesmo grupo muscular fiquem juntos em sequência.
       IMPORTANTE: Retorne APENAS um JSON no formato {"exercises": ["id1", "id2", ...]} contendo exatamente 7 IDs.`;
@@ -1201,7 +1172,6 @@ export default function App() {
     }
   };
 
-  // --- Lógica Fadiga Muscular ---
   const getFatigueColor = (groupMapArray) => {
     let lastWorkedDate = null;
     const now = Date.now();
@@ -1209,9 +1179,10 @@ export default function App() {
       'Pull': ['Costas', 'Bíceps', 'Braços'],
       'Push': ['Peito', 'Ombros', 'Tríceps', 'Braços'],
       'Legs 1': ['Pernas', 'Glúteo', 'Quadríceps', 'GAP'],
-      'Legs 2': ['Pernas', 'Glúteo', 'Posterior', 'Panturrilha', 'GAP'],
+      'Legs 2 ou Cardio': ['Pernas', 'Glúteo', 'Posterior', 'Panturrilha', 'GAP', 'Cardio'],
       'Upper': ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Braços'],
-      'Lower': ['Pernas', 'Glúteo', 'GAP']
+      'Lower': ['Pernas', 'Glúteo', 'GAP'],
+      'Cardio': ['Cardio', 'GAP', 'Core']
     };
 
     for (let i = workoutHistory.length - 1; i >= 0; i--) {
@@ -1301,7 +1272,6 @@ export default function App() {
     saveToCloud({ workouts: upd });
   };
 
-  // Pre-computação das Datas Recentes para o Feed de Nutrição
   const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
 
   // --- SCREENS ---
@@ -1680,47 +1650,89 @@ export default function App() {
 
           {activeTab === 'treino' && (
              <div className="space-y-6 animate-fadeIn">
-               <header className="flex flex-col gap-4 mb-4">
+               <header className="flex flex-col gap-4 mb-2">
                  <div className="flex justify-between items-center">
                    <h1 className="text-3xl font-extrabold">Workouts</h1>
                    <button onClick={generateAIPlan} className="bg-zinc-900 border border-zinc-800 p-2 rounded-xl text-zinc-400 hover:text-white transition-colors" title="Restaurar treino PPL padrão"><RefreshCw size={18}/></button>
                  </div>
-                 <button onClick={loadCalisthenicsPlan} className="w-full bg-emerald-900/40 text-emerald-400 border border-emerald-500/30 py-3 rounded-2xl text-sm font-bold hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2">
-                   <Flame size={18} /> Carregar Módulo 1 (Calistenia)
-                 </button>
                </header>
+
+               <div className="mb-2 text-[11px] text-zinc-500 font-medium flex items-center gap-2 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800">
+                  <Info size={16} className="text-emerald-500 shrink-0"/> 
+                  <span>Selecione um dia. Pode reordenar a semana <strong>arrastando a caixa</strong> ou <strong>usando as setas</strong> que aparecem no dia selecionado.</span>
+               </div>
                
-               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                 {workoutDays.map(d => {
+               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 pt-1 px-1 -mx-1">
+                 {workoutOrder.map((d, index) => {
                    const isLocked = completedWorkoutsThisWeek.includes(d);
+                   const isActive = activeWorkoutDay === d;
+                   
                    return (
-                     <button 
-                       key={d} 
-                       onClick={()=>{
-                         if(!isLocked) {
-                           setActiveWorkoutDay(d); 
-                           setIsGapMode(false); 
-                           setWorkoutFeedback('');
-                         }
-                       }} 
-                       disabled={isLocked}
-                       className={`px-6 py-3 shrink-0 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 ${
-                         isLocked 
-                           ? 'bg-zinc-950 text-zinc-600 border border-zinc-800/50 cursor-not-allowed opacity-50' 
-                           : activeWorkoutDay===d
-                             ? 'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20'
-                             : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'
-                       }`}
+                     <div 
+                        key={d} 
+                        className={`flex items-center shrink-0 transition-all duration-300 ${isActive ? 'bg-zinc-900 border border-zinc-700 rounded-2xl p-1 shadow-[0_4px_15px_-3px_rgba(16,185,129,0.1)]' : ''}`}
+                        draggable={!isLocked}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', index);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const sourceIndex = Number(e.dataTransfer.getData('text/plain'));
+                          if (sourceIndex === index || isNaN(sourceIndex)) return;
+                          
+                          const newOrder = [...workoutOrder];
+                          const [movedItem] = newOrder.splice(sourceIndex, 1);
+                          newOrder.splice(index, 0, movedItem);
+                          
+                          setWorkoutOrder(newOrder);
+                          saveToCloud({ workoutOrder: newOrder });
+                        }}
                      >
-                       {d} {isLocked && <Lock size={14} />}
-                     </button>
+                       {isActive && index > 0 && (
+                         <button onClick={() => moveWorkoutDay(index, -1)} className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors">
+                           <ChevronLeft size={18}/>
+                         </button>
+                       )}
+
+                       <button 
+                         onClick={()=>{
+                           if(!isLocked) {
+                             setActiveWorkoutDay(d); 
+                             setIsGapMode(false); 
+                             setWorkoutFeedback('');
+                           }
+                         }} 
+                         disabled={isLocked}
+                         className={`px-5 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+                           isLocked 
+                             ? 'bg-zinc-950 text-zinc-600 border border-zinc-800/50 cursor-not-allowed opacity-50' 
+                             : isActive
+                               ? 'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20'
+                               : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800'
+                         }`}
+                       >
+                         {isActive && <GripHorizontal size={14} className="opacity-40" />}
+                         {d} {isLocked && <Lock size={14} />}
+                       </button>
+
+                       {isActive && index < workoutOrder.length - 1 && (
+                         <button onClick={() => moveWorkoutDay(index, 1)} className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors">
+                           <ChevronRight size={18}/>
+                         </button>
+                       )}
+                     </div>
                    );
                  })}
                </div>
 
                {completedWorkoutsThisWeek.includes(activeWorkoutDay) ? (
                  <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mt-8">
-                   {completedWorkoutsThisWeek.length === workoutDays.length ? (
+                   {completedWorkoutsThisWeek.length === workoutOrder.length ? (
                      <>
                        <Smile size={48} className="text-emerald-500 mx-auto mb-4" />
                        <h3 className="text-2xl font-extrabold mb-2">Semana Concluída! 🎉</h3>
@@ -1737,7 +1749,7 @@ export default function App() {
                ) : (
                  <>
                    {workouts[activeWorkoutDay]?.isLegs && (
-                     <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
+                     <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between mb-4">
                        <div className="flex items-center gap-3">
                          <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Activity size={20}/></div>
                          <div>
@@ -1745,14 +1757,51 @@ export default function App() {
                            <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
                          </div>
                        </div>
-                       <button onClick={()=>setIsGapMode(!isGapMode)} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
+                       <button onClick={()=>{setIsGapMode(!isGapMode); if(!isGapMode) setIsCaliMode(false);}} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isGapMode?'left-7':'left-1'}`}></div>
                        </button>
                      </div>
                    )}
 
-                   {!isGapMode && (
-                     <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-4 rounded-2xl flex items-center justify-between mb-4">
+                     <div className="flex items-center gap-3">
+                       <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Flame size={20}/></div>
+                       <div>
+                         <p className="font-bold text-white text-sm">Treino de Calistenia?</p>
+                         <p className="text-xs text-emerald-300/60">Substituir musculação pelo Módulo 1.</p>
+                       </div>
+                     </div>
+                     <button onClick={()=>{
+                         const newMode = !isCaliMode;
+                         setIsCaliMode(newMode);
+                         if(newMode) {
+                            setIsGapMode(false);
+                            const plan = CALISTHENICS_PLANS[selectedCaliPlan].map(b => formatEx(getEx(b.id), 3, b.reps));
+                            setCurrentCaliExercises(plan);
+                         }
+                     }} className={`w-12 h-6 rounded-full relative transition-colors ${isCaliMode?'bg-emerald-500':'bg-zinc-800'}`}>
+                       <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isCaliMode?'left-7':'left-1'}`}></div>
+                     </button>
+                   </div>
+
+                   {isCaliMode && (
+                      <div className="mb-4 animate-fadeIn">
+                         <select 
+                            value={selectedCaliPlan}
+                            onChange={(e) => {
+                               setSelectedCaliPlan(e.target.value);
+                               const plan = CALISTHENICS_PLANS[e.target.value].map(b => formatEx(getEx(b.id), 3, b.reps));
+                               setCurrentCaliExercises(plan);
+                            }}
+                            className="w-full bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold focus:border-emerald-500 transition-colors"
+                         >
+                            {Object.keys(CALISTHENICS_PLANS).map(t => <option key={t} value={t}>{t}</option>)}
+                         </select>
+                      </div>
+                   )}
+
+                   {!isGapMode && !isCaliMode && (
+                     <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 mb-4">
                         <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
                         <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
                           {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin"/> : <Cpu size={16} />}
@@ -1762,7 +1811,7 @@ export default function App() {
                    )}
 
                    {!isGapMode && (
-                     <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm">
+                     <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm mb-4">
                        <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}><Timer size={24} /></div>
                        <div className="font-mono text-3xl font-black w-24 text-center tracking-tighter">{formatTime(timeLeft)}</div>
                        <input type="range" min="30" max="180" step="15" value={timerInterval} onChange={e=>{setTimerInterval(e.target.value); setTimeLeft(e.target.value);}} className="flex-1 accent-emerald-500 h-2 bg-zinc-950 rounded-lg appearance-none cursor-pointer" />
@@ -1786,7 +1835,8 @@ export default function App() {
                      <div className="space-y-4">
                        {(() => {
                          let lastGroup = null;
-                         return (workouts[activeWorkoutDay]?.exercises || []).map((ex, index) => {
+                         const exercisesToRender = isCaliMode ? currentCaliExercises : (workouts[activeWorkoutDay]?.exercises || []);
+                         return exercisesToRender.map((ex, index) => {
                            const showHeader = ex.group !== lastGroup;
                            lastGroup = ex.group;
                            return (
@@ -1802,19 +1852,30 @@ export default function App() {
                                  <div className="p-5 flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900">
                                    <div className="flex items-center gap-4">
                                      <button onClick={()=>{
-                                       const upd = {...workouts};
-                                       upd[activeWorkoutDay] = {
-                                         ...upd[activeWorkoutDay],
-                                         exercises: upd[activeWorkoutDay].exercises.map(x => {
+                                       if(isCaliMode) {
+                                         setCurrentCaliExercises(prev => prev.map(x => {
                                            if(x.id === ex.id) {
                                              const isComp = !x.isCompleted;
                                              if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
                                              return { ...x, isCompleted: isComp };
                                            }
                                            return x;
-                                         })
-                                       };
-                                       setWorkouts(upd);
+                                         }));
+                                       } else {
+                                         const upd = {...workouts};
+                                         upd[activeWorkoutDay] = {
+                                           ...upd[activeWorkoutDay],
+                                           exercises: upd[activeWorkoutDay].exercises.map(x => {
+                                             if(x.id === ex.id) {
+                                               const isComp = !x.isCompleted;
+                                               if(isComp) { setTimeLeft(timerInterval); setIsTimerRunning(true); }
+                                               return { ...x, isCompleted: isComp };
+                                             }
+                                             return x;
+                                           })
+                                         };
+                                         setWorkouts(upd);
+                                       }
                                      }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950 scale-95':'bg-zinc-950 text-zinc-600 hover:text-white border border-zinc-800'}`}><Check size={24} strokeWidth={3}/></button>
                                      <div>
                                        <span className="font-extrabold text-lg block leading-tight">{ex.name}</span>
@@ -1822,16 +1883,28 @@ export default function App() {
                                      </div>
                                    </div>
                                    <div className="flex gap-2">
-                                     <button onClick={()=>handleRemoveExercise(ex.id)} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
+                                     <button onClick={()=>{
+                                        if(isCaliMode) setCurrentCaliExercises(prev => prev.filter(x => x.id !== ex.id));
+                                        else handleRemoveExercise(ex.id);
+                                     }} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
                                      <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: EXERCISE_DB.find(d=>d.id===ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
                                      <button onClick={()=>handleGetAnatomyTip(ex.id, ex.name, ex.originalId)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
                                    </div>
                                  </div>
                                  
                                  <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
-                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => handleExerciseChange(ex.id, 'sets', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="number" value={ex.reps} onChange={(e) => handleExerciseChange(ex.id, 'reps', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                    <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => handleExerciseChange(ex.id, 'weight', e.target.value)} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
+                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => {
+                                       if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, sets: e.target.value } : x));
+                                       else handleExerciseChange(ex.id, 'sets', e.target.value);
+                                    }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="text" value={ex.reps} onChange={(e) => {
+                                       if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, reps: e.target.value } : x));
+                                       else handleExerciseChange(ex.id, 'reps', e.target.value);
+                                    }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
+                                    <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => {
+                                       if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x));
+                                       else handleExerciseChange(ex.id, 'weight', e.target.value);
+                                    }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" /></div>
                                  </div>
 
                                  {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
@@ -2538,22 +2611,34 @@ export default function App() {
                     
                     return finalSwapList.map(ex => (
                       <button key={ex.id} onClick={() => {
-                        const upd = {...workouts};
                         const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false};
                         
-                        const exercises = [...(upd[activeWorkoutDay].exercises || [])];
-
-                        if (exerciseModal.mode === 'swap') {
-                          const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
-                          if (i > -1) exercises[i] = newEx;
+                        if (isCaliMode) {
+                           setCurrentCaliExercises(prev => {
+                              const exercises = [...prev];
+                              if (exerciseModal.mode === 'swap') {
+                                const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
+                                if (i > -1) exercises[i] = newEx;
+                              } else {
+                                exercises.push(newEx);
+                              }
+                              return exercises;
+                           });
                         } else {
-                          exercises.push(newEx);
+                           const upd = {...workouts};
+                           const exercises = [...(upd[activeWorkoutDay].exercises || [])];
+
+                           if (exerciseModal.mode === 'swap') {
+                             const i = exercises.findIndex(e=>e.id===exerciseModal.targetExId);
+                             if (i > -1) exercises[i] = newEx;
+                           } else {
+                             exercises.push(newEx);
+                           }
+                           
+                           upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
+                           setWorkouts(upd); 
+                           saveToCloud({ workouts: upd }); 
                         }
-                        
-                        upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises };
-                        
-                        setWorkouts(upd); 
-                        saveToCloud({ workouts: upd }); 
                         setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
                       }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
                         <div>
