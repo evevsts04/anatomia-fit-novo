@@ -361,9 +361,16 @@ export default function App() {
   useEffect(() => {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
     
-    // Removida a injeção automática de token e sessões anónimas 
-    // para garantir que o utilizador passe sempre pelo ecrã de Login.
-    
+    // Restaura a validação do Token de ambiente sem forçar o login anónimo
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+           await signInWithCustomToken(auth, __initial_auth_token);
+        }
+      } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
+    };
+    initAuth();
+
     const unsubscribe = onAuthStateChanged(auth, (u) => { 
       setUser(u); 
       if (!u) setAppScreen('login');
@@ -457,6 +464,9 @@ export default function App() {
           } else {
             setAppScreen('onboarding');
           }
+        } else {
+          // Fallback CRÍTICO: Previne o loop de loading infinito se o perfil faltar no documento
+          setAppScreen('onboarding');
         }
       } else {
         // Marca que precisa de gerar plano (espera pela DB da Nuvem)
@@ -590,6 +600,7 @@ export default function App() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      setAppScreen('loading'); // Transição imediata para evitar tela presa
     } catch (error) {
       if (error.code === 'auth/admin-restricted-operation') {
         setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo" no painel do Firebase Authentication.');
@@ -612,6 +623,7 @@ export default function App() {
     setIsProcessingAuth(true);
     try {
       await signInAnonymously(auth);
+      setAppScreen('loading'); // Transição imediata para evitar tela presa
     } catch (error) {
       setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`);
     } finally {
