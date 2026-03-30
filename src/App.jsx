@@ -230,7 +230,6 @@ export default function App() {
   
   // Storage de GIFs
   const [gifUrls, setGifUrls] = useState({});
-  const [isUploadingGif, setIsUploadingGif] = useState({});
 
   // FEEDBACKS IA 
   const [deepInsightText, setDeepInsightText] = useState('');
@@ -458,6 +457,7 @@ export default function App() {
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
+        if (d.anatomyTipsCache) setAnatomyTips(d.anatomyTipsCache); // Recupera o histórico de dicas
         if (d.measurements) {
           let loadedMeasures = { ...initialMeasures, ...d.measurements };
           if (d.measurements.bracos && !d.measurements.bracoEsq) {
@@ -550,7 +550,7 @@ export default function App() {
     if (!user || !db) return;
     setIsSyncing(true);
     try {
-      const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory };
+      const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), dataToSave, { merge: true });
     } catch (e) { 
       console.error(e); 
@@ -1063,24 +1063,6 @@ export default function App() {
     }
   };
 
-  const handleUploadGif = async (e, originalId) => {
-    const file = e.target.files[0];
-    if (!file || !storage) return;
-    
-    setIsUploadingGif(p => ({ ...p, [originalId]: true }));
-    try {
-      const storageRef = ref(storage, `gifs/${originalId}.gif`);
-      await uploadBytesResumable(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setGifUrls(p => ({ ...p, [originalId]: url }));
-    } catch (error) {
-      console.error(error);
-      showToast("Erro ao enviar GIF: " + error.message, "error");
-    } finally {
-      setIsUploadingGif(p => ({ ...p, [originalId]: false }));
-    }
-  };
-
   const handleGetAnatomyTip = async (ex) => {
     const exId = ex.id;
     const exOriginalId = ex.originalId;
@@ -1088,21 +1070,29 @@ export default function App() {
 
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
     
-    // Check if exercise has a cloud uploaded URL first
+    // Verifica se o exercício tem um GIF associado
     if (ex.gifUrl) {
        setGifUrls(p => ({ ...p, [exOriginalId]: ex.gifUrl }));
     } else if (storage && gifUrls[exOriginalId] === undefined) {
-      // Carregar GIF do Firebase Storage se ainda não estiver em cache
       try {
         const url = await getDownloadURL(ref(storage, `gifs/${exOriginalId}.gif`));
         setGifUrls(p => ({ ...p, [exOriginalId]: url }));
       } catch (err) {
-        setGifUrls(p => ({ ...p, [exOriginalId]: null })); // Null significa que não existe ainda
+        setGifUrls(p => ({ ...p, [exOriginalId]: null })); 
       }
     }
 
-    if (anatomyTipState[exId] === 'done') return; 
+    // Se já temos a dica no histórico (Cache), marca como concluído e poupa a IA!
+    if (anatomyTips[exId]) {
+      setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+      return;
+    }
+
+    // Bloqueia re-chamadas enquanto estiver a carregar
+    if (anatomyTipState[exId] === 'loading') return; 
+    
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
+    
     try {
       const schema = { 
         type: "OBJECT", 
@@ -1117,7 +1107,9 @@ export default function App() {
           geminiTip: { type: "STRING" } 
         } 
       };
-      const res = await callGemini(`Crie um "Guia Rápido" premium para o exercício "${exName}". O foco é o aluno ter resultados sem se lesionar. 
+      
+      // Prompt Otimizado: Agora envia explicitamente os dados que vieram do Banco de Exercícios
+      const res = await callGemini(`Crie um "Guia Rápido" premium para o exercício "${exName}" (Foco: ${ex.target}, Grupo Muscular: ${ex.group}). O foco é o aluno ter resultados sem se lesionar. 
       Retorne estritamente o JSON preenchido: 
       - intro: 1 frase explicativa/motivacional. 
       - executionSteps: 3 a 4 passos práticos formatados como 'Tópico: Explicação' (ex: "Base: Pés firmes..."). 
@@ -1125,11 +1117,15 @@ export default function App() {
       - mistakes: 2 a 4 erros muito comuns e perigosos. 
       - geminiTip: A dica final de ouro. Em português de Portugal.`, schema);
       
-      setAnatomyTips(p => ({ ...p, [exId]: res })); 
+      const newTips = { ...anatomyTips, [exId]: res };
+      setAnatomyTips(newTips); 
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+      setAnatomyTipErrors(p => ({ ...p, [exId]: null })); 
+      saveToCloud({ anatomyTipsCache: newTips }); // Guarda no Firebase para nunca mais precisar gerar!
     } catch (error) { 
       console.error(error);
       setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
+      setAnatomyTipErrors(p => ({ ...p, [exId]: error.message })); 
     }
   };
 
@@ -2001,37 +1997,16 @@ export default function App() {
                                            <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
                                          </div>
                                          
-                                         {/* Exibição do GIF ou Upload Directo */}
-                                         <div className="mb-4 bg-zinc-950 rounded-2xl border border-zinc-800/50 flex flex-col justify-center items-center overflow-hidden p-4 shadow-inner">
-                                           {gifUrls[ex.originalId] ? (
-                                             <div className="relative group w-full flex justify-center">
-                                               <img 
-                                                 src={gifUrls[ex.originalId]} 
-                                                 alt={`Execução de ${ex.name}`}
-                                                 className="max-w-full max-h-64 object-contain rounded-xl"
-                                               />
-                                               <label className="absolute top-2 right-2 bg-black/80 hover:bg-emerald-600 p-2.5 rounded-xl cursor-pointer opacity-0 group-hover:opacity-100 transition-all shadow-lg border border-zinc-700 hover:border-emerald-500">
-                                                  <Pencil size={16} className="text-white" />
-                                                  <input type="file" accept="image/gif, image/jpeg, image/png, video/mp4" className="hidden" onChange={(e) => handleUploadGif(e, ex.originalId)} />
-                                               </label>
-                                             </div>
-                                           ) : (
-                                             <div className="text-center py-8 w-full border-2 border-dashed border-zinc-800 rounded-xl hover:border-emerald-500/50 transition-colors bg-zinc-900/30">
-                                               {isUploadingGif[ex.originalId] ? (
-                                                 <div className="flex flex-col items-center gap-3 text-emerald-500">
-                                                   <Loader2 className="animate-spin" size={28}/>
-                                                   <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Enviando para a Nuvem...</span>
-                                                 </div>
-                                               ) : (
-                                                 <label className="cursor-pointer flex flex-col items-center gap-3 text-zinc-500 hover:text-emerald-400 transition-colors w-full h-full">
-                                                   <div className="p-3 bg-zinc-900 rounded-full shadow-sm"><Upload size={24} /></div>
-                                                   <span className="text-xs font-bold uppercase tracking-widest">Anexar GIF de Demonstração</span>
-                                                   <input type="file" accept="image/gif, image/jpeg, image/png, video/mp4" className="hidden" onChange={(e) => handleUploadGif(e, ex.originalId)} />
-                                                 </label>
-                                               )}
-                                             </div>
-                                           )}
-                                         </div>
+                                         {/* Exibição do GIF Limpa - Apenas renderiza se existir */}
+                                         {gifUrls[ex.originalId] && (
+                                           <div className="mb-4 bg-zinc-950 rounded-2xl border border-zinc-800/50 flex flex-col justify-center items-center overflow-hidden p-4 shadow-inner">
+                                             <img 
+                                               src={gifUrls[ex.originalId]} 
+                                               alt={`Execução de ${ex.name}`}
+                                               className="max-w-full max-h-64 object-contain rounded-xl"
+                                             />
+                                           </div>
+                                         )}
 
                                          <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
 
