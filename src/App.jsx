@@ -6,7 +6,7 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, Info, GripHorizontal, Trophy, Medal, Database
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -991,14 +991,13 @@ export default function App() {
     }
   };
 
-  const handleGetAnatomyTip = async (ex) => {
+  const toggleExpand = async (ex) => {
     const exId = ex.id;
     const exOriginalId = ex.originalId;
-    const exName = ex.name;
 
-    setExpandedDesc(p => ({ ...p, [exId]: true })); 
-    
-    // Obter GIF se existir e ainda não estiver mapeado
+    setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
+
+    // Carrega o GIF mal o cartão seja expandido, sem chamar a IA
     if (ex.gifUrl) {
        setGifUrls(p => ({ ...p, [exOriginalId]: ex.gifUrl }));
     } else if (storage && gifUrls[exOriginalId] === undefined) {
@@ -1009,6 +1008,11 @@ export default function App() {
         setGifUrls(p => ({ ...p, [exOriginalId]: null })); 
       }
     }
+  };
+
+  const handleGetAnatomyTip = async (ex) => {
+    const exId = ex.id;
+    const exName = ex.name;
 
     // Se já estiver em Cache, carrega na hora!
     if (anatomyTips[exId]) {
@@ -1859,7 +1863,9 @@ export default function App() {
                                         else handleRemoveExercise(ex.id);
                                      }} className="text-red-400 p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors border border-red-500/20"><Trash size={18}/></button>
                                      <button onClick={()=>setExerciseModal({ active: true, mode: 'swap', targetExId: ex.id, filterGroup: getEx(ex.originalId)?.group || 'Geral' })} className="text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800"><ArrowLeftRight size={18}/></button>
-                                     <button onClick={()=>handleGetAnatomyTip(ex)} className="text-emerald-500 p-3 bg-emerald-500/10 rounded-xl hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"><Sparkles size={18}/></button>
+                                     <button onClick={()=>toggleExpand(ex)} className={`text-zinc-500 p-3 bg-zinc-950 rounded-xl hover:text-white transition-colors border border-zinc-800 ${expandedDesc[ex.id] ? 'bg-zinc-800 text-white' : ''}`}>
+                                       {expandedDesc[ex.id] ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
+                                     </button>
                                    </div>
                                  </div>
                                  
@@ -1878,13 +1884,38 @@ export default function App() {
                                     }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" placeholder="+0" title="Carga extra para além do peso corporal" /></div>
                                  </div>
 
-                                 {/* Dicas IA - GUIA RÁPIDO PREMIUM */}
+                                 {/* Painel Expandido: Descrição Base + IA Opcional */}
                                  {expandedDesc[ex.id] && (
                                    <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
+                                     
+                                     {/* Área Limpa do GIF */}
+                                     {gifUrls[ex.originalId] && (
+                                       <div className="mb-4 bg-zinc-900 rounded-2xl flex flex-col justify-center items-center overflow-hidden p-2 shadow-inner">
+                                         <img 
+                                           src={gifUrls[ex.originalId]} 
+                                           alt={`Execução de ${ex.name}`}
+                                           className="max-w-full max-h-64 object-contain rounded-xl"
+                                         />
+                                       </div>
+                                     )}
+
+                                     {/* Descrição Fixa (Gerida no Painel Admin) */}
+                                     {ex.description && (
+                                        <p className="text-zinc-400 leading-relaxed mb-6">{ex.description}</p>
+                                     )}
+
+                                     {/* Acionador do Treinador de IA */}
+                                     {!anatomyTips[ex.id] && anatomyTipState[ex.id] !== 'loading' && anatomyTipState[ex.id] !== 'error' && (
+                                        <button onClick={() => handleGetAnatomyTip(ex)} className="w-full py-3 mb-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-colors">
+                                          <Sparkles size={18}/> Gerar Dicas Premium com IA
+                                        </button>
+                                     )}
+
+                                     {/* Estados da IA */}
                                      {anatomyTipState[ex.id] === 'loading' ? (
-                                        <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                                        <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia IA...</div>
                                      ) : anatomyTipState[ex.id] === 'error' ? (
-                                        <div className="text-center text-red-400 py-8 bg-red-950/20 rounded-2xl border border-red-900/30">
+                                        <div className="text-center text-red-400 py-8 bg-red-950/20 rounded-2xl border border-red-900/30 mb-2">
                                            <AlertCircle size={32} className="mx-auto mb-3 opacity-80"/>
                                            <p className="font-bold text-base">A IA não conseguiu responder</p>
                                            <p className="text-xs mt-2 opacity-80 max-w-xs mx-auto">
@@ -1895,21 +1926,11 @@ export default function App() {
                                            </button>
                                         </div>
                                      ) : anatomyTips[ex.id] ? (
-                                       <div className="animate-fadeIn space-y-5">
+                                       <div className="animate-fadeIn space-y-5 pt-4 border-t border-zinc-800/50 mt-4">
                                          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
-                                           <Dumbbell size={18} className="text-emerald-500"/>
-                                           <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
+                                           <Sparkles size={18} className="text-emerald-500"/>
+                                           <h4 className="font-extrabold text-white text-base">Dicas da IA para {ex.name}</h4>
                                          </div>
-                                         
-                                         {gifUrls[ex.originalId] && (
-                                           <div className="mb-4 bg-zinc-950 rounded-2xl border border-zinc-800/50 flex flex-col justify-center items-center overflow-hidden p-4 shadow-inner">
-                                             <img 
-                                               src={gifUrls[ex.originalId]} 
-                                               alt={`Execução de ${ex.name}`}
-                                               className="max-w-full max-h-64 object-contain rounded-xl"
-                                             />
-                                           </div>
-                                         )}
 
                                          <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
 
@@ -2479,6 +2500,10 @@ export default function App() {
                                         <option value="Cardio">Cardio</option>
                                      </select>
                                    </div>
+                                 </div>
+                                 <div>
+                                   <label className="text-[10px] text-zinc-500 font-bold uppercase">Descrição Breve (Opcional)</label>
+                                   <textarea value={editingExercise.description||''} onChange={e=>setEditingExercise({...editingExercise, description:e.target.value})} className="w-full bg-zinc-900 p-3 mt-1 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500 resize-none h-20" placeholder="Ex: Mantenha as costas retas e os cotovelos alinhados..."></textarea>
                                  </div>
                                  <div>
                                    <label className="text-[10px] text-zinc-500 font-bold uppercase">GIF da Execução (Opcional)</label>
