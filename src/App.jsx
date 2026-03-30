@@ -39,8 +39,7 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- DB EXERCÍCIOS ESTÁTICOS (LIMPO PARA DEIXAR O CÓDIGO ENXUTO) ---
-// Todos os exercícios vêm agora 100% do Firebase Firestore.
+// --- DB EXERCÍCIOS ESTÁTICOS ---
 const EXERCISE_DB = [];
 
 const INITIAL_MEALS = [
@@ -72,11 +71,10 @@ const CALISTHENICS_PLANS = {
   'Treino 15': [ { id: 'c_half_burpee', reps: '12' }, { id: 'c_flexao_pike_elevacao', reps: '10' }, { id: 'c_ombro_ombro', reps: '8' }, { id: 'c_sit_ups', reps: '15' }, { id: 'c_pike_hold', reps: 'Máx' }, { id: 'c_pike_caminhada', reps: '20' }, { id: 'c_remador', reps: '20' }, { id: 'c_hs_hold', reps: 'Máx' }, { id: 'c_flexao_militar', reps: '15' }, { id: 'c_caminhada_chao', reps: 'Máx' } ]
 };
 
-// Função utilitária para calcular o início da semana atual (Segunda-feira)
 const getStartOfCurrentWeek = () => {
   const now = new Date();
   const dayOfWeek = now.getDay();
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0 é Domingo
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
   const monday = new Date(now);
   monday.setDate(now.getDate() - daysSinceMonday);
   monday.setHours(0, 0, 0, 0);
@@ -86,56 +84,30 @@ const getStartOfCurrentWeek = () => {
 const formatEx = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
 
 const MEASUREMENTS_LABELS = {
-  peito: 'Peito', 
-  costas: 'Costas', 
-  cintura: 'Cintura', 
-  quadril: 'Quadril',
-  bracoEsq: 'Braço Esq.', 
-  bracoDir: 'Braço Dir.', 
-  antebracoEsq: 'Antebraço Esq.', 
-  antebracoDir: 'Antebraço Dir.', 
-  pernaEsq: 'Perna Esq.', 
-  pernaDir: 'Perna Dir.', 
-  panturrilhaEsq: 'Panturrilha Esq.', 
-  panturrilhaDir: 'Panturrilha Dir.'
+  peito: 'Peito', costas: 'Costas', cintura: 'Cintura', quadril: 'Quadril',
+  bracoEsq: 'Braço Esq.', bracoDir: 'Braço Dir.', antebracoEsq: 'Antebraço Esq.', antebracoDir: 'Antebraço Dir.', 
+  pernaEsq: 'Perna Esq.', pernaDir: 'Perna Dir.', panturrilhaEsq: 'Panturrilha Esq.', panturrilhaDir: 'Panturrilha Dir.'
 };
 
-// --- COMPONENTE AVATAR PARAMÉTRICO DINÂMICO ---
 function DynamicAvatar({ chest, waist, hips, color, opacity = 1, showGrid = false }) {
-  // Limites de segurança para evitar quebra do SVG (normalização)
   const nChest = Math.max(70, Math.min(150, chest || 100));
   const nWaist = Math.max(50, Math.min(130, waist || 80));
   const nHips = Math.max(70, Math.min(140, hips || 95));
-
-  // Cálculos de Proporção Baseados no centro (50px)
   const cW = (nChest / 100) * 16; 
   const wW = (nWaist / 80) * 12;
   const hW = (nHips / 95) * 15;
-
-  const pLeftChest = 50 - cW;
-  const pRightChest = 50 + cW;
-  const pLeftWaist = 50 - wW;
-  const pRightWaist = 50 + wW;
-  const pLeftHip = 50 - hW;
-  const pRightHip = 50 + hW;
+  const pLeftChest = 50 - cW; const pRightChest = 50 + cW;
+  const pLeftWaist = 50 - wW; const pRightWaist = 50 + wW;
+  const pLeftHip = 50 - hW; const pRightHip = 50 + hW;
 
   return (
     <svg viewBox="0 0 100 200" className="w-24 h-48 relative z-10 transition-all duration-1000 ease-in-out" style={{ opacity }}>
-       {/* Cabeça */}
        <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke={color} strokeWidth="2"/>
-       
-       {/* Braços Adaptáveis à Largura do Peito */}
        <path d={`M ${pLeftChest} 60 L ${pLeftChest - 12} 75 L ${pLeftChest - 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
        <path d={`M ${pRightChest} 60 L ${pRightChest + 12} 75 L ${pRightChest + 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-       
-       {/* Tronco Paramétrico (Peito, Cintura, Quadril) */}
        <path d={`M ${pLeftChest} 60 C ${pLeftWaist - 5} 90, ${pLeftWaist} 120, ${pLeftHip} 140 C ${50 - hW/2} 145, ${50 + hW/2} 145, ${pRightHip} 140 C ${pRightWaist} 120, ${pRightWaist + 5} 90, ${pRightChest} 60 Z`} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-       
-       {/* Pernas Adaptáveis ao Quadril */}
        <path d={`M ${pLeftHip} 140 L ${pLeftHip - 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
        <path d={`M ${pRightHip} 140 L ${pRightHip + 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-
-       {/* Detalhes de Definição Muscular Interna (Se aplicável) */}
        {showGrid && (
          <>
            <path d={`M ${pLeftWaist + 2} 85 C 50 95, 50 95, ${pRightWaist - 2} 85`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1"/>
@@ -163,14 +135,11 @@ export default function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
 
-  // Derivação Dinâmica da BD Activa
-  const activeDB = cloudExercises; // 100% dependente da Nuvem
+  const activeDB = cloudExercises; 
   const getEx = (id) => activeDB.find(e => e.id === id);
 
-  // ADMIN LOGIN CHECK
   const isAdmin = user?.email?.toLowerCase() === 'admin@anatomiafit.com';
 
-  // Sistema de Toasts (Notificações)
   const [toasts, setToasts] = useState([]);
   const showToast = (message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -180,10 +149,8 @@ export default function App() {
     }, 4000);
   };
 
-  // Variável temporal para Reset 24h
   const todayStr = new Date().toLocaleDateString('pt-BR');
 
-  // Navegação
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -191,9 +158,8 @@ export default function App() {
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
 
-  // ABA BIOMETRIA
   const [bioTab, setBioTab] = useState('capture');
-  const [scanState, setScanState] = useState('idle'); // idle, scanning, done
+  const [scanState, setScanState] = useState('idle'); 
   const [scanProgress, setScanProgress] = useState(0);
   const [scanFeedback, setScanFeedback] = useState([]);
   const [estimatedMeasures, setEstimatedMeasures] = useState(null);
@@ -201,7 +167,6 @@ export default function App() {
   const [scanAiReport, setScanAiReport] = useState('');
   const [isScanningAi, setIsScanningAi] = useState(false);
 
-  // Autenticação e Config
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -215,23 +180,23 @@ export default function App() {
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
-  // Upgrade Account State
   const [linkEmail, setLinkEmail] = useState('');
   const [linkPassword, setLinkPassword] = useState('');
   const [isLinking, setIsLinking] = useState(false);
 
-  // IA Geral
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // ESTADOS DO GUIA RÁPIDO (IA)
   const [anatomyTips, setAnatomyTips] = useState({});
   const [anatomyTipState, setAnatomyTipState] = useState({});
+  const [anatomyTipErrors, setAnatomyTipErrors] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   
-  // Storage de GIFs
   const [gifUrls, setGifUrls] = useState({});
+  const [isUploadingGif, setIsUploadingGif] = useState({});
 
-  // FEEDBACKS IA 
   const [deepInsightText, setDeepInsightText] = useState('');
   const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [workoutFeedback, setWorkoutFeedback] = useState('');
@@ -239,7 +204,6 @@ export default function App() {
   const [nutritionFeedback, setNutritionFeedback] = useState('');
   const [isNutritionFeedbackLoading, setIsNutritionFeedbackLoading] = useState(false);
 
-  // Dados Essenciais
   const [workouts, setWorkouts] = useState({});
   const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [workoutHistory, setWorkoutHistory] = useState([]);
@@ -261,19 +225,16 @@ export default function App() {
   const [measurements, setMeasurements] = useState(initialMeasures);
   const [weightHistory, setWeightHistory] = useState([]); 
   
-  // UI & Cronômetro & Nutrição Feed
   const [expandedDesc, setExpandedDesc] = useState({});
   const [exerciseModal, setExerciseModal] = useState({ active: false, mode: 'swap', targetExId: null, filterGroup: null });
   const [timerInterval, setTimerInterval] = useState(90);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   
-  // Controle Feed Nutrição
   const [editingNutritionId, setEditingNutritionId] = useState(null);
   const [editNutritionData, setEditNutritionData] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
 
-  // Gamificação - Conquistas
   const ACHIEVEMENTS = [
     { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => h.length >= 1 },
     { id: 'a2', title: 'Consistência Diária', desc: '10 Treinos concluídos', icon: <Medal className="text-yellow-400" size={24}/>, condition: (h) => h.length >= 10 },
@@ -349,7 +310,6 @@ export default function App() {
   }, [userProfile.weight, userProfile.height]);
 
   const generateAIPlan = () => {
-    // A base agora é dinâmica da Nuvem. Se não houver exercícios, avisa.
     if (cloudExercises.length === 0) {
       showToast("A base de dados na Nuvem está vazia. O Admin precisa adicionar os exercícios.", "error");
       return;
@@ -403,20 +363,9 @@ export default function App() {
     saveToCloud({ workouts: p, workoutOrder: DEFAULT_WORKOUT_DAYS });
   };
 
-  // Firebase Setup & Listeners
   useEffect(() => {
     if (!auth) { setFirebaseError("Firebase falhou."); setIsAuthLoading(false); return; }
     
-    // Restaura a validação do Token de ambiente sem forçar o login anónimo
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-           await signInWithCustomToken(auth, __initial_auth_token);
-        }
-      } catch (e) { setFirebaseError(e.message); setIsAuthLoading(false); }
-    };
-    initAuth();
-
     const unsubscribe = onAuthStateChanged(auth, (u) => { 
       setUser(u); 
       if (!u) setAppScreen('login');
@@ -425,7 +374,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // OUVINTE: Exercícios da Nuvem
   useEffect(() => {
     if (!user || !db) return;
     const exRef = collection(db, 'artifacts', appId, 'public', 'data', 'exercises');
@@ -435,12 +383,11 @@ export default function App() {
       setIsCloudDBLoaded(true);
     }, (err) => {
       console.error("Erro ao escutar exercícios:", err);
-      setIsCloudDBLoaded(true); // Prevenir bloqueio
+      setIsCloudDBLoaded(true); 
     });
     return () => unsubEx();
   }, [user]);
 
-  // OUVINTE: Dados do Utilizador
   useEffect(() => {
     if (!user || !db || firebaseError) return;
     const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'); 
@@ -457,7 +404,7 @@ export default function App() {
         if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
-        if (d.anatomyTipsCache) setAnatomyTips(d.anatomyTipsCache); // Recupera o histórico de dicas
+        if (d.anatomyTipsCache) setAnatomyTips(d.anatomyTipsCache);
         if (d.measurements) {
           let loadedMeasures = { ...initialMeasures, ...d.measurements };
           if (d.measurements.bracos && !d.measurements.bracoEsq) {
@@ -512,18 +459,15 @@ export default function App() {
             setAppScreen('onboarding');
           }
         } else {
-          // Fallback CRÍTICO: Previne o loop de loading infinito se o perfil faltar no documento
           setAppScreen('onboarding');
         }
       } else {
-        // Marca que precisa de gerar plano (espera pela DB da Nuvem)
         setNeedsToGeneratePlan(true);
       }
     }, (err) => setFirebaseError(err.message));
     return () => unsub();
   }, [user, firebaseError, todayStr]);
 
-  // GERAÇÃO DE PLANO SEGURA (Aguarda Nuvem)
   useEffect(() => {
     if (needsToGeneratePlan && isCloudDBLoaded) {
        generateAIPlan();
@@ -559,7 +503,6 @@ export default function App() {
     }
   };
 
-  // --- ADMIN & CLOUD DB LOGIC ---
   const handleMigrateDB = async () => {
     if(!user || !db) return;
     
@@ -647,7 +590,7 @@ export default function App() {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      setAppScreen('loading'); // Transição imediata para evitar tela presa
+      setAppScreen('loading'); 
     } catch (error) {
       if (error.code === 'auth/admin-restricted-operation') {
         setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo" no painel do Firebase Authentication.');
@@ -670,7 +613,7 @@ export default function App() {
     setIsProcessingAuth(true);
     try {
       await signInAnonymously(auth);
-      setAppScreen('loading'); // Transição imediata para evitar tela presa
+      setAppScreen('loading'); 
     } catch (error) {
       setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`);
     } finally {
@@ -763,45 +706,25 @@ export default function App() {
     } else if (isCaliMode) {
       currentCaliExercises.forEach(ex => {
         const w = Number(ex.weight) || 0;
-        const effW = w + bw; // Adiciona peso corporal (BW) para calistenia
+        const effW = w + bw; 
         vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
-        completedExercises.push({
-           originalId: ex.originalId,
-           name: ex.name,
-           sets: ex.sets,
-           reps: ex.reps,
-           weight: ex.weight
-        });
+        completedExercises.push({ originalId: ex.originalId, name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight });
         ex.isCompleted = false; 
       });
     } else if (cur && cur.exercises) {
       cur.exercises.forEach(ex => {
         const w = Number(ex.weight) || 0;
-        // Verifica se é exercício de peso corporal nativo para adicionar o peso do atleta no volume
         const isBodyweight = ex.group === 'GAP' || ex.group === 'Cardio' || String(ex.originalId).startsWith('c_') || ['e12','e13','e14','e17','e18','e65','e94','e95','e98','e99','e100'].includes(ex.originalId);
         const effW = isBodyweight ? (w + bw) : w;
         vol += effW * (Number(ex.reps)||0) * (Number(ex.sets)||0);
-        completedExercises.push({
-           originalId: ex.originalId,
-           name: ex.name,
-           sets: ex.sets,
-           reps: ex.reps,
-           weight: ex.weight
-        });
+        completedExercises.push({ originalId: ex.originalId, name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight });
         ex.isCompleted = false; 
       });
     }
 
     const timestamp = Date.now();
     const newLog = { 
-      id: timestamp, 
-      date: todayStr, 
-      timestamp, 
-      day: activeWorkoutDay, 
-      volume: vol, 
-      isGap: isGapMode, 
-      gapDuration: durationGap,
-      exercises: completedExercises 
+      id: timestamp, date: todayStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap, exercises: completedExercises 
     };
     const newHist = [...workoutHistory, newLog];
     
@@ -902,9 +825,11 @@ export default function App() {
     setScanAiReport('');
   };
 
-  const callGemini = async (prompt, schema = null, retries = 5) => {
+  // PARSER IA MELHORADO E ROBUSTO
+  const callGemini = async (prompt, schema = null, retries = 3) => {
     const apiKey = userProfile.geminiApiKey || ""; 
-    const model = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
+    // Usa modelo mais rápido e preciso para JSON se tiver chave
+    const model = apiKey ? "gemini-1.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const payload = {
@@ -917,8 +842,6 @@ export default function App() {
       })
     };
 
-    const delays = [1000, 2000, 4000, 8000, 16000];
-    
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const res = await fetch(url, {
@@ -928,21 +851,26 @@ export default function App() {
         });
         
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "Falha na API da IA.");
+        
+        if (!res.ok) {
+           const errReason = data.error?.message || "Erro de conexão com o Google.";
+           throw new Error(errReason);
+        }
         
         let textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textOutput) throw new Error("Resposta da IA está vazia.");
+        if (!textOutput) throw new Error("A IA retornou uma resposta vazia.");
         
         if (schema) {
-          textOutput = textOutput.replace(new RegExp('```json\\n?', 'g'), '').replace(new RegExp('```', 'g'), '').trim();
-          return JSON.parse(textOutput);
+          // Limpeza rigorosa de markdown (RegExp) para evitar crash do parse
+          let cleaned = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
+          return JSON.parse(cleaned);
         }
         return textOutput;
       } catch (err) {
         if (attempt === retries - 1) {
-          throw new Error("Falha na comunicação com a IA após várias tentativas. Detalhe: " + err.message);
+          throw new Error(err.message);
         }
-        await new Promise(r => setTimeout(r, delays[attempt]));
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); 
       }
     }
   };
@@ -1068,9 +996,9 @@ export default function App() {
     const exOriginalId = ex.originalId;
     const exName = ex.name;
 
-    setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
+    setExpandedDesc(p => ({ ...p, [exId]: true })); 
     
-    // Verifica se o exercício tem um GIF associado
+    // Obter GIF se existir e ainda não estiver mapeado
     if (ex.gifUrl) {
        setGifUrls(p => ({ ...p, [exOriginalId]: ex.gifUrl }));
     } else if (storage && gifUrls[exOriginalId] === undefined) {
@@ -1082,16 +1010,17 @@ export default function App() {
       }
     }
 
-    // Se já temos a dica no histórico (Cache), marca como concluído e poupa a IA!
+    // Se já estiver em Cache, carrega na hora!
     if (anatomyTips[exId]) {
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
       return;
     }
 
-    // Bloqueia re-chamadas enquanto estiver a carregar
+    // Bloquear duplo clique
     if (anatomyTipState[exId] === 'loading') return; 
     
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
+    setAnatomyTipErrors(p => ({ ...p, [exId]: null })); 
     
     try {
       const schema = { 
@@ -1108,20 +1037,22 @@ export default function App() {
         } 
       };
       
-      // Prompt Otimizado: Agora envia explicitamente os dados que vieram do Banco de Exercícios
-      const res = await callGemini(`Crie um "Guia Rápido" premium para o exercício "${exName}" (Foco: ${ex.target}, Grupo Muscular: ${ex.group}). O foco é o aluno ter resultados sem se lesionar. 
+      const prompt = `Crie um "Guia Rápido" premium para o exercício "${exName}" (Foco Muscular: ${ex.target}, Grupo: ${ex.group}). O foco é o aluno ter resultados sem se lesionar. 
       Retorne estritamente o JSON preenchido: 
       - intro: 1 frase explicativa/motivacional. 
       - executionSteps: 3 a 4 passos práticos formatados como 'Tópico: Explicação' (ex: "Base: Pés firmes..."). 
       - safetyTips: 2 a 3 dicas de proteção articular ou respiração. 
       - mistakes: 2 a 4 erros muito comuns e perigosos. 
-      - geminiTip: A dica final de ouro. Em português de Portugal.`, schema);
+      - geminiTip: A dica final de ouro. Em português de Portugal.`;
+
+      const res = await callGemini(prompt, schema);
       
       const newTips = { ...anatomyTips, [exId]: res };
       setAnatomyTips(newTips); 
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
-      setAnatomyTipErrors(p => ({ ...p, [exId]: null })); 
-      saveToCloud({ anatomyTipsCache: newTips }); // Guarda no Firebase para nunca mais precisar gerar!
+      
+      // Salva no banco em background para nunca mais gastar IA nisto!
+      saveToCloud({ anatomyTipsCache: newTips }); 
     } catch (error) { 
       console.error(error);
       setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
@@ -1312,104 +1243,116 @@ export default function App() {
 
   const recentNutritionDates = [...new Set(nutritionLogs.map(log => log.date))].slice(-7).reverse();
 
-  // --- SCREENS ---
-  if (isAuthLoading || appScreen === 'loading') return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
-  if (firebaseError) return <div className="p-8 bg-zinc-950 text-white"><AlertCircle className="text-red-500 mb-4" size={48}/>{firebaseError}</div>;
+  // --- ECRÃS E LÓGICA DE RENDERIZAÇÃO LIMPA E SEM DUPLICAÇÃO ---
 
-  if (!user || appScreen === 'login') return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-zinc-950 text-white relative overflow-hidden">
-      <ToastContainer toasts={toasts} />
-      <div className="max-w-md w-full bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 z-10 text-center shadow-2xl shadow-emerald-500/10">
-        <Dumbbell size={48} className="text-emerald-500 mx-auto mb-6" />
-        <h1 className="text-3xl font-extrabold mb-2">{isLoginMode ? 'AnatomiaFit' : 'Criar Conta'}</h1>
-        <p className="text-zinc-400 text-sm mb-8">O seu ecossistema de treino inteligente.</p>
-        <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="E-mail" />
-        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') handleAuthAction();}} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center tracking-widest text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="Senha" />
-        {authErrorMsg && <div className="text-red-400 text-xs mb-4 p-2 bg-red-500/10 rounded-xl">{authErrorMsg}</div>}
-        <button onClick={handleAuthAction} disabled={isProcessingAuth} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all">
-          {isProcessingAuth ? <Loader2 className="animate-spin mx-auto" /> : (isLoginMode ? 'Entrar' : 'Registar')}
-        </button>
-        <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthErrorMsg(''); }} className="mt-6 text-sm text-emerald-400 font-bold block w-full">
-          {isLoginMode ? 'Não tem conta? Registe-se' : 'Já tem conta? Entre'}
-        </button>
-        <button onClick={handleGuestLogin} disabled={isProcessingAuth} className="mt-4 text-xs text-zinc-500 hover:text-zinc-300 font-medium block w-full transition-colors">
-          Continuar sem conta (Modo Convidado)
-        </button>
-      </div>
-    </div>
-  );
+  if (isAuthLoading || appScreen === 'loading') {
+    return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
+  }
+  
+  if (firebaseError) {
+    return <div className="p-8 bg-zinc-950 text-white"><AlertCircle className="text-red-500 mb-4" size={48}/>{firebaseError}</div>;
+  }
 
-  // Impede o avanço para a App principal enquanto a Nuvem não carregar os exercícios
-  if (!isCloudDBLoaded) return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
-
-  if (appScreen === 'onboarding') return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white p-6 justify-center">
-      <ToastContainer toasts={toasts} />
-      <div className="max-w-md w-full mx-auto bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
-        <div className="flex mb-8 gap-2">
-           <div className={`h-2 flex-1 rounded-full ${onboardingStep>=1 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
-           <div className={`h-2 flex-1 rounded-full ${onboardingStep>=2 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
-           <div className={`h-2 flex-1 rounded-full ${onboardingStep>=3 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
+  if (!user || appScreen === 'login') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-zinc-950 text-white relative overflow-hidden">
+        <ToastContainer toasts={toasts} />
+        <div className="max-w-md w-full bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 z-10 text-center shadow-2xl shadow-emerald-500/10">
+          <Dumbbell size={48} className="text-emerald-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-extrabold mb-2">{isLoginMode ? 'AnatomiaFit' : 'Criar Conta'}</h1>
+          <p className="text-zinc-400 text-sm mb-8">O seu ecossistema de treino inteligente.</p>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="E-mail" />
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') handleAuthAction();}} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-center tracking-widest text-lg mb-4 focus:border-emerald-500 outline-none" placeholder="Senha" />
+          {authErrorMsg && <div className="text-red-400 text-xs mb-4 p-2 bg-red-500/10 rounded-xl">{authErrorMsg}</div>}
+          <button onClick={handleAuthAction} disabled={isProcessingAuth} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all">
+            {isProcessingAuth ? <Loader2 className="animate-spin mx-auto" /> : (isLoginMode ? 'Entrar' : 'Registar')}
+          </button>
+          <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthErrorMsg(''); }} className="mt-6 text-sm text-emerald-400 font-bold block w-full">
+            {isLoginMode ? 'Não tem conta? Registe-se' : 'Já tem conta? Entre'}
+          </button>
+          <button onClick={handleGuestLogin} disabled={isProcessingAuth} className="mt-4 text-xs text-zinc-500 hover:text-zinc-300 font-medium block w-full transition-colors">
+            Continuar sem conta (Modo Convidado)
+          </button>
         </div>
-
-        {onboardingStep === 0 && (
-          <div className="text-center animate-fadeIn">
-            <Activity size={64} className="text-emerald-500 mx-auto mb-6" />
-            <h1 className="text-3xl font-extrabold mb-4">Configure o seu Perfil</h1>
-            <p className="text-zinc-400 mb-8">A IA usará estes dados para calcular metas e nivelar treinos.</p>
-            <button onClick={()=>setOnboardingStep(1)} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold">Avançar</button>
-          </div>
-        )}
-
-        {onboardingStep === 1 && (
-          <div className="animate-fadeIn space-y-4">
-            <h2 className="text-xl font-bold mb-4">Dados Básicos</h2>
-            <div><label className="text-xs text-zinc-500 font-bold uppercase">Nome</label><input type="text" value={userProfile.name} onChange={e=>setUserProfile({...userProfile, name:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Idade</label><input type="number" value={userProfile.age} onChange={e=>setUserProfile({...userProfile, age:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Género</label><select value={userProfile.gender} onChange={e=>setUserProfile({...userProfile, gender:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none"><option value="M">Masc</option><option value="F">Fem</option></select></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Desejado (kg)</label><input type="number" value={userProfile.targetWeight} onChange={e=>setUserProfile({...userProfile, targetWeight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="text-xs text-zinc-500 font-bold uppercase">Altura (cm)</label><input type="number" value={userProfile.height} onChange={e=>setUserProfile({...userProfile, height:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
-              <div>
-                <label className="text-xs text-zinc-500 font-bold uppercase">Objetivo</label>
-                <select value={userProfile.goal} onChange={e=>setUserProfile({...userProfile, goal:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none text-emerald-400 font-bold">
-                  <option value="Hipertrofia">Hipertrofia</option>
-                  <option value="Definição">Definição</option>
-                  <option value="Manutenção">Manutenção</option>
-                </select>
-              </div>
-            </div>
-            <button onClick={()=>setOnboardingStep(2)} disabled={!userProfile.name || !userProfile.weight || !userProfile.targetWeight || !userProfile.height} className="w-full bg-emerald-600 disabled:opacity-50 py-4 rounded-2xl font-bold mt-4">Próximo</button>
-          </div>
-        )}
-
-        {onboardingStep === 2 && (
-          <div className="animate-fadeIn space-y-4">
-             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Ruler size={20} className="text-emerald-500"/> Medidas Iniciais (cm)</h2>
-             <div className="grid grid-cols-2 gap-3">
-               {Object.keys(MEASUREMENTS_LABELS).map(key => (
-                 <div key={key}>
-                   <label className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]}</label>
-                   <input type="number" value={measurements[key]} onChange={e=>setMeasurements({...measurements, [key]:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none focus:border-emerald-500 text-sm font-bold" />
-                 </div>
-               ))}
-             </div>
-             <button onClick={()=>{
-               const prof = {...userProfile, onboardingCompleted:true, lastMeasureUpdate: Date.now(), lastLoginDate: todayStr};
-               setUserProfile(prof); setAppScreen('main');
-               saveToCloud({ userProfile: prof, measurements, weightHistory: [{date: todayStr, weight: Number(userProfile.weight)}] });
-               showToast("Perfil configurado com sucesso!", "success");
-             }} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold mt-4">Concluir Setup</button>
-          </div>
-        )}
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Se o utilizador passou no Login, agora obriga a esperar que os exercícios cheguem da Nuvem
+  if (!isCloudDBLoaded) {
+    return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
+  }
+
+  if (appScreen === 'onboarding') {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-white p-6 justify-center">
+        <ToastContainer toasts={toasts} />
+        <div className="max-w-md w-full mx-auto bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
+          <div className="flex mb-8 gap-2">
+             <div className={`h-2 flex-1 rounded-full ${onboardingStep>=1 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
+             <div className={`h-2 flex-1 rounded-full ${onboardingStep>=2 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
+             <div className={`h-2 flex-1 rounded-full ${onboardingStep>=3 ? 'bg-emerald-500':'bg-zinc-800'}`}></div>
+          </div>
+
+          {onboardingStep === 0 && (
+            <div className="text-center animate-fadeIn">
+              <Activity size={64} className="text-emerald-500 mx-auto mb-6" />
+              <h1 className="text-3xl font-extrabold mb-4">Configure o seu Perfil</h1>
+              <p className="text-zinc-400 mb-8">A IA usará estes dados para calcular metas e nivelar treinos.</p>
+              <button onClick={()=>setOnboardingStep(1)} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold">Avançar</button>
+            </div>
+          )}
+
+          {onboardingStep === 1 && (
+            <div className="animate-fadeIn space-y-4">
+              <h2 className="text-xl font-bold mb-4">Dados Básicos</h2>
+              <div><label className="text-xs text-zinc-500 font-bold uppercase">Nome</label><input type="text" value={userProfile.name} onChange={e=>setUserProfile({...userProfile, name:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs text-zinc-500 font-bold uppercase">Idade</label><input type="number" value={userProfile.age} onChange={e=>setUserProfile({...userProfile, age:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+                <div><label className="text-xs text-zinc-500 font-bold uppercase">Género</label><select value={userProfile.gender} onChange={e=>setUserProfile({...userProfile, gender:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none"><option value="M">Masc</option><option value="F">Fem</option></select></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Atual (kg)</label><input type="number" value={userProfile.weight} onChange={e=>setUserProfile({...userProfile, weight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+                <div><label className="text-xs text-zinc-500 font-bold uppercase">Peso Desejado (kg)</label><input type="number" value={userProfile.targetWeight} onChange={e=>setUserProfile({...userProfile, targetWeight:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs text-zinc-500 font-bold uppercase">Altura (cm)</label><input type="number" value={userProfile.height} onChange={e=>setUserProfile({...userProfile, height:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none focus:border-emerald-500" /></div>
+                <div>
+                  <label className="text-xs text-zinc-500 font-bold uppercase">Objetivo</label>
+                  <select value={userProfile.goal} onChange={e=>setUserProfile({...userProfile, goal:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 mt-1 outline-none text-emerald-400 font-bold">
+                    <option value="Hipertrofia">Hipertrofia</option>
+                    <option value="Definição">Definição</option>
+                    <option value="Manutenção">Manutenção</option>
+                  </select>
+                </div>
+              </div>
+              <button onClick={()=>setOnboardingStep(2)} disabled={!userProfile.name || !userProfile.weight || !userProfile.targetWeight || !userProfile.height} className="w-full bg-emerald-600 disabled:opacity-50 py-4 rounded-2xl font-bold mt-4">Próximo</button>
+            </div>
+          )}
+
+          {onboardingStep === 2 && (
+            <div className="animate-fadeIn space-y-4">
+               <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Ruler size={20} className="text-emerald-500"/> Medidas Iniciais (cm)</h2>
+               <div className="grid grid-cols-2 gap-3">
+                 {Object.keys(MEASUREMENTS_LABELS).map(key => (
+                   <div key={key}>
+                     <label className="text-[10px] text-zinc-500 font-bold uppercase">{MEASUREMENTS_LABELS[key]}</label>
+                     <input type="number" value={measurements[key]} onChange={e=>setMeasurements({...measurements, [key]:e.target.value})} className="w-full bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none focus:border-emerald-500 text-sm font-bold" />
+                   </div>
+                 ))}
+               </div>
+               <button onClick={()=>{
+                 const prof = {...userProfile, onboardingCompleted:true, lastMeasureUpdate: Date.now(), lastLoginDate: todayStr};
+                 setUserProfile(prof); setAppScreen('main');
+                 saveToCloud({ userProfile: prof, measurements, weightHistory: [{date: todayStr, weight: Number(userProfile.weight)}] });
+                 showToast("Perfil configurado com sucesso!", "success");
+               }} className="w-full bg-emerald-600 py-4 rounded-2xl font-bold mt-4">Concluir Setup</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Cálculos Dinâmicos para os Avatares
   const initialW = weightHistory.length > 0 ? Number(weightHistory[0].weight) : Number(userProfile.weight);
@@ -1466,7 +1409,7 @@ export default function App() {
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
       </aside>
 
-      {/* ÁREA PRINCIPAL */}
+      {/* ÁREA PRINCIPAL DA APLICAÇÃO (SEM DUPLICAÇÕES) */}
       <main className="flex-1 overflow-y-auto w-full relative pb-28 md:pb-8">
         <div className="md:hidden flex items-center justify-between p-5 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
            <span className="font-extrabold text-xl text-emerald-500 flex items-center gap-2"><Dumbbell size={20}/> AnatomiaFit</span>
@@ -1475,7 +1418,7 @@ export default function App() {
         
         <div className="max-w-4xl mx-auto p-5 md:p-8 w-full mt-2">
           
-          {/* TELA: DASHBOARD */}
+          {/* ===================== TAB: DASHBOARD ===================== */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fadeIn">
               <header className="flex justify-between items-end mb-8">
@@ -1609,7 +1552,6 @@ export default function App() {
 
                   {/* Grid Gamificação & Feed */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                     {/* Gamificação / Conquistas */}
                      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 h-full">
                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Trophy size={18} className="text-emerald-500"/> Minhas Conquistas</h3>
                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1631,7 +1573,6 @@ export default function App() {
                        </div>
                      </div>
 
-                     {/* Feed Semanal de Treinos */}
                      <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 h-full">
                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Dumbbell size={18} className="text-emerald-500"/> Histórico da Semana</h3>
                        <div className="space-y-4 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1672,60 +1613,12 @@ export default function App() {
                        </div>
                      </div>
                   </div>
-
-                  {/* Feed Semanal de Nutrição */}
-                  <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2"><Utensils size={18} className="text-emerald-500"/> Histórico de Nutrição</h3>
-                    <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                      {recentNutritionDates.length === 0 ? (
-                        <p className="text-sm text-zinc-500 italic text-center py-4">Nenhum registo de nutrição ainda.</p>
-                      ) : (
-                        recentNutritionDates.map(date => {
-                          const dayLogs = nutritionLogs.filter(n => n.date === date);
-                          const dayTotals = dayLogs.reduce((acc, log) => ({
-                            cal: acc.cal + (Number(log.calories)||0),
-                            pro: acc.pro + (Number(log.protein)||0),
-                            car: acc.car + (Number(log.carbs)||0),
-                            fat: acc.fat + (Number(log.fats)||0)
-                          }), { cal: 0, pro: 0, car: 0, fat: 0 });
-
-                          return (
-                            <div key={date} className="bg-zinc-950 p-5 rounded-2xl border border-zinc-800 transition-all hover:border-zinc-700 shadow-sm">
-                              <div className="flex justify-between items-center mb-3 border-b border-zinc-800/50 pb-3">
-                                 <span className="font-black text-white text-lg">{date}</span>
-                                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">{dayLogs.length} Refeições</span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-2 text-center">
-                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-orange-400 font-bold uppercase">Kcal</p><p className="font-bold text-white text-sm">{dayTotals.cal}</p></div>
-                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-emerald-400 font-bold uppercase">Prot</p><p className="font-bold text-white text-sm">{dayTotals.pro}g</p></div>
-                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-blue-400 font-bold uppercase">Carb</p><p className="font-bold text-white text-sm">{dayTotals.car}g</p></div>
-                                <div className="bg-zinc-900/40 p-2 rounded-lg"><p className="text-[10px] text-yellow-400 font-bold uppercase">Gord</p><p className="font-bold text-white text-sm">{dayTotals.fat}g</p></div>
-                              </div>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Consultoria IA Holística */}
-                  <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2 mb-4"><MessageSquareQuote className="text-emerald-400" size={20} /> Relatório Geral de Desempenho</h3>
-                    <p className="text-xs text-zinc-400 mb-4">A IA vai cruzar o seu histórico de treino e ingestão calórica para fornecer um feedback abrangente.</p>
-                    <button onClick={handleGenerateDeepInsight} disabled={isDeepInsightLoading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                      {isDeepInsightLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Desempenho (Treino + Nutrição)
-                    </button>
-                    {deepInsightText && (
-                      <div className="mt-6 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line">
-                        {deepInsightText}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
             </div>
           )}
 
+          {/* ===================== TAB: TREINO ===================== */}
           {activeTab === 'treino' && (
              <div className="space-y-6 animate-fadeIn">
                <header className="flex flex-col gap-4 mb-2">
@@ -1854,7 +1747,7 @@ export default function App() {
                          setIsCaliMode(newMode);
                          if(newMode) {
                             setIsGapMode(false);
-                            const plan = CALISTHENICS_PLANS[selectedCaliPlan].map(b => formatEx(getEx(b.id), 3, b.reps));
+                            const plan = CALISTHENICS_PLANS[selectedCaliPlan].map(b => formatEx(getEx(b.id), 3, b.reps)).filter(x => x !== null);
                             setCurrentCaliExercises(plan);
                          }
                      }} className={`w-12 h-6 rounded-full relative transition-colors ${isCaliMode?'bg-emerald-500':'bg-zinc-800'}`}>
@@ -1868,7 +1761,7 @@ export default function App() {
                             value={selectedCaliPlan}
                             onChange={(e) => {
                                setSelectedCaliPlan(e.target.value);
-                               const plan = CALISTHENICS_PLANS[e.target.value].map(b => formatEx(getEx(b.id), 3, b.reps));
+                               const plan = CALISTHENICS_PLANS[e.target.value].map(b => formatEx(getEx(b.id), 3, b.reps)).filter(x => x !== null);
                                setCurrentCaliExercises(plan);
                             }}
                             className="w-full bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold focus:border-emerald-500 transition-colors"
@@ -1990,6 +1883,17 @@ export default function App() {
                                    <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
                                      {anatomyTipState[ex.id] === 'loading' ? (
                                         <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia Rápido IA...</div>
+                                     ) : anatomyTipState[ex.id] === 'error' ? (
+                                        <div className="text-center text-red-400 py-8 bg-red-950/20 rounded-2xl border border-red-900/30">
+                                           <AlertCircle size={32} className="mx-auto mb-3 opacity-80"/>
+                                           <p className="font-bold text-base">A IA não conseguiu responder</p>
+                                           <p className="text-xs mt-2 opacity-80 max-w-xs mx-auto">
+                                              {anatomyTipErrors[ex.id] || "Erro desconhecido."}
+                                           </p>
+                                           <button onClick={() => handleGetAnatomyTip(ex)} className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-xs font-bold text-red-300 transition-colors">
+                                              Tentar Novamente
+                                           </button>
+                                        </div>
                                      ) : anatomyTips[ex.id] ? (
                                        <div className="animate-fadeIn space-y-5">
                                          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
@@ -1997,7 +1901,6 @@ export default function App() {
                                            <h4 className="font-extrabold text-white text-base">Guia Rápido: {ex.name}</h4>
                                          </div>
                                          
-                                         {/* Exibição do GIF Limpa - Apenas renderiza se existir */}
                                          {gifUrls[ex.originalId] && (
                                            <div className="mb-4 bg-zinc-950 rounded-2xl border border-zinc-800/50 flex flex-col justify-center items-center overflow-hidden p-4 shadow-inner">
                                              <img 
@@ -2064,9 +1967,7 @@ export default function App() {
                                            </div>
                                          </div>
                                        </div>
-                                     ) : (
-                                        <div className="text-center text-red-400 py-4">Erro ao carregar o guia. Tente novamente.</div>
-                                     )}
+                                     ) : null}
                                    </div>
                                  )}
                                </div>
@@ -2079,7 +1980,6 @@ export default function App() {
                          <Plus size={20}/> Adicionar Exercício Manual
                        </button>
                        
-                       {/* FEEDBACK IA DO TREINO */}
                        <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
                          <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação da Ficha (IA)</h3>
                          <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar se os exercícios escolhidos fazem sentido para o seu objetivo.</p>
@@ -2103,6 +2003,7 @@ export default function App() {
              </div>
           )}
 
+          {/* ===================== TAB: NUTRIÇÃO ===================== */}
           {activeTab === 'nutricao' && (
              <div className="space-y-6 animate-fadeIn pb-12">
                <h1 className="text-3xl font-extrabold">Nutrição</h1>
@@ -2153,7 +2054,6 @@ export default function App() {
                  </div>
                </div>
 
-               {/* FEEDBACK IA DA DIETA */}
                <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
                  <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação de Ingestão Diária (IA)</h3>
                  <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar como os seus macros estão hoje em relação ao objetivo e receber sugestões.</p>
@@ -2167,7 +2067,6 @@ export default function App() {
                  )}
                </div>
 
-               {/* FEED DE REFEIÇÕES */}
                <div className="mt-8 space-y-4">
                  <h3 className="text-xl font-bold flex items-center gap-2"><Utensils size={20} className="text-emerald-500"/> Diário de Refeições</h3>
                  {todayNutrition.length === 0 ? (
@@ -2223,6 +2122,7 @@ export default function App() {
              </div>
           )}
 
+          {/* ===================== TAB: BIOMETRIA ===================== */}
           {activeTab === 'biometria' && (
             <div className="space-y-6 animate-fadeIn pb-12">
               <header className="flex justify-between items-end mb-6">
@@ -2278,7 +2178,7 @@ export default function App() {
                           {/* Efeito de Scanner Linear */}
                           <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20"></div>
                           
-                          {/* Esqueleto SVG (Pose Estimation Wireframe) */}
+                          {/* Esqueleto SVG */}
                           <svg viewBox="0 0 200 400" className="h-full opacity-80 relative z-10">
                             <defs>
                               <filter id="glow">
@@ -2289,26 +2189,23 @@ export default function App() {
                                 </feMerge>
                               </filter>
                             </defs>
-                            {/* Linhas principais */}
                             <path d="M 100 80 L 100 160 L 70 240 L 70 360 M 100 160 L 130 240 L 130 360" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
                             <path d="M 60 100 L 100 90 L 140 100" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
                             <path d="M 60 100 L 40 180 L 30 260 M 140 100 L 160 180 L 170 260" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
                             <path d="M 70 240 L 130 240" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
-                            
-                            {/* Pontos de Articulação */}
-                            <circle cx="100" cy="50" r="15" stroke="#10b981" strokeWidth="2" fill="transparent" filter="url(#glow)" /> {/* Cabeça */}
-                            <circle cx="100" cy="90" r="4" fill="#10b981" /> {/* Pescoço */}
-                            <circle cx="60" cy="100" r="4" fill="#34d399" /> {/* Ombro Esq */}
-                            <circle cx="140" cy="100" r="4" fill="#34d399" /> {/* Ombro Dir */}
-                            <circle cx="40" cy="180" r="4" fill="#34d399" /> {/* Cotovelo Esq */}
-                            <circle cx="160" cy="180" r="4" fill="#34d399" /> {/* Cotovelo Dir */}
-                            <circle cx="30" cy="260" r="3" fill="#6ee7b7" /> {/* Pulso Esq */}
-                            <circle cx="170" cy="260" r="3" fill="#6ee7b7" /> {/* Pulso Dir */}
-                            <circle cx="100" cy="160" r="4" fill="#10b981" /> {/* Centro */}
-                            <circle cx="70" cy="240" r="4" fill="#34d399" /> {/* Anca Esq */}
-                            <circle cx="130" cy="240" r="4" fill="#34d399" /> {/* Anca Dir */}
-                            <circle cx="70" cy="360" r="4" fill="#6ee7b7" /> {/* Joelho Esq */}
-                            <circle cx="130" cy="360" r="4" fill="#6ee7b7" /> {/* Joelho Dir */}
+                            <circle cx="100" cy="50" r="15" stroke="#10b981" strokeWidth="2" fill="transparent" filter="url(#glow)" />
+                            <circle cx="100" cy="90" r="4" fill="#10b981" />
+                            <circle cx="60" cy="100" r="4" fill="#34d399" />
+                            <circle cx="140" cy="100" r="4" fill="#34d399" />
+                            <circle cx="40" cy="180" r="4" fill="#34d399" />
+                            <circle cx="160" cy="180" r="4" fill="#34d399" />
+                            <circle cx="30" cy="260" r="3" fill="#6ee7b7" />
+                            <circle cx="170" cy="260" r="3" fill="#6ee7b7" />
+                            <circle cx="100" cy="160" r="4" fill="#10b981" />
+                            <circle cx="70" cy="240" r="4" fill="#34d399" />
+                            <circle cx="130" cy="240" r="4" fill="#34d399" />
+                            <circle cx="70" cy="360" r="4" fill="#6ee7b7" />
+                            <circle cx="130" cy="360" r="4" fill="#6ee7b7" />
                           </svg>
 
                           <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-zinc-800">
@@ -2413,10 +2310,8 @@ export default function App() {
                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><UserCircle size={20} className="text-emerald-500"/> Avatares Paramétricos 3D</h3>
                     
                     <div className="flex items-center justify-around gap-4 mb-6 relative">
-                       {/* Linha conectora de fundo */}
                        <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-zinc-800 border-t border-dashed border-zinc-700 z-0"></div>
 
-                       {/* Semana 1 (Calculado baseado no diferencial de peso) */}
                        <div className="relative z-10 flex flex-col items-center">
                           <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 mb-3 shadow-lg">
                              <DynamicAvatar 
@@ -2433,10 +2328,8 @@ export default function App() {
 
                        <ArrowRight size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
 
-                       {/* Atual (Com medidas precisas) */}
                        <div className="relative z-10 flex flex-col items-center">
                           <div className="bg-zinc-950 p-4 rounded-2xl border border-emerald-500/30 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative overflow-hidden">
-                             {/* Brilho fundo */}
                              <div className="absolute inset-0 bg-radial-gradient from-emerald-500/10 to-transparent"></div>
                              <DynamicAvatar 
                                chest={Number(measurements.peito)} 
@@ -2455,12 +2348,10 @@ export default function App() {
                      <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><BarChart size={18}/> Tendência de Simetria</h3>
                      
                      <div className="h-32 w-full relative">
-                        {/* Linhas guia */}
                         <div className="absolute top-0 w-full h-px bg-zinc-800"></div>
                         <div className="absolute top-1/2 w-full h-px bg-zinc-800"></div>
                         <div className="absolute bottom-0 w-full h-px bg-zinc-800"></div>
 
-                        {/* Gráfico Tendência SVG */}
                         <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible relative z-10">
                           <defs>
                             <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
@@ -2491,6 +2382,7 @@ export default function App() {
             </div>
           )}
 
+          {/* ===================== TAB: PERFIL ===================== */}
           {activeTab === 'perfil' && (
              <div className="space-y-6 animate-fadeIn pb-10">
                 <h1 className="text-3xl font-extrabold text-white">Perfil do Atleta</h1>
@@ -2548,7 +2440,6 @@ export default function App() {
                   <button onClick={()=>setShowMeasureAlert(true)} className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl text-sm font-bold transition-colors">Atualizar Medidas Agora</button>
                 </div>
 
-                {/* --- PAINEL DE ADMINISTRAÇÃO DA BD (PROTEGIDO) --- */}
                 {isAdmin && (
                   <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
                     <div className="flex justify-between items-center mb-4">
@@ -2568,7 +2459,6 @@ export default function App() {
                            </div>
                          )}
 
-                         {/* Form to Add/Edit */}
                          {editingExercise ? (
                            <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                               <h4 className="text-emerald-400 font-bold mb-3">{editingExercise.docId ? 'Editar Exercício' : 'Novo Exercício'}</h4>
@@ -2638,7 +2528,6 @@ export default function App() {
                     )}
                   </div>
                 )}
-                {/* -------------------------------------- */}
 
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
@@ -2722,7 +2611,6 @@ export default function App() {
                        if (user?.email) {
                          try {
                            await signInWithEmailAndPassword(auth, user.email, resetPassAttempt);
-                           // Apaga exclusivamente o documento de dados pessoais do utilizador
                            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'));
                            localStorage.clear(); 
                            window.location.reload();
@@ -2731,7 +2619,6 @@ export default function App() {
                          }
                        } else {
                          if (resetPassAttempt === 'admin123') {
-                           // Apaga exclusivamente o documento de dados pessoais do utilizador
                            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'));
                            localStorage.clear(); 
                            window.location.reload();
@@ -2749,7 +2636,8 @@ export default function App() {
              </div>
           )}
 
-          {/* MODAL EXERCÍCIO (SWAP / ADD) */}
+          {/* ===================== MODAIS GLOBAIS ===================== */}
+          
           {exerciseModal.active && (
             <div className="fixed inset-0 bg-black/90 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
               <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-md p-6 shadow-2xl h-[85vh] md:max-h-[80vh] flex flex-col">
@@ -2759,7 +2647,6 @@ export default function App() {
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                   {(() => {
-                    // Utilizar a base de dados em Nuvem na listagem do modal se existir, senão usa a estática (neste caso a nuvem é mandatória)
                     const swapList = exerciseModal.mode === 'swap' ? activeDB.filter(e => e.group === exerciseModal.filterGroup) : activeDB;
                     const finalSwapList = swapList.length > 0 ? swapList : activeDB;
                     
@@ -2808,7 +2695,6 @@ export default function App() {
             </div>
           )}
 
-          {/* MODAL TREINO CONCLUÍDO */}
           {showWorkoutSuccess && (
             <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fadeIn">
               <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
