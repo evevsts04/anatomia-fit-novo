@@ -6,7 +6,7 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -188,12 +188,16 @@ export default function App() {
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  // ESTADOS DO GUIA RÁPIDO (IA)
+  // ESTADOS DO GUIA RÁPIDO (IA) E PESQUISA
   const [anatomyTips, setAnatomyTips] = useState({});
   const [anatomyTipState, setAnatomyTipState] = useState({});
   const [anatomyTipErrors, setAnatomyTipErrors] = useState({});
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   
+  // --- NOVOS ESTADOS DE PESQUISA ---
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+
   const [gifUrls, setGifUrls] = useState({});
   const [isUploadingGif, setIsUploadingGif] = useState({});
 
@@ -825,10 +829,8 @@ export default function App() {
     setScanAiReport('');
   };
 
-  // PARSER IA MELHORADO E ROBUSTO
   const callGemini = async (prompt, schema = null, retries = 3) => {
     const apiKey = userProfile.geminiApiKey || ""; 
-    // Usa modelo mais rápido e preciso para JSON se tiver chave
     const model = apiKey ? "gemini-1.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
@@ -861,7 +863,6 @@ export default function App() {
         if (!textOutput) throw new Error("A IA retornou uma resposta vazia.");
         
         if (schema) {
-          // Limpeza rigorosa de markdown (RegExp) para evitar crash do parse
           let cleaned = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
           return JSON.parse(cleaned);
         }
@@ -997,7 +998,6 @@ export default function App() {
 
     setExpandedDesc(p => ({ ...p, [exId]: !p[exId] })); 
 
-    // Carrega o GIF mal o cartão seja expandido, sem chamar a IA
     if (ex.gifUrl) {
        setGifUrls(p => ({ ...p, [exOriginalId]: ex.gifUrl }));
     } else if (storage && gifUrls[exOriginalId] === undefined) {
@@ -1014,13 +1014,11 @@ export default function App() {
     const exId = ex.id;
     const exName = ex.name;
 
-    // Se já estiver em Cache, carrega na hora!
     if (anatomyTips[exId]) {
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
       return;
     }
 
-    // Bloquear duplo clique
     if (anatomyTipState[exId] === 'loading') return; 
     
     setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
@@ -1055,7 +1053,6 @@ export default function App() {
       setAnatomyTips(newTips); 
       setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
       
-      // Salva no banco em background para nunca mais gastar IA nisto!
       saveToCloud({ anatomyTipsCache: newTips }); 
     } catch (error) { 
       console.error(error);
@@ -2524,8 +2521,26 @@ export default function App() {
                                <Plus size={18} /> Adicionar Novo Exercício à Nuvem
                              </button>
 
+                             {/* --- BARRA DE PESQUISA ADMIN --- */}
+                             <div className="relative mt-4 mb-2">
+                               <Search size={16} className="absolute left-4 top-3.5 text-zinc-500" />
+                               <input 
+                                 type="text" 
+                                 placeholder="Pesquisar exercícios na nuvem..." 
+                                 value={adminSearchQuery} 
+                                 onChange={e => setAdminSearchQuery(e.target.value)}
+                                 className="w-full bg-zinc-950 py-3 pl-11 pr-4 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500 transition-colors"
+                               />
+                             </div>
+
                              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                               {cloudExercises.map(ex => (
+                               {cloudExercises
+                                  .filter(ex => 
+                                    ex.name.toLowerCase().includes(adminSearchQuery.toLowerCase()) || 
+                                    ex.group.toLowerCase().includes(adminSearchQuery.toLowerCase()) || 
+                                    ex.target.toLowerCase().includes(adminSearchQuery.toLowerCase())
+                                  )
+                                  .map(ex => (
                                   <div key={ex.docId} className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex justify-between items-center group">
                                      <div>
                                        <p className="font-bold text-sm text-white">{ex.name}</p>
@@ -2537,6 +2552,9 @@ export default function App() {
                                      </div>
                                   </div>
                                ))}
+                               {cloudExercises.length > 0 && adminSearchQuery && cloudExercises.filter(ex => ex.name.toLowerCase().includes(adminSearchQuery.toLowerCase()) || ex.group.toLowerCase().includes(adminSearchQuery.toLowerCase()) || ex.target.toLowerCase().includes(adminSearchQuery.toLowerCase())).length === 0 && (
+                                 <p className="text-center text-zinc-500 text-sm py-2">Nenhum resultado encontrado.</p>
+                               )}
                              </div>
                              
                              <div className="flex flex-col gap-2 mt-4">
@@ -2666,16 +2684,37 @@ export default function App() {
           {exerciseModal.active && (
             <div className="fixed inset-0 bg-black/90 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm animate-fadeIn">
               <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-md p-6 shadow-2xl h-[85vh] md:max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6 shrink-0">
+                <div className="flex justify-between items-center mb-4 shrink-0">
                   <h3 className="font-extrabold text-xl text-white">{exerciseModal.mode === 'swap' ? 'Substituir Exercício' : 'Adicionar Exercício'}</h3>
-                  <button onClick={()=>setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null})} className="bg-zinc-800 p-2 rounded-full text-zinc-400 hover:text-white transition-colors"><X size={20}/></button>
+                  <button onClick={()=>{setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null}); setModalSearchQuery('');}} className="bg-zinc-800 p-2 rounded-full text-zinc-400 hover:text-white transition-colors"><X size={20}/></button>
                 </div>
+
+                {/* --- BARRA DE PESQUISA DO MODAL --- */}
+                <div className="relative mb-4 shrink-0">
+                  <Search size={16} className="absolute left-4 top-3.5 text-zinc-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Pesquisar exercício..." 
+                    value={modalSearchQuery} 
+                    onChange={e => setModalSearchQuery(e.target.value)}
+                    className="w-full bg-zinc-950 py-3 pl-11 pr-4 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                   {(() => {
                     const swapList = exerciseModal.mode === 'swap' ? activeDB.filter(e => e.group === exerciseModal.filterGroup) : activeDB;
                     const finalSwapList = swapList.length > 0 ? swapList : activeDB;
                     
-                    return finalSwapList.map(ex => (
+                    const filteredList = finalSwapList.filter(ex => 
+                      ex.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) || 
+                      ex.group.toLowerCase().includes(modalSearchQuery.toLowerCase()) || 
+                      ex.target.toLowerCase().includes(modalSearchQuery.toLowerCase())
+                    );
+
+                    if (filteredList.length === 0) return <div className="text-center text-zinc-500 py-4 text-sm font-bold">Nenhum exercício encontrado.</div>;
+
+                    return filteredList.map(ex => (
                       <button key={ex.id} onClick={() => {
                         const newEx = {id:Date.now() + Math.random(), originalId:ex.id, name:ex.name, target:ex.target, group:ex.group, sets:3, reps:10, weight:'', isCompleted:false, gifUrl: ex.gifUrl};
                         
@@ -2706,6 +2745,7 @@ export default function App() {
                            saveToCloud({ workouts: upd }); 
                         }
                         setExerciseModal({active:false, mode:'swap', targetExId:null, filterGroup:null});
+                        setModalSearchQuery(''); // Limpar pesquisa ao selecionar
                       }} className="w-full text-left bg-zinc-950 p-5 rounded-2xl hover:border-emerald-500 border border-zinc-800 flex justify-between items-center group transition-all">
                         <div>
                           <p className="font-extrabold text-white group-hover:text-emerald-400 transition-colors text-lg">{ex.name}</p>
