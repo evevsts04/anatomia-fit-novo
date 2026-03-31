@@ -841,7 +841,7 @@ export default function App() {
       throw new Error("Ambiente Vercel: Por favor, configure a sua Chave API do Gemini no separador 'Perfil' para usar os recursos de IA.");
     }
 
-    const model = apiKey ? "gemini-1.5-flash" : "gemini-2.5-flash-preview-09-2025";
+    const model = apiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const payload = {
