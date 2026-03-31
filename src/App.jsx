@@ -834,8 +834,14 @@ export default function App() {
   };
 
   const callGemini = async (prompt, schema = null, retries = 3) => {
+    const isOutsideCanvas = typeof __firebase_config === 'undefined';
     const apiKey = userProfile.geminiApiKey || ""; 
-    const model = "gemini-2.5-flash-preview-09-2025";
+    
+    if (isOutsideCanvas && !apiKey) {
+      throw new Error("Ambiente Vercel: Por favor, configure a sua Chave API do Gemini no separador 'Perfil' para usar os recursos de IA.");
+    }
+
+    const model = apiKey ? "gemini-1.5-flash" : "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const payload = {
