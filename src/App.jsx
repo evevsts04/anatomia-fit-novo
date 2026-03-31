@@ -499,7 +499,11 @@ export default function App() {
     setIsSyncing(true);
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), dataToSave, { merge: true });
+      
+      // FIX CRÍTICO: Remove todos os valores "undefined" gerados pelo React que fazem o Firestore dar erro em silêncio.
+      const cleanData = JSON.parse(JSON.stringify(dataToSave)); 
+      
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), cleanData, { merge: true });
     } catch (e) { 
       console.error(e); 
     } finally {
@@ -831,7 +835,7 @@ export default function App() {
 
   const callGemini = async (prompt, schema = null, retries = 3) => {
     const apiKey = userProfile.geminiApiKey || ""; 
-    const model = apiKey ? "gemini-1.5-flash" : "gemini-2.5-flash-preview-09-2025";
+    const model = "gemini-2.5-flash-preview-09-2025";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const payload = {
@@ -930,6 +934,11 @@ export default function App() {
     setIsWorkoutFeedbackLoading(true); setWorkoutFeedback('');
     try {
       const dayInfo = workouts[activeWorkoutDay];
+      if (!dayInfo || !dayInfo.exercises || dayInfo.exercises.length === 0) {
+         setWorkoutFeedback("Adicione exercícios primeiro para que a IA possa avaliar o seu treino.");
+         setIsWorkoutFeedbackLoading(false);
+         return;
+      }
       const exerciseList = dayInfo.exercises.map(e => `${e.name} (${e.target})`).join(', ');
 
       const prompt = `Atue como um Master Trainer. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg). 
@@ -1092,6 +1101,10 @@ export default function App() {
   };
 
   const handleGenerateAIWorkout = async () => {
+    if (activeDB.length === 0) {
+       showToast("Base de dados vazia. A IA precisa de exercícios na Nuvem.", "error");
+       return;
+    }
     setIsGeneratingWorkout(true);
     try {
       const dayInfo = workouts[activeWorkoutDay];
@@ -1867,15 +1880,15 @@ export default function App() {
                                  </div>
                                  
                                  <div className="p-5 grid grid-cols-3 gap-4 bg-zinc-950/50">
-                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => {
+                                   <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label><input type="number" value={ex.sets} onChange={(e) => {
                                        if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, sets: e.target.value } : x));
                                        else handleExerciseChange(ex.id, 'sets', e.target.value);
                                     }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                    <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="text" value={ex.reps} onChange={(e) => {
+                                   <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label><input type="text" value={ex.reps} onChange={(e) => {
                                        if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, reps: e.target.value } : x));
                                        else handleExerciseChange(ex.id, 'reps', e.target.value);
                                     }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold border border-zinc-800 focus:border-emerald-500 transition-colors" /></div>
-                                    <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => {
+                                   <div><label className="text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label><input type="number" value={ex.weight} onChange={(e) => {
                                        if(isCaliMode) setCurrentCaliExercises(prev => prev.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x));
                                        else handleExerciseChange(ex.id, 'weight', e.target.value);
                                     }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center text-emerald-400 font-black border border-emerald-900/30 focus:border-emerald-500 transition-colors shadow-inner" placeholder="+0" title="Carga extra para além do peso corporal" /></div>
