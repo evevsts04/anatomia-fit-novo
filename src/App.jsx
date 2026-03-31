@@ -835,7 +835,7 @@ export default function App() {
 
   const callGemini = async (prompt, schema = null, retries = 3) => {
     const isOutsideCanvas = typeof __firebase_config === 'undefined';
-    const apiKey = userProfile.geminiApiKey || ""; 
+    const apiKey = (userProfile.geminiApiKey || "").trim(); 
     
     if (isOutsideCanvas && !apiKey) {
       throw new Error("Ambiente Vercel: Por favor, configure a sua Chave API do Gemini no separador 'Perfil' para usar os recursos de IA.");
@@ -865,7 +865,14 @@ export default function App() {
         const data = await res.json();
         
         if (!res.ok) {
-           const errReason = data.error?.message || "Erro de conexão com o Google.";
+           let errReason = data.error?.message || "Erro de conexão com o Google.";
+           if (data.error?.code === 400 && errReason.toLowerCase().includes("key")) {
+               errReason = "Chave API inválida. Verifique se copiou corretamente do Google AI Studio.";
+           } else if (data.error?.code === 403) {
+               errReason = "Erro 403: A sua chave API não tem permissões ativas ou a API Gemini não está habilitada na Google Cloud.";
+           } else if (data.error?.code === 404) {
+               errReason = "Erro 404: Modelo indisponível para esta chave.";
+           }
            throw new Error(errReason);
         }
         
