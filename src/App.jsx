@@ -841,7 +841,7 @@ export default function App() {
       setAppScreen('loading'); 
     } catch (error) {
       if (error.code === 'auth/admin-restricted-operation') {
-        setAuthErrorMsg('Operação restrita. Verifique as configurações do Firebase Authentication.');
+        setAuthErrorMsg('Operação restrita. Verifique se ativou "E-mail/Senha" no Firebase Authentication.');
       } else if (error.code === 'auth/invalid-credential') {
          setAuthErrorMsg('E-mail ou senha incorretos.');
       } else if (error.code === 'auth/email-already-in-use') {
