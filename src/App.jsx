@@ -39,7 +39,7 @@ try {
   console.error("Erro ao configurar Firebase:", e);
 }
 
-// --- COMPONENTES AUXILIARES ADICIONADOS ---
+// --- COMPONENTES AUXILIARES ---
 const ToastContainer = ({ toasts }) => (
   <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
     {toasts.map(t => (
@@ -79,9 +79,203 @@ const MacroBar = ({ label, current, target, color }) => {
   );
 };
 
+// --- DB EXERCÍCIOS (EXPANDIDO - 100 EXERCÍCIOS) ---
+const EXERCISE_DB = [
+  // --- PEITO ---
+  { id: 'e1', name: 'Supino Reto (Barra)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e2', name: 'Supino Reto (Halteres)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e3', name: 'Supino Inclinado (Barra)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e4', name: 'Supino Inclinado (Halteres)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e5', name: 'Supino Declinado (Barra)', target: 'Peitoral Inferior', group: 'Peito' },
+  { id: 'e6', name: 'Crucifixo Reto (Halteres)', target: 'Peitoral (Isolado)', group: 'Peito' },
+  { id: 'e7', name: 'Crucifixo Inclinado (Halteres)', target: 'Peitoral Superior (Isolado)', group: 'Peito' },
+  { id: 'e8', name: 'Crossover (Polia Alta)', target: 'Peitoral Inferior/Médio', group: 'Peito' },
+  { id: 'e9', name: 'Crossover (Polia Média)', target: 'Peitoral Maior/Miolo', group: 'Peito' },
+  { id: 'e10', name: 'Crossover (Polia Baixa)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e11', name: 'Voador (Peck Deck)', target: 'Peitoral (Isolado)', group: 'Peito' },
+  { id: 'e12', name: 'Flexão de Braços (Padrão)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e13', name: 'Flexão Declinada (Pés Elevados)', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'e14', name: 'Mergulho nas Paralelas', target: 'Peitoral Inferior/Tríceps', group: 'Peito' },
+  { id: 'e15', name: 'Supino Articulado (Máquina)', target: 'Peitoral Maior', group: 'Peito' },
+  { id: 'e16', name: 'Pullover (Halter)', target: 'Peitoral/Dorsal', group: 'Peito' },
 
-// --- DB EXERCÍCIOS ESTÁTICOS ---
-const EXERCISE_DB = [];
+  // --- COSTAS ---
+  { id: 'e17', name: 'Barra Fixa (Pronada)', target: 'Grande Dorsal', group: 'Costas' },
+  { id: 'e18', name: 'Barra Fixa (Supinada)', target: 'Dorsal/Bíceps', group: 'Costas' },
+  { id: 'e19', name: 'Puxada Anterior (Pronada)', target: 'Dorsal (Largura)', group: 'Costas' },
+  { id: 'e20', name: 'Puxada Anterior (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
+  { id: 'e21', name: 'Puxada com Triângulo', target: 'Dorsal (Miolo)', group: 'Costas' },
+  { id: 'e22', name: 'Remada Curvada (Barra)', target: 'Dorsal e Romboides', group: 'Costas' },
+  { id: 'e23', name: 'Remada Curvada (Supinada)', target: 'Dorsal Inferior', group: 'Costas' },
+  { id: 'e24', name: 'Remada Unilateral (Serrote)', target: 'Dorsal Unilateral', group: 'Costas' },
+  { id: 'e25', name: 'Remada Cavalinho (Barra T)', target: 'Espessura das Costas', group: 'Costas' },
+  { id: 'e26', name: 'Remada Sentada (Triângulo)', target: 'Costas (Média/Miolo)', group: 'Costas' },
+  { id: 'e27', name: 'Remada Sentada (Barra Aberta)', target: 'Dorsal Posterior', group: 'Costas' },
+  { id: 'e28', name: 'Pulldown (Polia Alta/Corda)', target: 'Grande Dorsal (Isolado)', group: 'Costas' },
+  { id: 'e29', name: 'Levantamento Terra', target: 'Costas Completas/Lombar', group: 'Costas' },
+  { id: 'e30', name: 'Extensão Lombar (Banco)', target: 'Lombar', group: 'Costas' },
+  { id: 'e31', name: 'Remada Articulada (Máquina)', target: 'Dorsal Maior', group: 'Costas' },
+
+  // --- OMBROS ---
+  { id: 'e32', name: 'Desenvolvimento (Barra)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
+  { id: 'e33', name: 'Desenvolvimento (Halteres)', target: 'Deltoide Anterior/Médio', group: 'Ombros' },
+  { id: 'e34', name: 'Desenvolvimento Arnold', target: 'Deltoide Completo', group: 'Ombros' },
+  { id: 'e35', name: 'Desenvolvimento (Máquina)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e36', name: 'Elevação Lateral (Halteres)', target: 'Deltoide Lateral', group: 'Ombros' },
+  { id: 'e37', name: 'Elevação Lateral (Polia)', target: 'Deltoide Lateral (Tensão Contínua)', group: 'Ombros' },
+  { id: 'e38', name: 'Elevação Frontal (Halteres)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e39', name: 'Elevação Frontal (Barra/Polia)', target: 'Deltoide Anterior', group: 'Ombros' },
+  { id: 'e40', name: 'Crucifixo Invertido (Halteres)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e41', name: 'Crucifixo Invertido (Polia)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e42', name: 'Crucifixo Invertido (Máquina)', target: 'Deltoide Posterior', group: 'Ombros' },
+  { id: 'e43', name: 'Remada Alta (Barra)', target: 'Deltoide Lateral/Trapézio', group: 'Ombros' },
+  { id: 'e44', name: 'Remada Alta (Polia)', target: 'Deltoide Lateral', group: 'Ombros' },
+  { id: 'e45', name: 'Encolhimento (Barra)', target: 'Trapézio', group: 'Ombros' },
+  { id: 'e46', name: 'Encolhimento (Halteres)', target: 'Trapézio', group: 'Ombros' },
+
+  // --- BRAÇOS (BÍCEPS, TRÍCEPS E ANTEBRAÇO) ---
+  { id: 'e47', name: 'Rosca Direta (Barra Reta)', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e48', name: 'Rosca Direta (Barra W)', target: 'Bíceps (Cabeça Longa)', group: 'Braços' },
+  { id: 'e49', name: 'Rosca Alternada (Halteres)', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e50', name: 'Rosca Martelo (Halteres)', target: 'Braquial/Antebraço', group: 'Braços' },
+  { id: 'e51', name: 'Rosca Martelo (Corda/Polia)', target: 'Braquial', group: 'Braços' },
+  { id: 'e52', name: 'Rosca Scott (Máquina/Barra)', target: 'Bíceps Braquial (Isolado)', group: 'Braços' },
+  { id: 'e53', name: 'Rosca Concentrada (Halter)', target: 'Pico do Bíceps', group: 'Braços' },
+  { id: 'e54', name: 'Rosca na Polia Baixa', target: 'Bíceps Braquial', group: 'Braços' },
+  { id: 'e55', name: 'Rosca Inversa (Barra/Polia)', target: 'Antebraço/Braquiorradial', group: 'Braços' },
+  { id: 'e56', name: 'Flexão de Punho (Barra/Halter)', target: 'Antebraço', group: 'Braços' },
+  { id: 'e57', name: 'Tríceps Pulley (Barra Reta)', target: 'Tríceps (Cabeça Lateral)', group: 'Braços' },
+  { id: 'e58', name: 'Tríceps Pulley (Corda)', target: 'Tríceps (Cabeça Longa)', group: 'Braços' },
+  { id: 'e59', name: 'Tríceps Testa (Barra W)', target: 'Tríceps Completo', group: 'Braços' },
+  { id: 'e60', name: 'Tríceps Testa (Halteres)', target: 'Tríceps Completo', group: 'Braços' },
+  { id: 'e61', name: 'Tríceps Francês (Halter Unilateral)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
+  { id: 'e62', name: 'Tríceps Francês (Corda/Polia)', target: 'Tríceps (Porção Longa)', group: 'Braços' },
+  { id: 'e63', name: 'Tríceps Coice (Halter/Polia)', target: 'Tríceps (Isolado)', group: 'Braços' },
+  { id: 'e64', name: 'Mergulho em Máquina', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'e65', name: 'Repulsão entre Bancos', target: 'Tríceps', group: 'Braços' },
+  { id: 'e66', name: 'Supino Fechado', target: 'Tríceps/Peitoral Miolo', group: 'Braços' },
+
+  // --- PERNAS (QUADRÍCEPS, POSTERIOR E PANTURRILHA) ---
+  { id: 'e67', name: 'Agachamento Livre (Barra)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e68', name: 'Agachamento Frontal', target: 'Quadríceps (Foco Alto)', group: 'Pernas' },
+  { id: 'e69', name: 'Agachamento Hack', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e70', name: 'Agachamento Búlgaro', target: 'Quadríceps/Glúteos Unilateral', group: 'Pernas' },
+  { id: 'e71', name: 'Leg Press 45°', target: 'Quadríceps/Posterior', group: 'Pernas' },
+  { id: 'e72', name: 'Leg Press Horizontal', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e73', name: 'Cadeira Extensora', target: 'Quadríceps (Isolado)', group: 'Pernas' },
+  { id: 'e74', name: 'Sissy Squat (Máquina)', target: 'Quadríceps', group: 'Pernas' },
+  { id: 'e75', name: 'Passada/Avanço (Halteres)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e76', name: 'Afundo (No Lugar)', target: 'Quadríceps/Glúteos', group: 'Pernas' },
+  { id: 'e77', name: 'Mesa Flexora', target: 'Isquiotibiais (Posterior)', group: 'Pernas' },
+  { id: 'e78', name: 'Cadeira Flexora', target: 'Isquiotibiais', group: 'Pernas' },
+  { id: 'e79', name: 'Flexora em Pé (Unilateral)', target: 'Isquiotibiais Unilateral', group: 'Pernas' },
+  { id: 'e80', name: 'Stiff (Barra/Halteres)', target: 'Posterior/Glúteos', group: 'Pernas' },
+  { id: 'e81', name: 'Levantamento Terra Romeno', target: 'Posterior da Coxa', group: 'Pernas' },
+  { id: 'e82', name: 'Bom Dia (Good Morning)', target: 'Posterior/Lombar', group: 'Pernas' },
+  { id: 'e83', name: 'Panturrilha em Pé (Máquina)', target: 'Gastrocnêmio', group: 'Pernas' },
+  { id: 'e84', name: 'Panturrilha Sentado (Máquina)', target: 'Sóleo', group: 'Pernas' },
+  { id: 'e85', name: 'Panturrilha no Leg Press', target: 'Gastrocnêmio', group: 'Pernas' },
+  { id: 'e86', name: 'Panturrilha Livre (Degrau/Unilateral)', target: 'Gastrocnêmio', group: 'Pernas' },
+
+  // --- GAP (GLÚTEOS E ABDÔMEN/CORE) ---
+  { id: 'e87', name: 'Elevação Pélvica (Barra)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e88', name: 'Elevação Pélvica (Máquina)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e89', name: 'Cadeira Abdutora', target: 'Glúteo Médio', group: 'GAP' },
+  { id: 'e90', name: 'Cadeira Adutora', target: 'Adutores da Coxa', group: 'GAP' },
+  { id: 'e91', name: 'Glúteo na Polia (Cabo)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e92', name: 'Glúteo 4 Apoios (Caneleira)', target: 'Glúteo Máximo', group: 'GAP' },
+  { id: 'e93', name: 'Agachamento Sumô (Halter)', target: 'Glúteo/Adutores', group: 'GAP' },
+  { id: 'e94', name: 'Abdominal Supra (Solo)', target: 'Reto Abdominal', group: 'GAP' },
+  { id: 'e95', name: 'Abdominal Infra (Elevação Pernas)', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'e96', name: 'Abdominal Supra (Polia)', target: 'Reto Abdominal (Com Carga)', group: 'GAP' },
+  { id: 'e97', name: 'Abdominal Oblíquo (Polia/Halter)', target: 'Oblíquos', group: 'GAP' },
+  { id: 'e98', name: 'Prancha Isométrica', target: 'Core/Estabilização', group: 'GAP' },
+  { id: 'e99', name: 'Roda Abdominal (Rolinho)', target: 'Core Completo', group: 'GAP' },
+  { id: 'e100', name: 'Elevação de Pernas em Suspensão', target: 'Abdômen Infra/Core', group: 'GAP' },
+
+  // --- CALISTENIA (MÓDULO 1) ---
+  { id: 'c_polichinelo', name: 'Polichinelo', target: 'Cardio/Full Body', group: 'Cardio' },
+  { id: 'c_barra', name: 'Barra Fixa', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_prancha', name: 'Prancha', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_joelhos', name: 'Flexão de Joelhos', target: 'Peitoral', group: 'Peito' },
+  { id: 'c_agachamento_salto', name: 'Agachamento c/ Salto', target: 'Quadríceps/Potência', group: 'Pernas' },
+  { id: 'c_pe_bunda', name: 'Pé na Bunda', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_barra_australiana', name: 'Barra Australiana', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_flexao_inclinada', name: 'Flexão Inclinada', target: 'Peitoral Inferior', group: 'Peito' },
+  { id: 'c_step_up', name: 'Step-up', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_agachamento', name: 'Agachamento (Livres)', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_afundo', name: 'Afundo', target: 'Pernas/Glúteos', group: 'Pernas' },
+  { id: 'c_afundo_elevacao', name: 'Afundo c/ Elevação', target: 'Pernas/Equilíbrio', group: 'Pernas' },
+  { id: 'c_sumo', name: 'Agachamento Sumô', target: 'Adutores/Glúteos', group: 'Pernas' },
+  { id: 'c_isometria_agachamento', name: 'Isometria no Agachamento', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_pantu_unilateral', name: 'Panturrilha Unilateral', target: 'Panturrilha', group: 'Pernas' },
+  { id: 'c_skipping', name: 'Skipping', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_dips', name: 'Dips (Paralelas Livres)', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'c_prancha_lateral', name: 'Prancha Lateral', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_triceps_trave', name: 'Tríceps na Trave', target: 'Tríceps', group: 'Braços' },
+  { id: 'c_alternado', name: 'Abdominal Alternado', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_padrao', name: 'Flexão Padrão', target: 'Peitoral', group: 'Peito' },
+  { id: 'c_crunches', name: 'Crunches (Abdominal Curto)', target: 'Abdômen', group: 'GAP' },
+  { id: 'c_false_rope', name: 'False Rope (Corda Falsa)', target: 'Cardio', group: 'Cardio' },
+  { id: 'c_barra_amf', name: 'Barra (A,M,F)', target: 'Dorsal Completa', group: 'Costas' },
+  { id: 'c_toe_touches', name: 'Toe Touches', target: 'Core', group: 'GAP' },
+  { id: 'c_barra_supinada', name: 'Barra Supinada', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_barra_aust_amf', name: 'Barra Aust. (A,M,F)', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_leg_flutters', name: 'Leg Flutters', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_biceps_barra', name: 'Bíceps na Barra', target: 'Bíceps', group: 'Braços' },
+  { id: 'c_half_burpee', name: 'Half Burpee', target: 'Cardio/Core', group: 'Cardio' },
+  { id: 'c_flexao_pike', name: 'Flexão Pike', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_bike', name: 'Abdominal Bike', target: 'Oblíquos/Core', group: 'GAP' },
+  { id: 'c_flexao_militar', name: 'Flexão Militar', target: 'Peito/Ombros', group: 'Peito' },
+  { id: 'c_side_crunches', name: 'Side Crunches', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_pike_caminhada', name: 'Pike Caminhada', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_prancha_alta_trave', name: 'Prancha Alta p/ Trave', target: 'Core', group: 'GAP' },
+  { id: 'c_caminhada_chao', name: 'Caminhada no Chão', target: 'Core/Ombros', group: 'GAP' },
+  { id: 'c_afundo_saltando', name: 'Afundo Saltando', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_afundo_explosivo', name: 'Afundo Explosivo', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_passada_lateral', name: 'Passada Lateral', target: 'Pernas/Glúteos', group: 'Pernas' },
+  { id: 'c_iso_afundo', name: 'Isometria no Afundo', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_heel_taps', name: 'Heel Taps', target: 'Oblíquos', group: 'GAP' },
+  { id: 'c_extensao_triceps', name: 'Extensão de Tríceps', target: 'Tríceps', group: 'Braços' },
+  { id: 'c_knee_raises', name: 'Knee Raises', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_flexao_explosiva', name: 'Flexão Explosiva', target: 'Peitoral/Potência', group: 'Peito' },
+  { id: 'c_in_outs', name: 'In & Outs A/F', target: 'Core', group: 'GAP' },
+  { id: 'c_prancha_alcance', name: 'Prancha com Alcance', target: 'Core', group: 'GAP' },
+  { id: 'c_mountain_climbers', name: 'Mountain Climbers', target: 'Cardio/Core', group: 'Cardio' },
+  { id: 'c_barra_aust_supinada', name: 'Barra Aust. Supinada', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_prancha_af', name: 'Prancha A/F', target: 'Core', group: 'GAP' },
+  { id: 'c_leg_raises', name: 'Leg Raises', target: 'Abdômen Inferior', group: 'GAP' },
+  { id: 'c_pike_shoulder_tap', name: 'Pike Shoulder Tap', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_flexao_pike_elevacao', name: 'Flexão Pike c/ Elevação', target: 'Ombros/Peitoral Sup.', group: 'Ombros' },
+  { id: 'c_flexao_declinada', name: 'Flexão Declinada', target: 'Peitoral Superior', group: 'Peito' },
+  { id: 'c_prancha_parede', name: 'Prancha na Parede', target: 'Ombros/Core', group: 'Ombros' },
+  { id: 'c_prancha_alternate', name: 'Prancha Alternate', target: 'Core', group: 'GAP' },
+  { id: 'c_flexao_diamante', name: 'Flexão Diamante', target: 'Tríceps/Peitoral Interno', group: 'Braços' },
+  { id: 'c_canivete', name: 'Abdominal Canivete', target: 'Core Completo', group: 'GAP' },
+  { id: 'c_barra_aust_arqueiro', name: 'Barra Aust. Arqueiro', target: 'Costas', group: 'Costas' },
+  { id: 'c_pistol_suport', name: 'Pistol c/ Suporte', target: 'Pernas Unilateral', group: 'Pernas' },
+  { id: 'c_salto_frontal', name: 'Salto Frontal', target: 'Pernas/Potência', group: 'Pernas' },
+  { id: 'c_agacha_afundo', name: 'Agacha + Afundo', target: 'Pernas', group: 'Pernas' },
+  { id: 'c_ponte', name: 'Ponte de Glúteos', target: 'Glúteos/Lombar', group: 'GAP' },
+  { id: 'c_iso_ponta_pe', name: 'Isometria Ponta do Pé', target: 'Panturrilha', group: 'Pernas' },
+  { id: 'c_burpee', name: 'Burpee Completo', target: 'Cardio/Full Body', group: 'Cardio' },
+  { id: 'c_prancha_jc', name: 'Prancha J/C', target: 'Core', group: 'GAP' },
+  { id: 'c_pa_b_fm', name: 'P.A p/ Baixa + Flexão', target: 'Peito/Core', group: 'Peito' },
+  { id: 'c_tuck_lsit', name: 'Tuck L-sit', target: 'Core', group: 'GAP' },
+  { id: 'c_diamante_regular', name: 'Diamante p/ Regular', target: 'Tríceps/Peito', group: 'Braços' },
+  { id: 'c_flexao_inclinada_exp', name: 'Flexão Inclinada Exp.', target: 'Peitoral Inferior/Potência', group: 'Peito' },
+  { id: 'c_flexao_hold', name: 'Flexão Hold', target: 'Peitoral/Core', group: 'Peito' },
+  { id: 'c_escapula', name: 'Tração Escapular', target: 'Dorsal/Escápulas', group: 'Costas' },
+  { id: 'c_corner_raises', name: 'Corner Raises', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_barra_trad', name: 'Barra Tradicional', target: 'Dorsal', group: 'Costas' },
+  { id: 'c_barra_aust_sup_arq', name: 'Barra Aust. Sup. Arqueiro', target: 'Costas/Bíceps', group: 'Costas' },
+  { id: 'c_leg_x', name: 'Leg X', target: 'Core', group: 'GAP' },
+  { id: 'c_ombro_ombro', name: 'Ombro p/ Ombro', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_sit_ups', name: 'Sit-ups', target: 'Core', group: 'GAP' },
+  { id: 'c_pike_hold', name: 'Pike Hold', target: 'Ombros', group: 'Ombros' },
+  { id: 'c_remador', name: 'Abdominal Remador', target: 'Core', group: 'GAP' },
+  { id: 'c_hs_hold', name: 'Handstand Hold', target: 'Ombros/Equilíbrio', group: 'Ombros' }
+];
 
 const INITIAL_MEALS = [
   { id: 'm1', name: 'Café da Manhã' },
@@ -552,7 +746,6 @@ export default function App() {
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
       
-      // FIX CRÍTICO: Remove todos os valores "undefined" gerados pelo React que fazem o Firestore dar erro em silêncio.
       const cleanData = JSON.parse(JSON.stringify(dataToSave)); 
       
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), cleanData, { merge: true });
@@ -1320,7 +1513,7 @@ export default function App() {
     saveToCloud({ workouts: upd });
   };
 
-  // --- ECRÃS E LÓGICA DE RENDERIZAÇÃO LIMPA E SEM DUPLICAÇÃO ---
+  // --- ECRÃS E LÓGICA DE RENDERIZAÇÃO ---
 
   if (isAuthLoading || appScreen === 'loading') {
     return <div className="h-screen flex items-center justify-center bg-zinc-950 text-white"><Loader2 className="animate-spin text-emerald-500" size={48} /></div>;
@@ -1486,7 +1679,7 @@ export default function App() {
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
       </aside>
 
-      {/* ÁREA PRINCIPAL DA APLICAÇÃO (SEM DUPLICAÇÕES) */}
+      {/* ÁREA PRINCIPAL DA APLICAÇÃO */}
       <main className="flex-1 overflow-y-auto w-full relative pb-28 md:pb-8">
         <div className="md:hidden flex items-center justify-between p-5 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
            <span className="font-extrabold text-xl text-emerald-500 flex items-center gap-2"><Dumbbell size={20}/> AnatomiaFit</span>
@@ -2549,7 +2742,7 @@ export default function App() {
                       <div className="space-y-4 animate-fadeIn">
                          {cloudExercises.length === 0 && (
                            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl text-sm text-blue-300 mb-4 flex flex-col gap-3 justify-between items-center text-center">
-                             <span>A nuvem está vazia. O array estático no código foi apagado. Precisa adicionar os exercícios manualmente pelo botão abaixo.</span>
+                             <span>A nuvem está vazia. O array estático no código foi atualizado! Clique abaixo para migrá-los.</span>
                            </div>
                          )}
 
@@ -2635,7 +2828,7 @@ export default function App() {
                              
                              <div className="flex flex-col gap-2 mt-4">
                                 <button onClick={handleMigrateDB} className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-500 py-2 rounded-xl text-xs font-bold transition-colors">
-                                  Migrar Local para Nuvem (Aviso: Estático já foi apagado)
+                                  Migrar 100 Exercícios Locais para a Nuvem
                                 </button>
                                 <button onClick={() => setShowAdminPanel(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-xl text-xs font-bold transition-colors">
                                   Fechar Painel
