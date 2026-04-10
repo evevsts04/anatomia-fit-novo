@@ -10,9 +10,8 @@ import {
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, 
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-  EmailAuthProvider, linkWithCredential
+  getAuth, signInWithCustomToken, onAuthStateChanged, 
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -415,10 +414,6 @@ export default function App() {
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
-  const [linkEmail, setLinkEmail] = useState('');
-  const [linkPassword, setLinkPassword] = useState('');
-  const [isLinking, setIsLinking] = useState(false);
-
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -611,7 +606,7 @@ export default function App() {
           await signInWithCustomToken(auth, __initial_auth_token);
         }
       } catch (e) {
-        console.warn("Initial custom token auth failed, falling back to anon/login state", e);
+        console.warn("Initial custom token auth failed.", e);
       }
     };
     initAuth();
@@ -846,7 +841,7 @@ export default function App() {
       setAppScreen('loading'); 
     } catch (error) {
       if (error.code === 'auth/admin-restricted-operation') {
-        setAuthErrorMsg('Operação restrita. Ative "E-mail/Senha" e "Anónimo" no painel do Firebase Authentication.');
+        setAuthErrorMsg('Operação restrita. Verifique as configurações do Firebase Authentication.');
       } else if (error.code === 'auth/invalid-credential') {
          setAuthErrorMsg('E-mail ou senha incorretos.');
       } else if (error.code === 'auth/email-already-in-use') {
@@ -861,19 +856,6 @@ export default function App() {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setAuthErrorMsg('');
-    setIsProcessingAuth(true);
-    try {
-      await signInAnonymously(auth);
-      setAppScreen('loading'); 
-    } catch (error) {
-      setAuthErrorMsg(`Erro ao entrar como convidado: ${error.message}`);
-    } finally {
-      setIsProcessingAuth(false);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -881,25 +863,6 @@ export default function App() {
       setAppScreen('login');
     } catch (error) {
       console.error("Logout failed:", error);
-    }
-  };
-
-  const handleLinkAccount = async () => {
-    if (!linkEmail || !linkPassword) {
-      showToast("Preencha email e senha", "error");
-      return;
-    }
-    setIsLinking(true);
-    try {
-      const credential = EmailAuthProvider.credential(linkEmail, linkPassword);
-      await linkWithCredential(auth.currentUser, credential);
-      showToast("Conta promovida com sucesso! Agora é permanente.", "success");
-      setLinkEmail('');
-      setLinkPassword('');
-    } catch (error) {
-      showToast("Erro ao vincular: " + error.message, "error");
-    } finally {
-      setIsLinking(false);
     }
   };
 
@@ -1539,9 +1502,6 @@ export default function App() {
           </button>
           <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthErrorMsg(''); }} className="mt-6 text-sm text-emerald-400 font-bold block w-full">
             {isLoginMode ? 'Não tem conta? Registe-se' : 'Já tem conta? Entre'}
-          </button>
-          <button onClick={handleGuestLogin} disabled={isProcessingAuth} className="mt-4 text-xs text-zinc-500 hover:text-zinc-300 font-medium block w-full transition-colors">
-            Continuar sem conta (Modo Convidado)
           </button>
         </div>
       </div>
@@ -2680,7 +2640,7 @@ export default function App() {
                   </div>
                   <div className="text-center md:text-left flex-1">
                     <h2 className="text-3xl font-black text-white tracking-tight">{userProfile.name}</h2>
-                    <p className="text-zinc-400 font-medium mb-4">{user?.email || "Modo Local"}</p>
+                    <p className="text-zinc-400 font-medium mb-4">{user?.email}</p>
                     <div className="flex flex-wrap justify-center md:justify-start gap-2">
                        <span className="bg-zinc-800 px-3 py-1 rounded-lg text-xs font-bold text-zinc-300">{userProfile.age} Anos</span>
                        <span className="bg-zinc-800 px-3 py-1 rounded-lg text-xs font-bold text-zinc-300">{userProfile.gender === 'M' ? 'Masculino' : 'Feminino'}</span>
@@ -2699,20 +2659,6 @@ export default function App() {
                     <p className={`text-3xl font-black ${bmi > 25 ? 'text-yellow-500' : 'text-emerald-500'}`}>{bmi}</p>
                   </div>
                 </div>
-
-                {user?.isAnonymous && (
-                  <div className="bg-blue-950/20 p-6 rounded-3xl border border-blue-900/30 mt-6">
-                    <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2"><UserCircle size={18}/> Salvar Conta Anónima</h3>
-                    <p className="text-xs text-zinc-400 mb-4">A sua conta atual é temporária. Para virar <strong>Administrador</strong> e não perder os seus treinos atuais, promova a sua conta criando a credencial <code>admin@anatomiafit.com</code> abaixo:</p>
-                    <div className="flex flex-col gap-3">
-                      <input type="email" value={linkEmail} onChange={e=>setLinkEmail(e.target.value)} placeholder="E-mail (ex: admin@anatomiafit.com)" className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-blue-500" />
-                      <input type="password" value={linkPassword} onChange={e=>setLinkPassword(e.target.value)} placeholder="Nova Senha" className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 outline-none text-white text-sm focus:border-blue-500" />
-                      <button onClick={handleLinkAccount} disabled={isLinking} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white py-3 rounded-xl font-bold transition-colors flex justify-center items-center gap-2">
-                        {isLinking ? <Loader2 size={18} className="animate-spin"/> : <Save size={18}/>} Transformar em Conta Permanente
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Ruler size={18}/> Medidas Corporais</h3>
@@ -2928,14 +2874,6 @@ export default function App() {
                            window.location.reload();
                          } catch (error) {
                            showToast("Senha incorreta!", "error");
-                         }
-                       } else {
-                         if (resetPassAttempt === 'admin123') {
-                           await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'));
-                           localStorage.clear(); 
-                           window.location.reload();
-                         } else {
-                           showToast("Senha incorreta! No modo local, digite 'admin123'.", "error");
                          }
                        }
                      }} className="bg-red-600 text-white px-4 rounded-xl font-bold">Reset</button>
