@@ -6,7 +6,7 @@ import {
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
   Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search, Menu
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -53,13 +53,6 @@ const SidebarBtn = ({ a, o, i, l }) => (
   <button onClick={o} className={`flex items-center gap-3 p-3 rounded-2xl transition-all font-bold text-sm ${a ? 'bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20' : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-white'}`}>
     {i}
     {l}
-  </button>
-);
-
-const MobileNavButton = ({ a, o, i, l }) => (
-  <button onClick={o} className={`flex flex-col items-center gap-1 p-2 transition-colors ${a ? 'text-emerald-500' : 'text-zinc-500 hover:text-zinc-300'}`}>
-    {i}
-    <span className="text-[10px] font-bold">{l}</span>
   </button>
 );
 
@@ -461,9 +454,10 @@ export default function App() {
   
   const [expandedDesc, setExpandedDesc] = useState({});
   const [exerciseModal, setExerciseModal] = useState({ active: false, mode: 'swap', targetExId: null, filterGroup: null });
-  const [timerInterval, setTimerInterval] = useState(90);
+  const [timerInterval, setTimerInterval] = useState(60);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [editingNutritionId, setEditingNutritionId] = useState(null);
   const [editNutritionData, setEditNutritionData] = useState(null);
@@ -2012,11 +2006,44 @@ export default function App() {
                    )}
 
                    {!isGapMode && (
-                     <div className="bg-zinc-900 p-5 rounded-3xl flex items-center gap-4 border border-zinc-800 shadow-sm mb-4">
-                       <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}><Timer size={24} /></div>
-                       <div className="font-mono text-3xl font-black w-24 text-center tracking-tighter">{formatTime(timeLeft)}</div>
-                       <input type="range" min="30" max="180" step="15" value={timerInterval} onChange={e=>{setTimerInterval(e.target.value); setTimeLeft(e.target.value);}} className="flex-1 accent-emerald-500 h-2 bg-zinc-950 rounded-lg appearance-none cursor-pointer" />
-                       <button onClick={()=>setIsTimerRunning(!isTimerRunning)} className="p-3 bg-zinc-950 text-white rounded-2xl hover:bg-emerald-500 hover:text-zinc-950 transition-colors shadow-sm">{isTimerRunning ? <Pause size={20}/> : <Play size={20} className="ml-0.5"/>}</button>
+                     <div className="bg-zinc-900 p-4 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 border border-zinc-800 shadow-sm mb-4">
+                        <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
+                          <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}>
+                            <Timer size={24} />
+                          </div>
+                          <div className="font-mono text-3xl font-black tracking-tighter w-24 text-center">
+                            {formatTime(timeLeft)}
+                          </div>
+                          <div className="flex gap-2">
+                            {timeLeft > 0 && (
+                              <button onClick={() => setIsTimerRunning(!isTimerRunning)} className="p-3 bg-zinc-950 text-white rounded-xl hover:bg-emerald-500 hover:text-zinc-950 transition-colors shadow-sm">
+                                {isTimerRunning ? <Pause size={20}/> : <Play size={20} className="ml-0.5"/>}
+                              </button>
+                            )}
+                            {timeLeft > 0 && !isTimerRunning && (
+                               <button onClick={() => setTimeLeft(0)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors shadow-sm">
+                                <X size={20}/>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 w-full md:w-auto bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800 overflow-x-auto">
+                          {[1, 2, 3].map(min => (
+                            <button 
+                              key={min}
+                              onClick={() => {
+                                const secs = min * 60;
+                                setTimerInterval(secs);
+                                setTimeLeft(secs);
+                                setIsTimerRunning(true);
+                              }}
+                              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${timerInterval === min * 60 ? 'bg-zinc-800 text-emerald-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            >
+                              {min} min
+                            </button>
+                          ))}
+                        </div>
                      </div>
                    )}
 
@@ -2992,14 +3019,39 @@ export default function App() {
         </div>
       </main>
       
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/50 flex justify-around p-2 z-50 pb-safe shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)]">
-        <MobileNavButton a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={24}/>} l="Painel" />
-        <MobileNavButton a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={24}/>} l="Treino" />
-        <MobileNavButton a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={24}/>} l="Nutrição" />
-        <MobileNavButton a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={24}/>} l="Check-up" />
-        <MobileNavButton a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={24}/>} l="Perfil" />
-      </nav>
+      {/* MENU HAMBÚRGUER OVERLAY (MOBILE) */}
+      <div 
+         className={`md:hidden fixed inset-0 bg-black/80 z-[100] backdrop-blur-sm transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+         onClick={() => setIsMobileMenuOpen(false)}
+      >
+         <div 
+           className={`absolute bottom-0 w-full bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-6 flex flex-col gap-2 transition-transform duration-300 ease-out ${isMobileMenuOpen ? 'translate-y-0' : 'translate-y-full'}`} 
+           onClick={e => e.stopPropagation()}
+         >
+           <div className="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-4"></div>
+           <div className="flex items-center gap-3 mb-6">
+              <Dumbbell className="text-emerald-500" size={24} />
+              <span className="font-extrabold text-xl tracking-tight text-white">AnatomiaFit</span>
+           </div>
+           <SidebarBtn a={activeTab==='dashboard'} o={()=>{setActiveTab('dashboard'); setIsMobileMenuOpen(false);}} i={<LayoutDashboard size={20}/>} l="Painel" />
+           <SidebarBtn a={activeTab==='treino'} o={()=>{setActiveTab('treino'); setIsMobileMenuOpen(false);}} i={<Dumbbell size={20}/>} l="Treino" />
+           <SidebarBtn a={activeTab==='nutricao'} o={()=>{setActiveTab('nutricao'); setIsMobileMenuOpen(false);}} i={<Utensils size={20}/>} l="Nutrição" />
+           <SidebarBtn a={activeTab==='biometria'} o={()=>{setActiveTab('biometria'); setIsMobileMenuOpen(false);}} i={<Scan size={20}/>} l="Check-up" />
+           <SidebarBtn a={activeTab==='perfil'} o={()=>{setActiveTab('perfil'); setIsMobileMenuOpen(false);}} i={<UserCircle size={20}/>} l="Perfil" />
+         </div>
+      </div>
+
+      {/* PÍLULA FLUTUANTE DE NAVEGAÇÃO (MOBILE) */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 p-2 pl-6 rounded-full z-50 shadow-2xl flex items-center gap-4 text-white transition-all">
+         <span className="font-bold text-sm capitalize">{activeTab === 'dashboard' ? 'Painel' : activeTab}</span>
+         <button 
+           onClick={() => setIsMobileMenuOpen(true)} 
+           className="bg-emerald-500 text-zinc-950 p-3 rounded-full shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+         >
+            <Menu size={20} strokeWidth={3} />
+         </button>
+      </div>
+
     </div>
   );
 }
