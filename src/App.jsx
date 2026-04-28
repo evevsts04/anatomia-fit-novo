@@ -280,6 +280,15 @@ const INITIAL_MEALS = [
 ];
 const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2 ou Cardio', 'Upper', 'Lower', 'Cardio'];
 
+const getStartOfWeekForDate = (dateObj) => {
+  const dayOfWeek = dateObj.getDay();
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+  const monday = new Date(dateObj);
+  monday.setDate(dateObj.getDate() - daysSinceMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday.getTime();
+};
+
 const CALISTHENICS_PLANS = {
   'Treino 01': [ { id: 'c_polichinelo', reps: '30' }, { id: 'c_barra', reps: '6' }, { id: 'c_prancha', reps: '30s' }, { id: 'c_flexao_joelhos', reps: 'Máx' }, { id: 'c_agachamento_salto', reps: '15' }, { id: 'c_pe_bunda', reps: '30s' }, { id: 'c_barra_australiana', reps: '5' }, { id: 'c_flexao_inclinada', reps: 'Máx' } ],
   'Treino 02': [ { id: 'c_step_up', reps: '30s' }, { id: 'c_agachamento', reps: '10' }, { id: 'c_afundo', reps: '10' }, { id: 'c_agachamento_salto', reps: '10' }, { id: 'c_afundo_elevacao', reps: '10' }, { id: 'c_sumo', reps: '15' }, { id: 'c_isometria_agachamento', reps: '30s' }, { id: 'c_pantu_unilateral', reps: '15' } ],
@@ -377,6 +386,21 @@ export default function App() {
   };
 
   const todayStr = new Date().toLocaleDateString('pt-BR');
+  const [selectedDateObj, setSelectedDateObj] = useState(new Date());
+  const selectedDateStr = selectedDateObj.toLocaleDateString('pt-BR');
+
+  const handleDateChange = (offset) => {
+    const newDate = new Date(selectedDateObj);
+    newDate.setDate(newDate.getDate() + offset);
+    
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    // Bloqueia a navegação para datas futuras (não se pode treinar amanhã hoje)
+    if (newDate <= today) {
+       setSelectedDateObj(newDate);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
@@ -476,18 +500,19 @@ export default function App() {
     return ACHIEVEMENTS.filter(a => a.condition(workoutHistory));
   }, [workoutHistory]);
 
-  const todayLog = dailyLogs.find(l => l.date === todayStr) || { water: 0, workout: null };
+  const targetDayLog = dailyLogs.find(l => l.date === selectedDateStr) || { water: 0, workout: null };
   const waterTarget = Number(userProfile.weight) * 35 || 2500; 
 
   const completedWorkoutsThisWeek = useMemo(() => {
-    const startOfWeek = getStartOfCurrentWeek();
+    const startOfWeek = getStartOfWeekForDate(selectedDateObj);
+    const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
     return workoutHistory
       .filter(log => {
         const logTime = log.timestamp || new Date(log.date.split('/').reverse().join('-')).getTime();
-        return logTime >= startOfWeek;
+        return logTime >= startOfWeek && logTime < endOfWeek;
       })
       .map(log => log.day);
-  }, [workoutHistory]);
+  }, [workoutHistory, selectedDateObj]);
 
   useEffect(() => {
     if (completedWorkoutsThisWeek.includes(activeWorkoutDay) && completedWorkoutsThisWeek.length < workoutOrder.length) {
@@ -503,8 +528,8 @@ export default function App() {
     }
   }, [workouts, activeWorkoutDay, workoutOrder]);
 
-  const todayNutrition = nutritionLogs.filter(log => log.date === todayStr);
-  const totals = todayNutrition.reduce((acc, log) => ({ 
+  const targetDayNutrition = nutritionLogs.filter(log => log.date === selectedDateStr);
+  const totals = targetDayNutrition.reduce((acc, log) => ({ 
     calories: acc.calories + (Number(log.calories)||0), 
     protein: acc.protein + (Number(log.protein)||0), 
     carbs: acc.carbs + (Number(log.carbs)||0), 
@@ -932,16 +957,16 @@ export default function App() {
       });
     }
 
-    const timestamp = Date.now();
+    const timestamp = selectedDateObj.getTime();
     const newLog = { 
-      id: timestamp, date: todayStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap, exercises: completedExercises 
+      id: Date.now(), date: selectedDateStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap, exercises: completedExercises 
     };
     const newHist = [...workoutHistory, newLog];
     
     let newDLogs = [...dailyLogs];
-    const idx = newDLogs.findIndex(l => l.date === todayStr);
+    const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
     if (idx >= 0) newDLogs[idx].workout = activeWorkoutDay;
-    else newDLogs.push({ date: todayStr, workout: activeWorkoutDay, water: 0, calories: totals.calories });
+    else newDLogs.push({ date: selectedDateStr, workout: activeWorkoutDay, water: 0, calories: totals.calories });
 
     setWorkoutHistory(newHist); setDailyLogs(newDLogs);
     saveToCloud({ workouts: workouts, workoutOrder, workoutHistory: newHist, dailyLogs: newDLogs });
@@ -953,9 +978,9 @@ export default function App() {
 
   const addWater = () => {
     let newDLogs = [...dailyLogs];
-    const idx = newDLogs.findIndex(l => l.date === todayStr);
+    const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
     if (idx >= 0) newDLogs[idx].water = (newDLogs[idx].water || 0) + 250;
-    else newDLogs.push({ date: todayStr, water: 250, workout: null });
+    else newDLogs.push({ date: selectedDateStr, water: 250, workout: null });
     setDailyLogs(newDLogs); saveToCloud({ dailyLogs: newDLogs });
   };
 
@@ -1234,19 +1259,34 @@ export default function App() {
     }
   };
 
+  const saveTipGlobally = async (originalId, tipData) => {
+    const cloudEx = activeDB.find(e => e.id === originalId);
+    if (!cloudEx || !cloudEx.docId) {
+      showToast("Exercício não encontrado na base de dados pública.", "error");
+      return;
+    }
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'exercises', cloudEx.docId);
+      await updateDoc(docRef, { aiGuide: tipData });
+      showToast("Dica premium fixada globalmente com sucesso!", "success");
+    } catch (error) {
+      showToast("Erro ao fixar dica: " + error.message, "error");
+    }
+  };
+
   const handleGetAnatomyTip = async (ex) => {
-    const exId = ex.id;
+    const tipKey = ex.originalId;
     const exName = ex.name;
 
-    if (anatomyTips[exId]) {
-      setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+    if (anatomyTips[tipKey]) {
+      setAnatomyTipState(p => ({ ...p, [tipKey]: 'done' }));
       return;
     }
 
-    if (anatomyTipState[exId] === 'loading') return; 
+    if (anatomyTipState[tipKey] === 'loading') return; 
     
-    setAnatomyTipState(p => ({ ...p, [exId]: 'loading' }));
-    setAnatomyTipErrors(p => ({ ...p, [exId]: null })); 
+    setAnatomyTipState(p => ({ ...p, [tipKey]: 'loading' }));
+    setAnatomyTipErrors(p => ({ ...p, [tipKey]: null })); 
     
     try {
       const schema = { 
@@ -1273,15 +1313,15 @@ export default function App() {
 
       const res = await callGemini(prompt, schema);
       
-      const newTips = { ...anatomyTips, [exId]: res };
+      const newTips = { ...anatomyTips, [tipKey]: res };
       setAnatomyTips(newTips); 
-      setAnatomyTipState(p => ({ ...p, [exId]: 'done' }));
+      setAnatomyTipState(p => ({ ...p, [tipKey]: 'done' }));
       
       saveToCloud({ anatomyTipsCache: newTips }); 
     } catch (error) { 
       console.error(error);
-      setAnatomyTipState(p => ({ ...p, [exId]: 'error' })); 
-      setAnatomyTipErrors(p => ({ ...p, [exId]: error.message })); 
+      setAnatomyTipState(p => ({ ...p, [tipKey]: 'error' })); 
+      setAnatomyTipErrors(p => ({ ...p, [tipKey]: error.message })); 
     }
   };
 
@@ -1295,7 +1335,7 @@ export default function App() {
       
       const newLog = {
         id: Date.now(),
-        date: todayStr,
+        date: selectedDateStr,
         mealId: selectedMealId,
         text: macros.name || userText,
         calories: macros.calories,
@@ -1401,11 +1441,11 @@ export default function App() {
 
   const getCalendarDays = () => {
     const days = []; 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const targetDate = new Date(selectedDateObj);
+    targetDate.setHours(0,0,0,0);
 
-    let signup = new Date(today);
-    signup.setDate(today.getDate() - 6);
+    let signup = new Date();
+    signup.setDate(targetDate.getDate() - 6);
 
     if (userProfile.signupTimestamp) {
       signup = new Date(userProfile.signupTimestamp);
@@ -1418,16 +1458,8 @@ export default function App() {
       }
     }
 
-    const diffTime = today.getTime() - signup.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    let startDate = new Date();
-    if (diffDays >= 0 && diffDays < 7) {
-       startDate = new Date(signup);
-    } else {
-       startDate = new Date(today);
-       startDate.setDate(today.getDate() - 6);
-    }
+    let startDate = new Date(targetDate);
+    startDate.setDate(targetDate.getDate() - 6);
 
     for(let i=0; i<7; i++) {
       const d = new Date(startDate);
@@ -1435,7 +1467,7 @@ export default function App() {
       const dStr = d.toLocaleDateString('pt-BR');
       const log = dailyLogs.find(l => l.date === dStr);
       
-      const isFuture = d > today;
+      const isFuture = d > new Date();
       const isBeforeSignup = d < signup;
 
       days.push({ 
@@ -1641,6 +1673,18 @@ export default function App() {
         </div>
         
         <div className="max-w-4xl mx-auto p-5 md:p-8 w-full mt-2">
+
+          {/* NAVEGADOR DE DATA (VISÍVEL NO DASHBOARD, TREINO E NUTRIÇÃO) */}
+          {['dashboard', 'treino', 'nutricao'].includes(activeTab) && (
+            <div className="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl mb-6 shadow-sm">
+               <button onClick={() => handleDateChange(-1)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-zinc-950 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
+               <div className="flex flex-col items-center">
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Data de Registo</span>
+                  <span className="font-bold text-emerald-400">{selectedDateStr === todayStr ? 'Hoje' : selectedDateStr}</span>
+               </div>
+               <button onClick={() => handleDateChange(1)} disabled={selectedDateStr === todayStr} className={`p-2 rounded-xl transition-colors ${selectedDateStr === todayStr ? 'text-zinc-800 bg-zinc-950/50 cursor-not-allowed' : 'text-zinc-400 hover:text-white hover:bg-zinc-800 bg-zinc-950'}`}><ChevronRight size={20}/></button>
+            </div>
+          )}
           
           {/* ===================== TAB: DASHBOARD ===================== */}
           {activeTab === 'dashboard' && (
@@ -1712,11 +1756,11 @@ export default function App() {
                      <div className="bg-blue-950/20 border border-blue-900/30 p-6 rounded-3xl relative overflow-hidden flex items-center justify-between">
                        <div className="z-10">
                          <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-1">Hidratação</h3>
-                         <p className="text-3xl font-black text-white">{todayLog.water} <span className="text-sm font-medium text-blue-200">/ {waterTarget}ml</span></p>
+                         <p className="text-3xl font-black text-white">{targetDayLog.water} <span className="text-sm font-medium text-blue-200">/ {waterTarget}ml</span></p>
                          <button onClick={addWater} className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center gap-2"><Plus size={14}/> Copo (250ml)</button>
                        </div>
                        <div className="w-16 h-24 border-4 border-blue-500/50 rounded-b-2xl rounded-t-lg relative z-10 bg-zinc-950 overflow-hidden">
-                         <div className="absolute bottom-0 w-full bg-blue-500 transition-all duration-700" style={{height: `${Math.min(100, (todayLog.water / waterTarget) * 100)}%`}}></div>
+                         <div className="absolute bottom-0 w-full bg-blue-500 transition-all duration-700" style={{height: `${Math.min(100, (targetDayLog.water / waterTarget) * 100)}%`}}></div>
                        </div>
                      </div>
 
@@ -2138,112 +2182,131 @@ export default function App() {
                                  </div>
 
                                  {/* Painel Expandido: Descrição Base + IA Opcional */}
-                                 {expandedDesc[ex.id] && (
-                                   <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
-                                     
-                                     {/* Área Limpa do GIF */}
-                                     {gifUrls[ex.originalId] && (
-                                       <div className="mb-4 bg-zinc-900 rounded-2xl flex flex-col justify-center items-center overflow-hidden p-2 shadow-inner">
-                                         <img 
-                                           src={gifUrls[ex.originalId]} 
-                                           alt={`Execução de ${ex.name}`}
-                                           className="max-w-full max-h-64 object-contain rounded-xl"
-                                         />
-                                       </div>
-                                     )}
+                                 {expandedDesc[ex.id] && (() => {
+                                   const tipKey = ex.originalId;
+                                   const cloudExInfo = getEx(ex.originalId) || {};
+                                   const currentTip = cloudExInfo.aiGuide || anatomyTips[tipKey];
+                                   const tipState = anatomyTipState[tipKey];
+                                   const tipError = anatomyTipErrors[tipKey];
 
-                                     {/* Descrição Fixa (Gerida no Painel Admin) */}
-                                     {ex.description && (
-                                        <p className="text-zinc-400 leading-relaxed mb-6">{ex.description}</p>
-                                     )}
-
-                                     {/* Acionador do Treinador de IA */}
-                                     {!anatomyTips[ex.id] && anatomyTipState[ex.id] !== 'loading' && anatomyTipState[ex.id] !== 'error' && (
-                                        <button onClick={() => handleGetAnatomyTip(ex)} className="w-full py-3 mb-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-colors">
-                                          <Sparkles size={18}/> Gerar Dicas Premium com IA
-                                        </button>
-                                     )}
-
-                                     {/* Estados da IA */}
-                                     {anatomyTipState[ex.id] === 'loading' ? (
-                                        <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia IA...</div>
-                                     ) : anatomyTipState[ex.id] === 'error' ? (
-                                        <div className="text-center text-red-400 py-8 bg-red-950/20 rounded-2xl border border-red-900/30 mb-2">
-                                           <AlertCircle size={32} className="mx-auto mb-3 opacity-80"/>
-                                           <p className="font-bold text-base">A IA não conseguiu responder</p>
-                                           <p className="text-xs mt-2 opacity-80 max-w-xs mx-auto">
-                                              {anatomyTipErrors[ex.id] || "Erro desconhecido."}
-                                           </p>
-                                           <button onClick={() => handleGetAnatomyTip(ex)} className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-xs font-bold text-red-300 transition-colors">
-                                              Tentar Novamente
-                                           </button>
-                                        </div>
-                                     ) : anatomyTips[ex.id] ? (
-                                       <div className="animate-fadeIn space-y-5 pt-4 border-t border-zinc-800/50 mt-4">
-                                         <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 mb-3">
-                                           <Sparkles size={18} className="text-emerald-500"/>
-                                           <h4 className="font-extrabold text-white text-base">Dicas da IA para {ex.name}</h4>
+                                   return (
+                                     <div className="p-5 text-sm text-zinc-300 bg-zinc-950 border-t border-zinc-800/50">
+                                       
+                                       {/* Área Limpa do GIF */}
+                                       {gifUrls[ex.originalId] && (
+                                         <div className="mb-4 bg-zinc-900 rounded-2xl flex flex-col justify-center items-center overflow-hidden p-2 shadow-inner">
+                                           <img 
+                                             src={gifUrls[ex.originalId]} 
+                                             alt={`Execução de ${ex.name}`}
+                                             className="max-w-full max-h-64 object-contain rounded-xl"
+                                           />
                                          </div>
+                                       )}
 
-                                         <p className="text-zinc-400 leading-relaxed italic">{anatomyTips[ex.id].intro}</p>
+                                       {/* Descrição Fixa (Gerida no Painel Admin) */}
+                                       {ex.description && (
+                                          <p className="text-zinc-400 leading-relaxed mb-6">{ex.description}</p>
+                                       )}
 
-                                         <div>
-                                           <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
-                                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{anatomyTips[ex.id].musclesTarget}</span></div>
-                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{anatomyTips[ex.id].musclesAux}</span></div>
-                                             <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{anatomyTips[ex.id].musclesStability}</span></div>
+                                       {/* Acionador do Treinador de IA */}
+                                       {!currentTip && tipState !== 'loading' && tipState !== 'error' && (
+                                          <button onClick={() => handleGetAnatomyTip(ex)} className="w-full py-3 mb-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-colors">
+                                            <Sparkles size={18}/> Gerar Dicas Premium com IA
+                                          </button>
+                                       )}
+
+                                       {/* Estados da IA */}
+                                       {tipState === 'loading' ? (
+                                          <div className="flex items-center gap-3 text-emerald-500 font-medium py-8 justify-center"><Loader2 size={24} className="animate-spin"/> Construindo Guia IA...</div>
+                                       ) : tipState === 'error' ? (
+                                          <div className="text-center text-red-400 py-8 bg-red-950/20 rounded-2xl border border-red-900/30 mb-2">
+                                             <AlertCircle size={32} className="mx-auto mb-3 opacity-80"/>
+                                             <p className="font-bold text-base">A IA não conseguiu responder</p>
+                                             <p className="text-xs mt-2 opacity-80 max-w-xs mx-auto">
+                                                {tipError || "Erro desconhecido."}
+                                             </p>
+                                             <button onClick={() => handleGetAnatomyTip(ex)} className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-xs font-bold text-red-300 transition-colors">
+                                                Tentar Novamente
+                                             </button>
+                                          </div>
+                                       ) : currentTip ? (
+                                         <div className="animate-fadeIn space-y-5 pt-4 border-t border-zinc-800/50 mt-4">
+                                           <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
+                                             <div className="flex items-center gap-2">
+                                               <Sparkles size={18} className="text-emerald-500"/>
+                                               <h4 className="font-extrabold text-white text-base">Dicas da IA para {ex.name}</h4>
+                                             </div>
+                                             {cloudExInfo.aiGuide && (
+                                                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg font-bold flex items-center gap-1" title="Esta dica está fixada globalmente no banco de dados"><Database size={12}/> Global</span>
+                                             )}
                                            </div>
-                                         </div>
 
-                                         <div>
-                                           <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
-                                           <ul className="space-y-3 mt-3">
-                                             {anatomyTips[ex.id].executionSteps?.map((step, i) => {
-                                                const parts = step.split(':');
-                                                if(parts.length > 1) {
-                                                   const boldPart = parts.shift() + ':';
-                                                   return (
-                                                     <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
-                                                       <CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
-                                                       <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
-                                                     </li>
-                                                   );
-                                                }
-                                                return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
-                                             })}
-                                           </ul>
-                                         </div>
+                                           <p className="text-zinc-400 leading-relaxed italic">{currentTip.intro}</p>
 
-                                         <div>
-                                           <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
-                                           <ul className="space-y-2 text-zinc-400">
-                                             {anatomyTips[ex.id].safetyTips?.map((tip, i) => (
-                                               <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
-                                             ))}
-                                           </ul>
-                                         </div>
-
-                                         <div>
-                                           <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
-                                           <ul className="space-y-2 text-zinc-400">
-                                             {anatomyTips[ex.id].mistakes?.map((mistake, i) => (
-                                                <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
-                                             ))}
-                                           </ul>
-                                         </div>
-
-                                         <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
-                                           <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
                                            <div>
-                                              <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
-                                              <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{anatomyTips[ex.id].geminiTip}"</p>
+                                             <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">1. Musculatura Envolvida</h5>
+                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                               <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Alvo Principal</span><span className="font-bold text-white text-xs">{currentTip.musclesTarget}</span></div>
+                                               <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Auxiliares</span><span className="font-bold text-zinc-300 text-xs">{currentTip.musclesAux}</span></div>
+                                               <div className="bg-zinc-900 p-3 rounded-xl border border-zinc-800"><span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Estabilidade</span><span className="font-bold text-zinc-400 text-xs">{currentTip.musclesStability}</span></div>
+                                             </div>
                                            </div>
+
+                                           <div>
+                                             <h5 className="font-bold text-emerald-400 mb-2 text-xs uppercase tracking-widest">2. Execução Ideal</h5>
+                                             <ul className="space-y-3 mt-3">
+                                               {currentTip.executionSteps?.map((step, i) => {
+                                                  const parts = step.split(':');
+                                                  if(parts.length > 1) {
+                                                     const boldPart = parts.shift() + ':';
+                                                     return (
+                                                       <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug">
+                                                         <CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> 
+                                                         <span><strong className="text-white">{boldPart}</strong>{parts.join(':')}</span>
+                                                       </li>
+                                                     );
+                                                  }
+                                                  return <li key={i} className="text-zinc-300 flex gap-3 items-start leading-snug"><CheckCircle size={18} className="text-emerald-500/50 shrink-0 mt-0.5"/> <span>{step}</span></li>
+                                               })}
+                                             </ul>
+                                           </div>
+
+                                           <div>
+                                             <h5 className="font-bold text-blue-400 mb-2 text-xs uppercase tracking-widest">3. Dicas e Segurança</h5>
+                                             <ul className="space-y-2 text-zinc-400">
+                                               {currentTip.safetyTips?.map((tip, i) => (
+                                                 <li key={i} className="flex gap-3 items-start leading-snug"><span className="text-blue-400 mt-0.5 font-bold">•</span> <span>{tip}</span></li>
+                                               ))}
+                                             </ul>
+                                           </div>
+
+                                           <div>
+                                             <h5 className="font-bold text-red-400 mb-2 text-xs uppercase tracking-widest">4. Erros para Deletar</h5>
+                                             <ul className="space-y-2 text-zinc-400">
+                                               {currentTip.mistakes?.map((mistake, i) => (
+                                                  <li key={i} className="flex gap-3 items-start leading-snug"><X size={18} className="text-red-500 shrink-0 mt-0.5"/> <span>{mistake}</span></li>
+                                               ))}
+                                             </ul>
+                                           </div>
+
+                                           <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20 flex items-start gap-3 mt-6">
+                                             <Sparkles size={24} className="text-emerald-400 shrink-0 mt-0.5" />
+                                             <div>
+                                                <p className="font-bold text-emerald-400 text-xs uppercase tracking-widest mb-1">Dica de Ouro da IA</p>
+                                                <p className="font-medium text-emerald-100/90 text-sm leading-snug">"{currentTip.geminiTip}"</p>
+                                             </div>
+                                           </div>
+
+                                           {isAdmin && !cloudExInfo.aiGuide && (
+                                             <button onClick={() => saveTipGlobally(ex.originalId, currentTip)} className="w-full mt-6 py-3 bg-blue-900/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors border border-blue-500/30">
+                                                <Database size={16}/> Salvar na Nuvem para Todos (Admin)
+                                             </button>
+                                           )}
                                          </div>
-                                       </div>
-                                     ) : null}
-                                   </div>
-                                 )}
+                                       ) : null}
+                                     </div>
+                                   );
+                                 })()}
                                </div>
                              </React.Fragment>
                            );
@@ -2343,10 +2406,10 @@ export default function App() {
 
                <div className="mt-8 space-y-4">
                  <h3 className="text-xl font-bold flex items-center gap-2"><Utensils size={20} className="text-emerald-500"/> Diário de Refeições</h3>
-                 {todayNutrition.length === 0 ? (
-                    <p className="text-sm text-zinc-500 italic bg-zinc-900/30 p-6 rounded-2xl text-center border border-zinc-800/50">Nenhuma refeição registada hoje. Que tal adicionar a sua primeira refeição com a IA?</p>
+                 {targetDayNutrition.length === 0 ? (
+                    <p className="text-sm text-zinc-500 italic bg-zinc-900/30 p-6 rounded-2xl text-center border border-zinc-800/50">Nenhuma refeição registada neste dia. Que tal adicionar a sua primeira refeição com a IA?</p>
                  ) : (
-                    todayNutrition.map(log => (
+                    targetDayNutrition.map(log => (
                        <div key={log.id} className="bg-zinc-900/50 p-5 rounded-3xl border border-zinc-800 transition-all hover:border-zinc-700">
                           {editingNutritionId === log.id ? (
                             <div className="space-y-4 animate-fadeIn">
