@@ -5,8 +5,7 @@ import {
   Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
-  Camera, Scan, Focus, BarChart, Fingerprint, View, Upload, Activity, Key,
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search, Menu
+  Activity, Key, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search, Menu
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -325,36 +324,6 @@ const MEASUREMENTS_LABELS = {
   pernaEsq: 'Perna Esq.', pernaDir: 'Perna Dir.', panturrilhaEsq: 'Panturrilha Esq.', panturrilhaDir: 'Panturrilha Dir.'
 };
 
-function DynamicAvatar({ chest, waist, hips, color, opacity = 1, showGrid = false }) {
-  const nChest = Math.max(70, Math.min(150, chest || 100));
-  const nWaist = Math.max(50, Math.min(130, waist || 80));
-  const nHips = Math.max(70, Math.min(140, hips || 95));
-  const cW = (nChest / 100) * 16; 
-  const wW = (nWaist / 80) * 12;
-  const hW = (nHips / 95) * 15;
-  const pLeftChest = 50 - cW; const pRightChest = 50 + cW;
-  const pLeftWaist = 50 - wW; const pRightWaist = 50 + wW;
-  const pLeftHip = 50 - hW; const pRightHip = 50 + hW;
-
-  return (
-    <svg viewBox="0 0 100 200" className="w-24 h-48 relative z-10 transition-all duration-1000 ease-in-out" style={{ opacity }}>
-       <path d="M 50 20 C 40 20, 35 30, 35 40 C 35 50, 45 55, 50 60 C 55 55, 65 50, 65 40 C 65 30, 60 20, 50 20 Z" fill="none" stroke={color} strokeWidth="2"/>
-       <path d={`M ${pLeftChest} 60 L ${pLeftChest - 12} 75 L ${pLeftChest - 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-       <path d={`M ${pRightChest} 60 L ${pRightChest + 12} 75 L ${pRightChest + 15} 115`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-       <path d={`M ${pLeftChest} 60 C ${pLeftWaist - 5} 90, ${pLeftWaist} 120, ${pLeftHip} 140 C ${50 - hW/2} 145, ${50 + hW/2} 145, ${pRightHip} 140 C ${pRightWaist} 120, ${pRightWaist + 5} 90, ${pRightChest} 60 Z`} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-       <path d={`M ${pLeftHip} 140 L ${pLeftHip - 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-       <path d={`M ${pRightHip} 140 L ${pRightHip + 5} 190`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-       {showGrid && (
-         <>
-           <path d={`M ${pLeftWaist + 2} 85 C 50 95, 50 95, ${pRightWaist - 2} 85`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1"/>
-           <path d={`M ${pLeftWaist + 4} 115 C 50 120, 50 120, ${pRightWaist - 4} 115`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1"/>
-           <path d={`M 50 60 L 50 140`} fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 3"/>
-         </>
-       )}
-    </svg>
-  );
-}
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -408,15 +377,6 @@ export default function App() {
   const [showBackAnatomy, setShowBackAnatomy] = useState(false);
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
-
-  const [bioTab, setBioTab] = useState('capture');
-  const [scanState, setScanState] = useState('idle'); 
-  const [scanProgress, setScanProgress] = useState(0);
-  const [scanFeedback, setScanFeedback] = useState([]);
-  const [estimatedMeasures, setEstimatedMeasures] = useState(null);
-  const [uploadedPhotos, setUploadedPhotos] = useState({ frente: null, direita: null, esquerda: null, costas: null });
-  const [scanAiReport, setScanAiReport] = useState('');
-  const [isScanningAi, setIsScanningAi] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -717,7 +677,7 @@ export default function App() {
             setAppScreen('main');
             if (prof.lastMeasureUpdate) {
                const daysSince = (Date.now() - prof.lastMeasureUpdate) / (1000 * 60 * 60 * 24);
-               if (daysSince >= 7) setShowMeasureAlert(true);
+               if (daysSince >= 30) setShowMeasureAlert(true);
             }
           } else {
             setAppScreen('onboarding');
@@ -991,75 +951,6 @@ export default function App() {
     saveToCloud({ userProfile: upProf, measurements, weightHistory: wHist });
   };
 
-  const handlePhotoUpload = (view, e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedPhotos(prev => ({ ...prev, [view]: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const allPhotosUploaded = Object.values(uploadedPhotos).every(v => v !== null);
-
-  const startBiometricScan = () => {
-    setScanState('scanning');
-    setScanProgress(0);
-    setScanFeedback([]);
-    setScanAiReport('');
-
-    const steps = [
-      { p: 20, text: "Verificando Câmera e Iluminação [OK]" },
-      { p: 40, text: "Fotos validadas e Estáveis [OK]" },
-      { p: 60, text: "Ângulos: Frontal, Perfil e Costas [OK]" },
-      { p: 80, text: "Mapeando Pontos-chave do Corpo (Pose Estimation)..." },
-      { p: 100, text: "Calculando Proporções e Estimando Medidas..." }
-    ];
-
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < steps.length) {
-        const current = steps[currentStep];
-        setScanProgress(current.p);
-        setScanFeedback(prev => [...prev, current.text]);
-        currentStep++;
-      } else {
-        clearInterval(interval);
-        const h = Number(userProfile.height) || 175;
-        const w = Number(userProfile.weight) || 70;
-        setEstimatedMeasures({
-          peito: Math.round(w * 1.35),
-          cintura: Math.round(h * 0.45),
-          quadril: Math.round(w * 1.3),
-          bracos: Math.round(w * 0.48),
-          pernas: Math.round(h * 0.33)
-        });
-        setScanState('done');
-      }
-    }, 1200);
-  };
-
-  const saveBiometricMeasures = () => {
-    const newMeasures = {
-      ...measurements,
-      peito: estimatedMeasures.peito,
-      cintura: estimatedMeasures.cintura,
-      quadril: estimatedMeasures.quadril,
-      bracoEsq: estimatedMeasures.bracos,
-      bracoDir: estimatedMeasures.bracos,
-      pernaEsq: estimatedMeasures.pernas,
-      pernaDir: estimatedMeasures.pernas
-    };
-    setMeasurements(newMeasures);
-    handleUpdateMeasures();
-    setBioTab('evolution');
-    setScanState('idle');
-    setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null });
-    setScanAiReport('');
-  };
-
   const callGemini = async (prompt, schema = null, retries = 3) => {
     const isOutsideCanvas = typeof __firebase_config === 'undefined';
     const apiKey = (userProfile.geminiApiKey || "").trim(); 
@@ -1213,31 +1104,6 @@ export default function App() {
       setNutritionFeedback(`Erro ao avaliar: ${error.message}`);
     } finally {
       setIsNutritionFeedbackLoading(false);
-    }
-  };
-
-  const handleGenerateBiometricReport = async () => {
-    setIsScanningAi(true);
-    setScanAiReport('');
-    try {
-      const prompt = `Atue como um Especialista em Biometria e Avaliação Física. O meu objetivo atual é ${userProfile.goal} (Peso: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
-      
-      No meu formulário de perfil, as minhas medidas atuais/preenchidas eram (em cm):
-      Peito: ${measurements.peito || '--'}, Cintura: ${measurements.cintura || '--'}, Quadril: ${measurements.quadril || '--'}, Braço Esq: ${measurements.bracoEsq || '--'}, Braço Dir: ${measurements.bracoDir || '--'}, Perna Esq: ${measurements.pernaEsq || '--'}, Perna Dir: ${measurements.pernaDir || '--'}.
-      
-      Acabei de realizar um "Check-up Fotográfico" de Visão Computacional e o sistema extraiu as seguintes medidas atualizadas da minha imagem (em cm):
-      Peito: ${estimatedMeasures.peito}, Cintura: ${estimatedMeasures.cintura}, Quadril: ${estimatedMeasures.quadril}, Braços (Média): ${estimatedMeasures.bracos}, Pernas (Média): ${estimatedMeasures.pernas}.
-      
-      Compare as medidas extraídas da imagem com as antigas do formulário. Faça uma análise de desempenho apontando se as proporções atuais lidas pelas fotos estão alinhadas com os padrões para alcançar a minha meta de ${userProfile.goal}.
-      Destaque o que evoluiu ou o que precisa de mais atenção nos treinos de forma muito motivadora.
-      IMPORTANTE: Responda em Português de Portugal, em no máximo 3 parágrafos diretos.`;
-      
-      const res = await callGemini(prompt);
-      setScanAiReport(res);
-    } catch (error) {
-      setScanAiReport(`Erro na análise biométrica: ${error.message}`);
-    } finally {
-      setIsScanningAi(false);
     }
   };
 
@@ -1610,14 +1476,6 @@ export default function App() {
     );
   }
 
-  // Cálculos Dinâmicos para os Avatares
-  const initialW = weightHistory.length > 0 ? Number(weightHistory[0].weight) : Number(userProfile.weight);
-  const currentW = Number(userProfile.weight) || 1;
-  const wRatio = (initialW && currentW) ? (initialW / currentW) : 1.05;
-  const symmetryScore = measurements.peito && measurements.cintura 
-    ? Math.min(99, Math.max(0, Math.round(100 - Math.abs(1.4 - (Number(measurements.peito) / Number(measurements.cintura))) * 50))) 
-    : 94;
-
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
       <ToastContainer toasts={toasts} />
@@ -1628,7 +1486,7 @@ export default function App() {
            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl max-w-md w-full text-center">
               <AlertTriangle size={48} className="text-yellow-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold mb-2">Hora de Atualizar!</h2>
-              <p className="text-zinc-400 mb-6 text-sm">Passaram-se 7 dias desde o último registo. Atualize o seu peso e medidas para alimentar a IA.</p>
+              <p className="text-zinc-400 mb-6 text-sm">Passaram-se 30 dias desde o último registo. Atualize o seu peso e medidas para alimentar a IA.</p>
               
               <div className="space-y-4 text-left mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                  <div className="grid grid-cols-2 gap-3 mb-2">
@@ -1659,7 +1517,6 @@ export default function App() {
           <SidebarBtn a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={20}/>} l="Painel" />
           <SidebarBtn a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={20}/>} l="Treino" />
           <SidebarBtn a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={20}/>} l="Nutrição" />
-          <SidebarBtn a={activeTab==='biometria'} o={()=>setActiveTab('biometria')} i={<Scan size={20}/>} l="Check-up" />
           <SidebarBtn a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
         </nav>
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
@@ -2459,266 +2316,6 @@ export default function App() {
              </div>
           )}
 
-          {/* ===================== TAB: BIOMETRIA ===================== */}
-          {activeTab === 'biometria' && (
-            <div className="space-y-6 animate-fadeIn pb-12">
-              <header className="flex justify-between items-end mb-6">
-                <div>
-                  <h1 className="text-3xl font-extrabold text-white">Biometria AI</h1>
-                  <p className="text-zinc-400 font-medium">Análise Corporal via Câmera</p>
-                </div>
-              </header>
-
-              <div className="flex bg-zinc-900 border border-zinc-800 rounded-xl p-1 mb-6">
-                <button onClick={()=>setBioTab('capture')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors flex justify-center items-center gap-2 ${bioTab==='capture'?'bg-zinc-800 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}><Camera size={16}/> Captura & Análise</button>
-                <button onClick={()=>setBioTab('evolution')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors flex justify-center items-center gap-2 ${bioTab==='evolution'?'bg-zinc-800 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}><View size={16}/> Evolução 3D</button>
-              </div>
-
-              {bioTab === 'capture' && (
-                <div className="space-y-6">
-                  {scanState === 'idle' && (
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden relative p-6">
-                       <div className="text-center mb-6">
-                          <Focus size={40} className="text-emerald-500 mx-auto mb-3" />
-                          <h2 className="text-lg font-bold text-white mb-1">Check-up Fotográfico</h2>
-                          <p className="text-zinc-400 text-sm">Carregue ou tire as 4 fotos para que a IA analise a sua estrutura corporal.</p>
-                       </div>
-                       
-                       <div className="grid grid-cols-2 gap-4 mb-6">
-                          {['frente', 'direita', 'esquerda', 'costas'].map((view) => (
-                             <label 
-                               key={view}
-                               className={`relative h-32 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed transition-all cursor-pointer overflow-hidden ${uploadedPhotos[view] ? 'border-emerald-500/50 text-emerald-400 bg-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}
-                             >
-                               <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(view, e)} />
-                               {uploadedPhotos[view] && <img src={uploadedPhotos[view]} alt={`Upload ${view}`} className="absolute inset-0 w-full h-full object-cover opacity-30" />}
-                               {uploadedPhotos[view] ? <CheckCircle size={32} className="mb-2 relative z-10" /> : <Upload size={28} className="mb-2 relative z-10" />}
-                               <span className="text-xs font-bold uppercase tracking-wider relative z-10">{view}</span>
-                               {uploadedPhotos[view] && <span className="text-[10px] mt-1 opacity-100 bg-emerald-500/20 px-2 py-0.5 rounded font-bold relative z-10">Enviada</span>}
-                             </label>
-                          ))}
-                       </div>
-                       
-                       <button 
-                         onClick={startBiometricScan} 
-                         disabled={!allPhotosUploaded}
-                         className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg"
-                       >
-                         <Scan size={20} /> Processar Check-up
-                       </button>
-                    </div>
-                  )}
-
-                  {scanState === 'scanning' && (
-                    <div className="bg-zinc-900/50 border border-emerald-500/30 rounded-3xl overflow-hidden relative">
-                       <div className="h-96 bg-zinc-950 relative flex items-center justify-center overflow-hidden">
-                          {/* Efeito de Scanner Linear */}
-                          <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-[scan_2s_ease-in-out_infinite] z-20"></div>
-                          
-                          {/* Esqueleto SVG */}
-                          <svg viewBox="0 0 200 400" className="h-full opacity-80 relative z-10">
-                            <defs>
-                              <filter id="glow">
-                                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                                <feMerge>
-                                  <feMergeNode in="coloredBlur"/>
-                                  <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                              </filter>
-                            </defs>
-                            <path d="M 100 80 L 100 160 L 70 240 L 70 360 M 100 160 L 130 240 L 130 360" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
-                            <path d="M 60 100 L 100 90 L 140 100" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
-                            <path d="M 60 100 L 40 180 L 30 260 M 140 100 L 160 180 L 170 260" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
-                            <path d="M 70 240 L 130 240" stroke="#10b981" strokeWidth="2" fill="none" filter="url(#glow)"/>
-                            <circle cx="100" cy="50" r="15" stroke="#10b981" strokeWidth="2" fill="transparent" filter="url(#glow)" />
-                            <circle cx="100" cy="90" r="4" fill="#10b981" />
-                            <circle cx="60" cy="100" r="4" fill="#34d399" />
-                            <circle cx="140" cy="100" r="4" fill="#34d399" />
-                            <circle cx="40" cy="180" r="4" fill="#34d399" />
-                            <circle cx="160" cy="180" r="4" fill="#34d399" />
-                            <circle cx="30" cy="260" r="3" fill="#6ee7b7" />
-                            <circle cx="170" cy="260" r="3" fill="#6ee7b7" />
-                            <circle cx="100" cy="160" r="4" fill="#10b981" />
-                            <circle cx="70" cy="240" r="4" fill="#34d399" />
-                            <circle cx="130" cy="240" r="4" fill="#34d399" />
-                            <circle cx="70" cy="360" r="4" fill="#6ee7b7" />
-                            <circle cx="130" cy="360" r="4" fill="#6ee7b7" />
-                          </svg>
-
-                          <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-zinc-800">
-                             <div className="flex items-center gap-2 text-xs font-bold text-emerald-400"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Live AI</div>
-                          </div>
-                       </div>
-                       
-                       <div className="p-6 bg-zinc-900 border-t border-emerald-900/30">
-                         <div className="mb-4">
-                           <div className="flex justify-between text-xs font-bold mb-1.5">
-                             <span className="text-zinc-400 uppercase tracking-wider">Progresso da Análise</span>
-                             <span className="text-emerald-400">{scanProgress}%</span>
-                           </div>
-                           <div className="h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-                             <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{width: `${scanProgress}%`}}></div>
-                           </div>
-                         </div>
-                         <div className="space-y-2 h-24 overflow-y-auto custom-scrollbar pr-2">
-                           {scanFeedback.map((fb, i) => (
-                             <div key={i} className="flex items-center gap-2 text-xs font-medium text-zinc-300 animate-fadeIn">
-                               <Check size={14} className="text-emerald-500" /> {fb}
-                             </div>
-                           ))}
-                         </div>
-                       </div>
-                    </div>
-                  )}
-
-                  {scanState === 'done' && estimatedMeasures && (
-                    <div className="bg-zinc-900/50 border border-emerald-500/30 rounded-3xl overflow-hidden animate-fadeIn">
-                       <div className="bg-emerald-950/30 p-6 border-b border-emerald-900/30 text-center">
-                          <Fingerprint size={48} className="text-emerald-500 mx-auto mb-4" />
-                          <h2 className="text-xl font-extrabold text-white mb-1">Mapeamento Concluído</h2>
-                          <p className="text-zinc-400 text-sm">A IA calculou estas estimativas com base no seu esqueleto.</p>
-                       </div>
-                       
-                       <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Peito</p>
-                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.peito} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
-                          </div>
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Cintura</p>
-                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.cintura} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
-                          </div>
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Quadril</p>
-                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.quadril} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
-                          </div>
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Braços</p>
-                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.bracos} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
-                          </div>
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-center">
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Pernas</p>
-                            <p className="text-xl font-black text-emerald-400">{estimatedMeasures.pernas} <span className="text-xs text-zinc-500 font-medium">cm</span></p>
-                          </div>
-                       </div>
-
-                       <div className="p-6 bg-zinc-950 border-t border-zinc-800">
-                         <div className="bg-emerald-950/20 border border-emerald-900/30 p-5 rounded-2xl">
-                           <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Relatório de Desempenho Biométrico</h3>
-                           <p className="text-xs text-zinc-400 mb-4">A IA vai cruzar as medidas lidas na fotografia com as medidas guardadas no seu perfil e gerar uma análise completa perante a sua meta de <strong>{userProfile.goal}</strong>.</p>
-                           <button onClick={handleGenerateBiometricReport} disabled={isScanningAi} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                             {isScanningAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Gerar Avaliação da IA
-                           </button>
-                           {scanAiReport && (
-                             <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
-                               {scanAiReport}
-                             </div>
-                           )}
-                         </div>
-                       </div>
-
-                       <div className="p-6 bg-zinc-900 border-t border-zinc-800 flex flex-col md:flex-row gap-3">
-                         <button onClick={() => {setScanState('idle'); setUploadedPhotos({ frente: null, direita: null, esquerda: null, costas: null }); setScanAiReport('');}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-bold transition-all">
-                           Re-escanear
-                         </button>
-                         <button onClick={saveBiometricMeasures} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg">
-                           <Save size={18} /> Salvar & Ir para Evolução
-                         </button>
-                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {bioTab === 'evolution' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-gradient-to-r from-zinc-900 to-emerald-950/20 border border-zinc-800 p-6 rounded-3xl flex items-center justify-between">
-                     <div>
-                       <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-1">Score IA Exclusivo</p>
-                       <h3 className="text-2xl font-black text-white">Índice de Simetria: <span className="text-emerald-500">{symmetryScore}%</span></h3>
-                       <p className="text-zinc-400 text-xs mt-2 max-w-xs">Baseado na proporção de cintura vs. peitoral extraída das suas medidas.</p>
-                     </div>
-                     <div className="w-16 h-16 bg-zinc-950 rounded-full border-4 border-emerald-500 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                       <Activity size={24} className="text-emerald-400" />
-                     </div>
-                  </div>
-
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><UserCircle size={20} className="text-emerald-500"/> Avatares Paramétricos 3D</h3>
-                    
-                    <div className="flex items-center justify-around gap-4 mb-6 relative">
-                       <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-zinc-800 border-t border-dashed border-zinc-700 z-0"></div>
-
-                       <div className="relative z-10 flex flex-col items-center">
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 mb-3 shadow-lg">
-                             <DynamicAvatar 
-                               chest={Number(measurements.peito) * wRatio} 
-                               waist={Number(measurements.cintura) * wRatio} 
-                               hips={Number(measurements.quadril) * wRatio} 
-                               color="#52525b" 
-                               opacity={0.6}
-                               showGrid={false} 
-                             />
-                          </div>
-                          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-md">Início</span>
-                       </div>
-
-                       <ArrowRight size={24} className="text-zinc-600 relative z-10 bg-zinc-900 rounded-full" />
-
-                       <div className="relative z-10 flex flex-col items-center">
-                          <div className="bg-zinc-950 p-4 rounded-2xl border border-emerald-500/30 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative overflow-hidden">
-                             <div className="absolute inset-0 bg-radial-gradient from-emerald-500/10 to-transparent"></div>
-                             <DynamicAvatar 
-                               chest={Number(measurements.peito)} 
-                               waist={Number(measurements.cintura)} 
-                               hips={Number(measurements.quadril)} 
-                               color="#10b981" 
-                               showGrid={true} 
-                             />
-                          </div>
-                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-md">Atual</span>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
-                     <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><BarChart size={18}/> Tendência de Simetria</h3>
-                     
-                     <div className="h-32 w-full relative">
-                        <div className="absolute top-0 w-full h-px bg-zinc-800"></div>
-                        <div className="absolute top-1/2 w-full h-px bg-zinc-800"></div>
-                        <div className="absolute bottom-0 w-full h-px bg-zinc-800"></div>
-
-                        <svg viewBox="0 0 100 50" className="w-full h-full overflow-visible relative z-10">
-                          <defs>
-                            <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#10b981" stopOpacity="0.4"/>
-                              <stop offset="100%" stopColor="#10b981" stopOpacity="0"/>
-                            </linearGradient>
-                          </defs>
-                          <path d="M 0 40 L 20 35 L 40 25 L 60 28 L 80 15 L 100 10 L 100 50 L 0 50 Z" fill="url(#lineGrad)" />
-                          <polyline 
-                            fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            points="0,40 20,35 40,25 60,28 80,15 100,10"
-                          />
-                          <circle cx="20" cy="35" r="1.5" fill="#10b981"/>
-                          <circle cx="40" cy="25" r="1.5" fill="#10b981"/>
-                          <circle cx="60" cy="28" r="1.5" fill="#10b981"/>
-                          <circle cx="80" cy="15" r="1.5" fill="#10b981"/>
-                          <circle cx="100" cy="10" r="2.5" fill="#fff" stroke="#10b981" strokeWidth="1"/>
-                        </svg>
-                     </div>
-                     <div className="flex justify-between mt-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                       <span>Sem 1</span>
-                       <span>Sem 4</span>
-                       <span>Atual</span>
-                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ===================== TAB: PERFIL ===================== */}
           {activeTab === 'perfil' && (
              <div className="space-y-6 animate-fadeIn pb-10">
@@ -3099,7 +2696,6 @@ export default function App() {
            <SidebarBtn a={activeTab==='dashboard'} o={()=>{setActiveTab('dashboard'); setIsMobileMenuOpen(false);}} i={<LayoutDashboard size={20}/>} l="Painel" />
            <SidebarBtn a={activeTab==='treino'} o={()=>{setActiveTab('treino'); setIsMobileMenuOpen(false);}} i={<Dumbbell size={20}/>} l="Treino" />
            <SidebarBtn a={activeTab==='nutricao'} o={()=>{setActiveTab('nutricao'); setIsMobileMenuOpen(false);}} i={<Utensils size={20}/>} l="Nutrição" />
-           <SidebarBtn a={activeTab==='biometria'} o={()=>{setActiveTab('biometria'); setIsMobileMenuOpen(false);}} i={<Scan size={20}/>} l="Check-up" />
            <SidebarBtn a={activeTab==='perfil'} o={()=>{setActiveTab('perfil'); setIsMobileMenuOpen(false);}} i={<UserCircle size={20}/>} l="Perfil" />
          </div>
       </div>
