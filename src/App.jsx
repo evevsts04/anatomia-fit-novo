@@ -55,6 +55,13 @@ const SidebarBtn = ({ a, o, i, l }) => (
   </button>
 );
 
+const MobileNavButton = ({ a, o, i, l }) => (
+  <button onClick={o} className={`flex flex-col items-center gap-1 p-2 transition-colors ${a ? 'text-emerald-500' : 'text-zinc-500 hover:text-zinc-300'}`}>
+    {i}
+    <span className="text-[10px] font-bold">{l}</span>
+  </button>
+);
+
 const MacroBar = ({ label, current, target, color }) => {
   const percent = Math.min(100, (current / target) * 100) || 0;
   return (
@@ -306,18 +313,6 @@ const CALISTHENICS_PLANS = {
   'Treino 15': [ { id: 'c_half_burpee', reps: '12' }, { id: 'c_flexao_pike_elevacao', reps: '10' }, { id: 'c_ombro_ombro', reps: '8' }, { id: 'c_sit_ups', reps: '15' }, { id: 'c_pike_hold', reps: 'Máx' }, { id: 'c_pike_caminhada', reps: '20' }, { id: 'c_remador', reps: '20' }, { id: 'c_hs_hold', reps: 'Máx' }, { id: 'c_flexao_militar', reps: '15' }, { id: 'c_caminhada_chao', reps: 'Máx' } ]
 };
 
-const getStartOfCurrentWeek = () => {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - daysSinceMonday);
-  monday.setHours(0, 0, 0, 0);
-  return monday.getTime();
-};
-
-const formatEx = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
-
 const MEASUREMENTS_LABELS = {
   peito: 'Peito', costas: 'Costas', cintura: 'Cintura', quadril: 'Quadril',
   bracoEsq: 'Braço Esq.', bracoDir: 'Braço Dir.', antebracoEsq: 'Antebraço Esq.', antebracoDir: 'Antebraço Dir.', 
@@ -374,7 +369,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [showBackAnatomy, setShowBackAnatomy] = useState(false);
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
 
@@ -406,10 +400,7 @@ export default function App() {
   const [modalSearchQuery, setModalSearchQuery] = useState('');
 
   const [gifUrls, setGifUrls] = useState({});
-  const [isUploadingGif, setIsUploadingGif] = useState({});
 
-  const [deepInsightText, setDeepInsightText] = useState('');
-  const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [workoutFeedback, setWorkoutFeedback] = useState('');
   const [isWorkoutFeedbackLoading, setIsWorkoutFeedbackLoading] = useState(false);
   const [nutritionFeedback, setNutritionFeedback] = useState('');
@@ -427,6 +418,10 @@ export default function App() {
   const [selectedCaliPlan, setSelectedCaliPlan] = useState('Treino 01');
   const [currentCaliExercises, setCurrentCaliExercises] = useState([]);
   
+  const [isCardioMode, setIsCardioMode] = useState(false);
+  const [cardioDuration, setCardioDuration] = useState(30);
+  const [isRestMode, setIsRestMode] = useState(false);
+
   const [userProfile, setUserProfile] = useState({ 
     name: '', age: '', gender: 'M', height: '', weight: '', targetWeight: '', goal: 'Hipertrofia', 
     onboardingCompleted: false, lastMeasureUpdate: null, lastLoginDate: todayStr
@@ -527,6 +522,8 @@ export default function App() {
       showToast("A base de dados na Nuvem está vazia. O Admin precisa adicionar os exercícios.", "error");
       return;
     }
+
+    const formatEx = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
 
     const p = {
       'Pull': { name: 'Treino Pull', isLegs: false, exercises: [ 
@@ -890,14 +887,33 @@ export default function App() {
     saveToCloud({ workoutOrder: newOrder });
   };
 
+  const handleToggleMode = (mode) => {
+    if (mode === 'gap') { setIsGapMode(!isGapMode); setIsCaliMode(false); setIsCardioMode(false); setIsRestMode(false); }
+    if (mode === 'cali') { 
+      const newMode = !isCaliMode;
+      setIsCaliMode(newMode); setIsGapMode(false); setIsCardioMode(false); setIsRestMode(false);
+      if(newMode) {
+         const formatExLoc = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
+         const plan = CALISTHENICS_PLANS[selectedCaliPlan].map(b => formatExLoc(getEx(b.id), 3, b.reps)).filter(x => x !== null);
+         setCurrentCaliExercises(plan);
+      }
+    }
+    if (mode === 'cardio') { setIsCardioMode(!isCardioMode); setIsGapMode(false); setIsCaliMode(false); setIsRestMode(false); }
+    if (mode === 'rest') { setIsRestMode(!isRestMode); setIsGapMode(false); setIsCaliMode(false); setIsCardioMode(false); }
+  };
+
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
-    let vol = 0; let durationGap = 0;
+    let vol = 0; let durationGap = 0; let durationCardio = 0;
     let completedExercises = [];
     const bw = Number(userProfile.weight) || 0;
     
     if (isGapMode) {
       durationGap = Number(gapDuration) || 45;
+    } else if (isCardioMode) {
+      durationCardio = Number(cardioDuration) || 30;
+    } else if (isRestMode) {
+      // Dia de Descanso (Sem volume ou exercícios)
     } else if (isCaliMode) {
       currentCaliExercises.forEach(ex => {
         const w = Number(ex.weight) || 0;
@@ -919,7 +935,11 @@ export default function App() {
 
     const timestamp = selectedDateObj.getTime();
     const newLog = { 
-      id: Date.now(), date: selectedDateStr, timestamp, day: activeWorkoutDay, volume: vol, isGap: isGapMode, gapDuration: durationGap, exercises: completedExercises 
+      id: Date.now(), date: selectedDateStr, timestamp, day: activeWorkoutDay, volume: vol, 
+      isGap: isGapMode, gapDuration: durationGap, 
+      isCardio: isCardioMode, cardioDuration: durationCardio,
+      isRest: isRestMode,
+      exercises: completedExercises 
     };
     const newHist = [...workoutHistory, newLog];
     
@@ -934,6 +954,8 @@ export default function App() {
     setShowWorkoutSuccess(true);
     setIsGapMode(false);
     setIsCaliMode(false);
+    setIsCardioMode(false);
+    setIsRestMode(false);
   };
 
   const addWater = () => {
@@ -1008,56 +1030,6 @@ export default function App() {
         }
         await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); 
       }
-    }
-  };
-
-  const handleGenerateDeepInsight = async () => {
-    setIsDeepInsightLoading(true); setDeepInsightText('');
-    try {
-      const recentWorkouts = workoutHistory.slice(-7);
-      const workoutCount = recentWorkouts.length;
-      const totalVolume = recentWorkouts.reduce((acc, w) => acc + (w.volume || 0), 0);
-      
-      let totalCal = 0, totalPro = 0, totalCar = 0, totalFat = 0, daysWithFood = 0;
-      const uniqueDates = [...new Set(nutritionLogs.map(n => n.date))].slice(-7);
-
-      uniqueDates.forEach(date => {
-        const dayLogs = nutritionLogs.filter(n => n.date === date);
-        if (dayLogs.length > 0) {
-            daysWithFood++;
-            dayLogs.forEach(l => {
-                totalCal += (Number(l.calories) || 0);
-                totalPro += (Number(l.protein) || 0);
-                totalCar += (Number(l.carbs) || 0);
-                totalFat += (Number(l.fats) || 0);
-            });
-        }
-      });
-
-      const avgCal = daysWithFood > 0 ? Math.round(totalCal / daysWithFood) : 0;
-      const avgPro = daysWithFood > 0 ? Math.round(totalPro / daysWithFood) : 0;
-      const avgCar = daysWithFood > 0 ? Math.round(totalCar / daysWithFood) : 0;
-      const avgFat = daysWithFood > 0 ? Math.round(totalFat / daysWithFood) : 0;
-
-      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
-
-      RESUMO DOS ÚLTIMOS 7 DIAS:
-      - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
-      - Nutrição (média diária atual): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
-      - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
-
-      TAREFA:
-      1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
-      2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
-      3. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
-      IMPORTANTE: Responda obrigatoriamente em Português de Portugal.`;
-
-      const res = await callGemini(prompt);
-      setDeepInsightText(res);
-    } catch (error) { 
-      setDeepInsightText(`Erro IA: ${error.message}`); 
-    } finally { 
-      setIsDeepInsightLoading(false); 
     }
   };
 
@@ -1251,9 +1223,10 @@ export default function App() {
       const resultIds = resultData.exercises || [];
 
       if (Array.isArray(resultIds) && resultIds.length > 0) {
+         const formatExLoc = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
          const newExercises = resultIds.map(id => {
            const ex = getEx(id);
-           return ex ? formatEx(ex, 3, 10) : null; 
+           return ex ? formatExLoc(ex, 3, 10) : null; 
          }).filter(e => e !== null);
 
          if (newExercises.length > 0) {
@@ -1475,6 +1448,10 @@ export default function App() {
       </div>
     );
   }
+
+  // Cálculos Dinâmicos para os Avatares
+  const initialW = weightHistory.length > 0 ? Number(weightHistory[0].weight) : Number(userProfile.weight);
+  const currentW = Number(userProfile.weight) || 1;
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
@@ -1710,11 +1687,17 @@ export default function App() {
                                   <div className="flex items-center gap-2">
                                     <span className="font-black text-white text-lg">{log.day}</span>
                                     {log.isGap && <span className="text-[9px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">GAP</span>}
+                                    {log.isCardio && <span className="text-[9px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">CARDIO</span>}
+                                    {log.isRest && <span className="text-[9px] bg-zinc-500/20 text-zinc-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">DESCANSO</span>}
                                   </div>
                                   <span className="text-xs text-zinc-500 font-bold">{log.date}</span>
                                </div>
                                {log.isGap ? (
                                   <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">🔥 Aula GAP • {log.gapDuration} minutos</p>
+                               ) : log.isCardio ? (
+                                  <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">🏃 Cardio • {log.cardioDuration} minutos</p>
+                               ) : log.isRest ? (
+                                  <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">💤 Dia de Descanso (Recuperação)</p>
                                ) : (
                                   <div>
                                     <p className="text-[10px] text-zinc-500 mb-3 font-bold uppercase tracking-widest">Volume Movimentado: <span className="text-emerald-400">{log.volume} kg</span></p>
@@ -1800,6 +1783,8 @@ export default function App() {
                            if(!isLocked) {
                              setActiveWorkoutDay(d); 
                              setIsGapMode(false); 
+                             setIsCardioMode(false);
+                             setIsRestMode(false);
                              setWorkoutFeedback('');
                            }
                          }} 
@@ -1844,40 +1829,61 @@ export default function App() {
                  </div>
                ) : (
                  <>
-                   {workouts[activeWorkoutDay]?.isLegs && (
-                     <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between mb-4">
+                   {/* BLOCO DE CHAVES DE MODO DE TREINO */}
+                   <div className="space-y-3 mb-6 animate-fadeIn">
+                     {workouts[activeWorkoutDay]?.isLegs && (
+                       <div className="bg-purple-950/20 border border-purple-900/30 p-4 rounded-2xl flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                           <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Activity size={20}/></div>
+                           <div>
+                             <p className="font-bold text-white text-sm">Aula de GAP?</p>
+                             <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
+                           </div>
+                         </div>
+                         <button onClick={() => handleToggleMode('gap')} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
+                           <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isGapMode?'left-7':'left-1'}`}></div>
+                         </button>
+                       </div>
+                     )}
+
+                     <div className="bg-emerald-950/20 border border-emerald-900/30 p-4 rounded-2xl flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                         <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400"><Activity size={20}/></div>
+                         <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Flame size={20}/></div>
                          <div>
-                           <p className="font-bold text-white text-sm">Aula de GAP?</p>
-                           <p className="text-xs text-purple-300/60">Substituir musculação por aula.</p>
+                           <p className="font-bold text-white text-sm">Treino de Calistenia?</p>
+                           <p className="text-xs text-emerald-300/60">Substituir musculação pelo Módulo 1.</p>
                          </div>
                        </div>
-                       <button onClick={()=>{setIsGapMode(!isGapMode); if(!isGapMode) setIsCaliMode(false);}} className={`w-12 h-6 rounded-full relative transition-colors ${isGapMode?'bg-purple-500':'bg-zinc-800'}`}>
-                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isGapMode?'left-7':'left-1'}`}></div>
+                       <button onClick={() => handleToggleMode('cali')} className={`w-12 h-6 rounded-full relative transition-colors ${isCaliMode?'bg-emerald-500':'bg-zinc-800'}`}>
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isCaliMode?'left-7':'left-1'}`}></div>
                        </button>
                      </div>
-                   )}
 
-                   <div className="bg-emerald-950/20 border border-emerald-900/30 p-4 rounded-2xl flex items-center justify-between mb-4">
-                     <div className="flex items-center gap-3">
-                       <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Flame size={20}/></div>
-                       <div>
-                         <p className="font-bold text-white text-sm">Treino de Calistenia?</p>
-                         <p className="text-xs text-emerald-300/60">Substituir musculação pelo Módulo 1.</p>
+                     <div className="bg-blue-950/20 border border-blue-900/30 p-4 rounded-2xl flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                         <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><Activity size={20}/></div>
+                         <div>
+                           <p className="font-bold text-white text-sm">Apenas Cardio?</p>
+                           <p className="text-xs text-blue-300/60">Sessão exclusiva de aeróbico.</p>
+                         </div>
                        </div>
+                       <button onClick={() => handleToggleMode('cardio')} className={`w-12 h-6 rounded-full relative transition-colors ${isCardioMode?'bg-blue-500':'bg-zinc-800'}`}>
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isCardioMode?'left-7':'left-1'}`}></div>
+                       </button>
                      </div>
-                     <button onClick={()=>{
-                         const newMode = !isCaliMode;
-                         setIsCaliMode(newMode);
-                         if(newMode) {
-                            setIsGapMode(false);
-                            const plan = CALISTHENICS_PLANS[selectedCaliPlan].map(b => formatEx(getEx(b.id), 3, b.reps)).filter(x => x !== null);
-                            setCurrentCaliExercises(plan);
-                         }
-                     }} className={`w-12 h-6 rounded-full relative transition-colors ${isCaliMode?'bg-emerald-500':'bg-zinc-800'}`}>
-                       <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isCaliMode?'left-7':'left-1'}`}></div>
-                     </button>
+
+                     <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                         <div className="bg-zinc-800 p-2 rounded-lg text-zinc-400"><Smile size={20}/></div>
+                         <div>
+                           <p className="font-bold text-white text-sm">Dia de Descanso?</p>
+                           <p className="text-xs text-zinc-500">Recuperação muscular ativa ou passiva.</p>
+                         </div>
+                       </div>
+                       <button onClick={() => handleToggleMode('rest')} className={`w-12 h-6 rounded-full relative transition-colors ${isRestMode?'bg-zinc-500':'bg-zinc-800'}`}>
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isRestMode?'left-7':'left-1'}`}></div>
+                       </button>
+                     </div>
                    </div>
 
                    {isCaliMode && (
@@ -1886,7 +1892,8 @@ export default function App() {
                             value={selectedCaliPlan}
                             onChange={(e) => {
                                setSelectedCaliPlan(e.target.value);
-                               const plan = CALISTHENICS_PLANS[e.target.value].map(b => formatEx(getEx(b.id), 3, b.reps)).filter(x => x !== null);
+                               const formatExLoc = (ex, sets, reps) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets, reps, weight: '', isCompleted: false }) : null;
+                               const plan = CALISTHENICS_PLANS[e.target.value].map(b => formatExLoc(getEx(b.id), 3, b.reps)).filter(x => x !== null);
                                setCurrentCaliExercises(plan);
                             }}
                             className="w-full bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold focus:border-emerald-500 transition-colors"
@@ -1896,7 +1903,7 @@ export default function App() {
                       </div>
                    )}
 
-                   {!isGapMode && !isCaliMode && (
+                   {!isGapMode && !isCaliMode && !isCardioMode && !isRestMode && (
                      <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 mb-4">
                         <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
                         <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="flex items-center gap-2 bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
@@ -1906,7 +1913,7 @@ export default function App() {
                      </div>
                    )}
 
-                   {!isGapMode && (
+                   {!isGapMode && !isCaliMode && !isCardioMode && !isRestMode && (
                      <div className="bg-zinc-900 p-4 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 border border-zinc-800 shadow-sm mb-4">
                         <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
                           <div className={`p-3 rounded-2xl transition-colors ${isTimerRunning ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-950 text-zinc-500'}`}>
@@ -1949,7 +1956,7 @@ export default function App() {
                    )}
 
                    {isGapMode ? (
-                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn">
+                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mb-4">
                         <Flame size={48} className="text-purple-500 mx-auto mb-4" />
                         <h3 className="text-2xl font-extrabold mb-2">Registo de Aula GAP</h3>
                         <p className="text-zinc-400 text-sm mb-8">Glúteos, Abdómen e Pernas. Indique o tempo da aula.</p>
@@ -1959,6 +1966,24 @@ export default function App() {
                           <button onClick={()=>setGapDuration(gapDuration+15)} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">+</button>
                         </div>
                         <p className="text-zinc-500 font-bold uppercase mb-8">Minutos</p>
+                     </div>
+                   ) : isCardioMode ? (
+                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mb-4">
+                        <Activity size={48} className="text-blue-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-extrabold mb-2">Sessão de Cardio</h3>
+                        <p className="text-zinc-400 text-sm mb-8">Corrida, elíptica, bicicleta ou HIIT. Indique o tempo da sessão.</p>
+                        <div className="flex justify-center items-center gap-4 mb-6">
+                          <button onClick={()=>setCardioDuration(Math.max(10, cardioDuration-10))} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">-</button>
+                          <span className="text-5xl font-black text-blue-400 w-24">{cardioDuration}</span>
+                          <button onClick={()=>setCardioDuration(cardioDuration+10)} className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-xl font-bold">+</button>
+                        </div>
+                        <p className="text-zinc-500 font-bold uppercase mb-8">Minutos</p>
+                     </div>
+                   ) : isRestMode ? (
+                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center animate-fadeIn mb-4">
+                        <Smile size={48} className="text-zinc-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-extrabold mb-2">Dia de Descanso</h3>
+                        <p className="text-zinc-400 text-sm">O descanso é fundamental para o processo de hipertrofia. Aproveite o dia para recuperar os músculos e focar na alimentação!</p>
                      </div>
                    ) : (
                      <div className="space-y-4">
@@ -2190,7 +2215,7 @@ export default function App() {
                    )}
 
                    <button onClick={handleCompleteWorkout} className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-3xl font-black text-lg mt-8 shadow-xl shadow-emerald-900/40 active:scale-95 transition-all flex items-center justify-center gap-2">
-                     <Save size={24}/> {isGapMode ? "Salvar Aula GAP" : "Concluir Treino"}
+                     <Save size={24}/> {isGapMode ? "Salvar Aula GAP" : isCardioMode ? "Salvar Cardio" : isRestMode ? "Confirmar Descanso" : "Concluir Treino"}
                    </button>
                  </>
                )}
@@ -2549,7 +2574,7 @@ export default function App() {
 
                 <div className="bg-red-950/20 p-6 rounded-3xl border border-red-900/30">
                    <h3 className="text-red-500 font-bold mb-4 flex items-center gap-2"><AlertCircle size={18}/> Zona de Perigo</h3>
-                   <p className="text-xs text-zinc-400 mb-4">Para apagar <strong>apenas os seus dados pessoais</strong> (histórico de treinos, biometria e dieta), digite a sua senha de login. <span className="text-emerald-400">A base de dados de exercícios na Nuvem permanecerá 100% intacta.</span></p>
+                   <p className="text-xs text-zinc-400 mb-4">Para apagar <strong>apenas os seus dados pessoais</strong> (histórico de treinos e dieta), digite a sua senha de login. <span className="text-emerald-400">A base de dados de exercícios na Nuvem permanecerá 100% intacta.</span></p>
                    <div className="flex gap-2">
                      <input type="password" value={resetPassAttempt} onChange={e=>setResetPassAttempt(e.target.value)} placeholder="Senha..." className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex-1 outline-none text-white focus:border-red-500"/>
                      <button onClick={async () => {
