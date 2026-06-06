@@ -369,6 +369,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashTab, setDashTab] = useState('daily'); 
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [showBackAnatomy, setShowBackAnatomy] = useState(false); // RE-ADICIONADO E CORRIGIDO
   const [showMeasureAlert, setShowMeasureAlert] = useState(false);
   const [showWorkoutSuccess, setShowWorkoutSuccess] = useState(false);
 
@@ -401,6 +402,8 @@ export default function App() {
 
   const [gifUrls, setGifUrls] = useState({});
 
+  const [deepInsightText, setDeepInsightText] = useState('');
+  const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [workoutFeedback, setWorkoutFeedback] = useState('');
   const [isWorkoutFeedbackLoading, setIsWorkoutFeedbackLoading] = useState(false);
   const [nutritionFeedback, setNutritionFeedback] = useState('');
@@ -412,6 +415,7 @@ export default function App() {
   const [dailyLogs, setDailyLogs] = useState([]); 
   const [nutritionLogs, setNutritionLogs] = useState([]); 
   const [activeWorkoutDay, setActiveWorkoutDay] = useState('Pull');
+  
   const [isGapMode, setIsGapMode] = useState(false);
   const [gapDuration, setGapDuration] = useState(45);
   const [isCaliMode, setIsCaliMode] = useState(false);
@@ -463,7 +467,7 @@ export default function App() {
     const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
     return workoutHistory
       .filter(log => {
-        const logTime = log.timestamp || new Date(log.date.split('/').reverse().join('-')).getTime();
+        const logTime = log.timestamp || (log.date ? new Date(log.date.split('/').reverse().join('-')).getTime() : 0);
         return logTime >= startOfWeek && logTime < endOfWeek;
       })
       .map(log => log.day);
@@ -662,10 +666,13 @@ export default function App() {
              });
              prof.lastLoginDate = todayStr;
              setUserProfile(prof);
+             
+             const updateData = { userProfile: prof };
              if (modified) {
                setWorkouts(updWorkouts);
-               setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), { userProfile: prof, workouts: updWorkouts }, { merge: true });
+               updateData.workouts = updWorkouts;
              }
+             setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), updateData, { merge: true });
           } else {
              setUserProfile(prof);
           }
@@ -716,9 +723,7 @@ export default function App() {
     setIsSyncing(true);
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
-      
       const cleanData = JSON.parse(JSON.stringify(dataToSave)); 
-      
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), cleanData, { merge: true });
     } catch (e) { 
       console.error(e); 
@@ -1033,6 +1038,56 @@ export default function App() {
     }
   };
 
+  const handleGenerateDeepInsight = async () => {
+    setIsDeepInsightLoading(true); setDeepInsightText('');
+    try {
+      const recentWorkouts = workoutHistory.slice(-7);
+      const workoutCount = recentWorkouts.length;
+      const totalVolume = recentWorkouts.reduce((acc, w) => acc + (w.volume || 0), 0);
+      
+      let totalCal = 0, totalPro = 0, totalCar = 0, totalFat = 0, daysWithFood = 0;
+      const uniqueDates = [...new Set(nutritionLogs.map(n => n.date))].slice(-7);
+
+      uniqueDates.forEach(date => {
+        const dayLogs = nutritionLogs.filter(n => n.date === date);
+        if (dayLogs.length > 0) {
+            daysWithFood++;
+            dayLogs.forEach(l => {
+                totalCal += (Number(l.calories) || 0);
+                totalPro += (Number(l.protein) || 0);
+                totalCar += (Number(l.carbs) || 0);
+                totalFat += (Number(l.fats) || 0);
+            });
+        }
+      });
+
+      const avgCal = daysWithFood > 0 ? Math.round(totalCal / daysWithFood) : 0;
+      const avgPro = daysWithFood > 0 ? Math.round(totalPro / daysWithFood) : 0;
+      const avgCar = daysWithFood > 0 ? Math.round(totalCar / daysWithFood) : 0;
+      const avgFat = daysWithFood > 0 ? Math.round(totalFat / daysWithFood) : 0;
+
+      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
+
+      RESUMO DOS ÚLTIMOS 7 DIAS:
+      - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
+      - Nutrição (média diária atual): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
+      - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
+
+      TAREFA:
+      1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
+      2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
+      3. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
+      IMPORTANTE: Responda obrigatoriamente em Português de Portugal.`;
+
+      const res = await callGemini(prompt);
+      setDeepInsightText(res);
+    } catch (error) { 
+      setDeepInsightText(`Erro IA: ${error.message}`); 
+    } finally { 
+      setIsDeepInsightLoading(false); 
+    }
+  };
+
   const handleEvaluateWorkout = async () => {
     setIsWorkoutFeedbackLoading(true); setWorkoutFeedback('');
     try {
@@ -1267,7 +1322,7 @@ export default function App() {
        const wGroups = dayToGroups[hist.day] || [];
        const isMatch = groupMapArray.some(g => wGroups.includes(g));
        if (isMatch) {
-         lastWorkedDate = hist.timestamp || new Date(hist.date.split('/').reverse().join('-')).getTime();
+         lastWorkedDate = hist.timestamp || (hist.date ? new Date(hist.date.split('/').reverse().join('-')).getTime() : 0);
          break;
        }
     }
@@ -1289,7 +1344,7 @@ export default function App() {
     if (userProfile.signupTimestamp) {
       signup = new Date(userProfile.signupTimestamp);
       signup.setHours(0,0,0,0);
-    } else if (weightHistory.length > 0) {
+    } else if (weightHistory.length > 0 && weightHistory[0].date) {
       const parts = weightHistory[0].date.split('/');
       if (parts.length === 3) {
         signup = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
@@ -1448,10 +1503,6 @@ export default function App() {
       </div>
     );
   }
-
-  // Cálculos Dinâmicos para os Avatares
-  const initialW = weightHistory.length > 0 ? Number(weightHistory[0].weight) : Number(userProfile.weight);
-  const currentW = Number(userProfile.weight) || 1;
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30 overflow-hidden relative">
@@ -2240,7 +2291,7 @@ export default function App() {
                  </div>
                </div>
 
-               <h3 className="text-xl font-bold mt-8 mb-4">Metas de Hoje</h3>
+               <h3 className="text-xl font-bold mt-8 mb-4">Metas do Dia</h3>
                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                  <div className="bg-zinc-900 p-5 rounded-3xl text-center border border-zinc-800 shadow-sm">
                    <p className="text-xs text-orange-500/80 font-bold uppercase mb-1">Kcal</p>
