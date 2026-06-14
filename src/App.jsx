@@ -5,7 +5,7 @@ import {
   Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
   CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle, Pencil, MessageSquareQuote,
-  Activity, Key, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search, Menu
+  Activity, Key, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, GripHorizontal, Trophy, Medal, Database, Search, Menu, Target, FlameKindling, Zap
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -1396,6 +1396,65 @@ export default function App() {
     saveToCloud({ workouts: upd });
   };
 
+  // --- CÁLCULOS DOS DESAFIOS MENSAIS ---
+  const monthlyChallenges = useMemo(() => {
+    const targetDate = new Date(selectedDateObj);
+    const targetMonth = targetDate.getMonth();
+    const targetYear = targetDate.getFullYear();
+
+    const monthlyHistory = workoutHistory.filter(log => {
+        const logDate = log.timestamp ? new Date(log.timestamp) : new Date(log.date.split('/').reverse().join('-'));
+        return logDate.getMonth() === targetMonth && logDate.getFullYear() === targetYear;
+    });
+
+    let squats = 0, pushups = 0, pullups = 0, dips = 0, plankSecs = 0;
+
+    monthlyHistory.forEach(log => {
+      if (log.exercises) {
+        log.exercises.forEach(ex => {
+          const nameLower = ex.name.toLowerCase();
+          const targetLower = ex.target?.toLowerCase() || '';
+          
+          const totalReps = (Number(ex.sets) || 0) * (Number(ex.reps) || 0);
+
+          if (nameLower.includes('agachamento') || nameLower.includes('pistol') || nameLower.includes('squat') || nameLower.includes('sumô') || nameLower.includes('hack')) {
+            squats += totalReps;
+          }
+          if (nameLower.includes('flexão') && !nameLower.includes('punho') && !nameLower.includes('perna') && !nameLower.includes('joelho')) {
+             if (isNaN(Number(ex.reps))) { pushups += (Number(ex.sets) || 0) * 15; } // estimativa para 'Máx'
+             else pushups += totalReps;
+          }
+          if (nameLower.includes('barra fixa') || nameLower.includes('barra (a,m,f)') || nameLower.includes('barra trad') || nameLower.includes('barra sup') || nameLower.includes('barra aust')) {
+             if (isNaN(Number(ex.reps))) { pullups += (Number(ex.sets) || 0) * 5; }
+             else pullups += totalReps;
+          }
+          if (nameLower.includes('paralelas') || nameLower.includes('dips') || nameLower.includes('repulsão')) {
+             if (isNaN(Number(ex.reps))) { dips += (Number(ex.sets) || 0) * 10; }
+             else dips += totalReps;
+          }
+          if (nameLower.includes('prancha') && !nameLower.includes('alcance')) {
+             let secsPerSet = 0;
+             if (typeof ex.reps === 'string') {
+                if(ex.reps.includes('min')) secsPerSet = parseInt(ex.reps) * 60;
+                else if(ex.reps.includes('s')) secsPerSet = parseInt(ex.reps);
+                else secsPerSet = 30; // fallback se tiver só max
+             } else { secsPerSet = Number(ex.reps) || 30; }
+             
+             plankSecs += (Number(ex.sets) || 0) * secsPerSet;
+          }
+        });
+      }
+    });
+
+    return [
+      { id: 'ch_squats', title: 'Pernas de Aço', desc: '1000 Agachamentos', icon: <Zap className="text-orange-500" size={24}/>, progress: squats, target: 1000, unit: 'reps', color: 'bg-orange-500' },
+      { id: 'ch_pushups', title: 'Peitoral de Ferro', desc: '500 Flexões', icon: <Activity className="text-blue-500" size={24}/>, progress: pushups, target: 500, unit: 'reps', color: 'bg-blue-500' },
+      { id: 'ch_pullups', title: 'Dorsal em V', desc: '150 Barras Fixas', icon: <FlameKindling className="text-emerald-500" size={24}/>, progress: pullups, target: 150, unit: 'reps', color: 'bg-emerald-500' },
+      { id: 'ch_dips', title: 'Tríceps Blindado', desc: '200 Paralelas/Dips', icon: <Target className="text-purple-500" size={24}/>, progress: dips, target: 200, unit: 'reps', color: 'bg-purple-500' },
+      { id: 'ch_plank', title: 'Core Intocável', desc: '60 Min de Prancha', icon: <Medal className="text-yellow-500" size={24}/>, progress: Math.round(plankSecs / 60), target: 60, unit: 'min', color: 'bg-yellow-500' }
+    ];
+  }, [workoutHistory, selectedDateObj]);
+
   // --- ECRÃS E LÓGICA DE RENDERIZAÇÃO ---
 
   if (isAuthLoading || appScreen === 'loading') {
@@ -1544,6 +1603,7 @@ export default function App() {
         <nav className="flex flex-col gap-2 flex-1">
           <SidebarBtn a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={20}/>} l="Painel" />
           <SidebarBtn a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={20}/>} l="Treino" />
+          <SidebarBtn a={activeTab==='desafios'} o={()=>setActiveTab('desafios')} i={<Target size={20}/>} l="Desafios" />
           <SidebarBtn a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={20}/>} l="Nutrição" />
           <SidebarBtn a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
         </nav>
@@ -1559,8 +1619,8 @@ export default function App() {
         
         <div className="max-w-4xl mx-auto p-5 md:p-8 w-full mt-2">
 
-          {/* NAVEGADOR DE DATA (VISÍVEL NO DASHBOARD, TREINO E NUTRIÇÃO) */}
-          {['dashboard', 'treino', 'nutricao'].includes(activeTab) && (
+          {/* NAVEGADOR DE DATA (VISÍVEL NO DASHBOARD, TREINO, NUTRIÇÃO E DESAFIOS) */}
+          {['dashboard', 'treino', 'nutricao', 'desafios'].includes(activeTab) && (
             <div className="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl mb-6 shadow-sm">
                <button onClick={() => handleDateChange(-1)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-zinc-950 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
                <div className="flex flex-col items-center">
@@ -2392,6 +2452,76 @@ export default function App() {
              </div>
           )}
 
+          {/* ===================== TAB: DESAFIOS ===================== */}
+          {activeTab === 'desafios' && (
+             <div className="space-y-6 animate-fadeIn pb-12">
+               <header className="mb-8">
+                  <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
+                     <Target className="text-emerald-500" size={32}/>
+                     Desafios Mensais
+                  </h1>
+                  <p className="text-zinc-400 font-medium mt-2">Mês: {selectedDateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                  <p className="text-xs text-zinc-500 mt-1">A IA soma automaticamente as repetições dos seus treinos diários correspondentes a este mês.</p>
+               </header>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {monthlyChallenges.map(ch => {
+                     const percent = Math.min(100, Math.round((ch.progress / ch.target) * 100));
+                     const isCompleted = percent >= 100;
+
+                     return (
+                        <div key={ch.id} className={`bg-zinc-900/50 p-6 rounded-3xl border transition-all ${isCompleted ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'border-zinc-800'}`}>
+                           <div className="flex justify-between items-start mb-6">
+                              <div className="flex gap-4 items-center">
+                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted ? 'bg-emerald-500/20' : 'bg-zinc-950'}`}>
+                                    {isCompleted ? <Trophy className="text-emerald-500" size={28}/> : ch.icon}
+                                 </div>
+                                 <div>
+                                    <h3 className={`font-black text-lg ${isCompleted ? 'text-emerald-400' : 'text-white'}`}>{ch.title}</h3>
+                                    <p className="text-[11px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{ch.desc}</p>
+                                 </div>
+                              </div>
+                              {isCompleted && (
+                                 <span className="bg-emerald-500 text-zinc-950 text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider shadow-lg">Completado</span>
+                              )}
+                           </div>
+
+                           <div className="relative pt-2">
+                              <div className="flex justify-between text-sm font-black mb-2">
+                                 <span className={isCompleted ? 'text-emerald-400' : 'text-white'}>
+                                    {ch.progress} <span className="text-xs font-bold text-zinc-500">{ch.unit}</span>
+                                 </span>
+                                 <span className="text-zinc-500">
+                                    {ch.target} <span className="text-xs">{ch.unit}</span>
+                                 </span>
+                              </div>
+                              <div className="h-3 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 relative">
+                                 <div 
+                                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${isCompleted ? 'bg-emerald-500' : ch.color}`} 
+                                    style={{ width: `${percent}%` }}
+                                 >
+                                    {isCompleted && (
+                                       <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+                                          <div className="w-10 h-full bg-white/30 skew-x-12 translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
+                                       </div>
+                                    )}
+                                 </div>
+                              </div>
+                              <div className="mt-3 flex justify-end">
+                                 <span className={`text-[10px] font-black ${isCompleted ? 'text-emerald-500' : 'text-zinc-600'}`}>{percent}%</span>
+                              </div>
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+
+               <div className="bg-blue-950/20 border border-blue-900/30 p-6 rounded-3xl mt-6 text-center">
+                  <p className="text-sm text-blue-300 font-medium">Os desafios renovam-se no dia 1 de cada mês. Volte no tempo com o navegador no topo se precisar de lançar treinos antigos para fechar os desafios do mês passado!</p>
+               </div>
+             </div>
+          )}
+
           {/* ===================== TAB: PERFIL ===================== */}
           {activeTab === 'perfil' && (
              <div className="space-y-6 animate-fadeIn pb-10">
@@ -2771,6 +2901,7 @@ export default function App() {
            </div>
            <SidebarBtn a={activeTab==='dashboard'} o={()=>{setActiveTab('dashboard'); setIsMobileMenuOpen(false);}} i={<LayoutDashboard size={20}/>} l="Painel" />
            <SidebarBtn a={activeTab==='treino'} o={()=>{setActiveTab('treino'); setIsMobileMenuOpen(false);}} i={<Dumbbell size={20}/>} l="Treino" />
+           <SidebarBtn a={activeTab==='desafios'} o={()=>{setActiveTab('desafios'); setIsMobileMenuOpen(false);}} i={<Target size={20}/>} l="Desafios" />
            <SidebarBtn a={activeTab==='nutricao'} o={()=>{setActiveTab('nutricao'); setIsMobileMenuOpen(false);}} i={<Utensils size={20}/>} l="Nutrição" />
            <SidebarBtn a={activeTab==='perfil'} o={()=>{setActiveTab('perfil'); setIsMobileMenuOpen(false);}} i={<UserCircle size={20}/>} l="Perfil" />
          </div>
