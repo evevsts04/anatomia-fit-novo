@@ -386,6 +386,9 @@ export default function App() {
   const [isApiKeyUnlocked, setIsApiKeyUnlocked] = useState(false);
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
 
+  const [showManualChallengeModal, setShowManualChallengeModal] = useState(false);
+  const [manualChallengeData, setManualChallengeData] = useState({ challengeId: 'ch_squats', amount: '' });
+
   const [chatInput, setChatInput] = useState('');
   const [selectedMealId, setSelectedMealId] = useState('m3');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -961,6 +964,69 @@ export default function App() {
     setIsCaliMode(false);
     setIsCardioMode(false);
     setIsRestMode(false);
+  };
+
+  const handleSaveManualChallenge = () => {
+    if (!manualChallengeData.amount || isNaN(Number(manualChallengeData.amount))) {
+       showToast("Introduza uma quantidade válida", "error");
+       return;
+    }
+
+    let exName = "";
+    if (manualChallengeData.challengeId === 'ch_squats') exName = "Agachamento (Manual)";
+    if (manualChallengeData.challengeId === 'ch_pushups') exName = "Flexão (Manual)";
+    if (manualChallengeData.challengeId === 'ch_pullups') exName = "Barra Fixa (Manual)";
+    if (manualChallengeData.challengeId === 'ch_dips') exName = "Paralelas (Manual)";
+    if (manualChallengeData.challengeId === 'ch_plank') exName = "Prancha (Manual)";
+
+    let reps = Number(manualChallengeData.amount);
+    if (manualChallengeData.challengeId === 'ch_plank') {
+       reps = `${reps}min`; 
+    }
+
+    const timestamp = selectedDateObj.getTime();
+    
+    const dummyExercise = {
+        id: Date.now() + Math.random(),
+        originalId: 'manual',
+        name: exName,
+        sets: 1,
+        reps: reps,
+        weight: 0,
+        target: 'Desafio',
+        group: 'Manual',
+        isCompleted: true
+    };
+
+    const newLog = { 
+      id: Date.now(), 
+      date: selectedDateStr, 
+      timestamp: timestamp, 
+      day: 'Desafio Manual', 
+      volume: 0, 
+      isGap: false, 
+      isCardio: false,
+      isRest: false,
+      exercises: [dummyExercise] 
+    };
+
+    const newHist = [...workoutHistory, newLog];
+    
+    let newDLogs = [...dailyLogs];
+    const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
+    if (idx >= 0 && !newDLogs[idx].workout) {
+       newDLogs[idx].workout = 'Desafio Manual';
+    } else if (idx < 0) {
+       newDLogs.push({ date: selectedDateStr, workout: 'Desafio Manual', water: 0, calories: totals.calories });
+    }
+
+    setWorkoutHistory(newHist); 
+    setDailyLogs(newDLogs);
+    saveToCloud({ workoutHistory: newHist, dailyLogs: newDLogs });
+    
+    setShowManualChallengeModal(false);
+    setManualChallengeData({ challengeId: 'ch_squats', amount: '' });
+    showToast("Registo manual adicionado com sucesso!", "success");
   };
 
   const addWater = () => {
@@ -2455,13 +2521,18 @@ export default function App() {
           {/* ===================== TAB: DESAFIOS ===================== */}
           {activeTab === 'desafios' && (
              <div className="space-y-6 animate-fadeIn pb-12">
-               <header className="mb-8">
-                  <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-                     <Target className="text-emerald-500" size={32}/>
-                     Desafios Mensais
-                  </h1>
-                  <p className="text-zinc-400 font-medium mt-2">Mês: {selectedDateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
-                  <p className="text-xs text-zinc-500 mt-1">A IA soma automaticamente as repetições dos seus treinos diários correspondentes a este mês.</p>
+               <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
+                       <Target className="text-emerald-500" size={32}/>
+                       Desafios Mensais
+                    </h1>
+                    <p className="text-zinc-400 font-medium mt-2">Mês: {selectedDateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}</p>
+                    <p className="text-xs text-zinc-500 mt-1">A IA soma automaticamente as repetições dos seus treinos diários correspondentes a este mês.</p>
+                  </div>
+                  <button onClick={() => setShowManualChallengeModal(true)} className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg w-full md:w-auto justify-center">
+                    <Plus size={18}/> Registo Manual
+                  </button>
                </header>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2856,6 +2927,51 @@ export default function App() {
                     ));
                   })()}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {showManualChallengeModal && (
+            <div className="fixed inset-0 bg-black/90 z-[80] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-md animate-fadeIn">
+              <div className="bg-zinc-900 border-t md:border border-zinc-800 rounded-t-3xl md:rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-extrabold text-xl text-white">Registo Manual</h3>
+                  <button onClick={()=>setShowManualChallengeModal(false)} className="bg-zinc-800 p-2 rounded-full text-zinc-400 hover:text-white transition-colors"><X size={20}/></button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Qual desafio?</label>
+                    <select 
+                      value={manualChallengeData.challengeId} 
+                      onChange={e=>setManualChallengeData({...manualChallengeData, challengeId: e.target.value})}
+                      className="w-full bg-zinc-950 p-4 mt-1 rounded-2xl border border-zinc-800 outline-none text-white text-sm focus:border-emerald-500 font-bold"
+                    >
+                      <option value="ch_squats">🦵 Agachamentos</option>
+                      <option value="ch_pushups">💪 Flexões</option>
+                      <option value="ch_pullups">🦇 Barras Fixas</option>
+                      <option value="ch_dips">🛡️ Paralelas / Dips</option>
+                      <option value="ch_plank">🧱 Prancha</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Quantidade ({manualChallengeData.challengeId === 'ch_plank' ? 'minutos' : 'reps'})</label>
+                    <input 
+                      type="number" 
+                      value={manualChallengeData.amount} 
+                      onChange={e=>setManualChallengeData({...manualChallengeData, amount: e.target.value})}
+                      placeholder={manualChallengeData.challengeId === 'ch_plank' ? "Ex: 5" : "Ex: 50"}
+                      className="w-full bg-zinc-950 p-4 mt-1 rounded-2xl border border-zinc-800 outline-none text-white text-lg focus:border-emerald-500 font-black"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleSaveManualChallenge}
+                  className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold text-lg transition-transform active:scale-95 flex justify-center items-center gap-2"
+                >
+                  <Save size={20}/> Salvar Registo
+                </button>
               </div>
             </div>
           )}
