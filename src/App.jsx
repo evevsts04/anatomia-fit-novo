@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  LayoutDashboard, Dumbbell, Utensils, UserCircle, Send, 
+  LayoutDashboard, Dumbbell, UserCircle, Send, 
   Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
   Smile, Frown, Lock, Flame, ArrowRight, LogOut, Settings, 
   RefreshCw, ArrowLeftRight, X, Save, Plus, Ruler, AlertTriangle, 
@@ -61,21 +61,6 @@ const MobileNavButton = ({ a, o, i, l }) => (
     <span className="text-[10px] font-bold">{l}</span>
   </button>
 );
-
-const MacroBar = ({ label, current, target, color }) => {
-  const percent = Math.min(100, (current / target) * 100) || 0;
-  return (
-    <div>
-      <div className="flex justify-between text-xs font-bold mb-1">
-        <span className="text-zinc-400 uppercase tracking-wider">{label}</span>
-        <span className="text-white">{current} / {target}</span>
-      </div>
-      <div className="h-2 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
-        <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${percent}%` }}></div>
-      </div>
-    </div>
-  );
-};
 
 // --- DB EXERCÍCIOS (EXPANDIDO - 100 EXERCÍCIOS) ---
 const EXERCISE_DB = [
@@ -275,15 +260,6 @@ const EXERCISE_DB = [
   { id: 'c_hs_hold', name: 'Handstand Hold', target: 'Ombros/Equilíbrio', group: 'Ombros' }
 ];
 
-const INITIAL_MEALS = [
-  { id: 'm1', name: 'Café da Manhã' },
-  { id: 'm2', name: 'Lanche Manhã' },
-  { id: 'm3', name: 'Almoço' },
-  { id: 'm4', name: 'Lanche Tarde' },
-  { id: 'm5', name: 'Pré-Treino' },
-  { id: 'm6', name: 'Jantar' },
-  { id: 'm7', name: 'Ceia' },
-];
 const DEFAULT_WORKOUT_DAYS = ['Pull', 'Legs 1', 'Push', 'Legs 2 ou Cardio', 'Upper', 'Lower', 'Cardio'];
 
 const getStartOfWeekForDate = (dateObj) => {
@@ -389,10 +365,6 @@ export default function App() {
   const [showManualChallengeModal, setShowManualChallengeModal] = useState(false);
   const [manualChallengeData, setManualChallengeData] = useState({ challengeId: 'ch_squats', amount: '' });
 
-  const [chatInput, setChatInput] = useState('');
-  const [selectedMealId, setSelectedMealId] = useState('m3');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
   // ESTADOS DO GUIA RÁPIDO (IA) E PESQUISA
   const [anatomyTips, setAnatomyTips] = useState({});
   const [anatomyTipState, setAnatomyTipState] = useState({});
@@ -409,14 +381,11 @@ export default function App() {
   const [isDeepInsightLoading, setIsDeepInsightLoading] = useState(false);
   const [workoutFeedback, setWorkoutFeedback] = useState('');
   const [isWorkoutFeedbackLoading, setIsWorkoutFeedbackLoading] = useState(false);
-  const [nutritionFeedback, setNutritionFeedback] = useState('');
-  const [isNutritionFeedbackLoading, setIsNutritionFeedbackLoading] = useState(false);
 
   const [workouts, setWorkouts] = useState({});
   const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [dailyLogs, setDailyLogs] = useState([]); 
-  const [nutritionLogs, setNutritionLogs] = useState([]); 
   const [activeWorkoutDay, setActiveWorkoutDay] = useState('Pull');
   
   const [isGapMode, setIsGapMode] = useState(false);
@@ -444,10 +413,6 @@ export default function App() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const [editingNutritionId, setEditingNutritionId] = useState(null);
-  const [editNutritionData, setEditNutritionData] = useState(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null); 
 
   const ACHIEVEMENTS = [
     { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => h.length >= 1 },
@@ -489,33 +454,6 @@ export default function App() {
       setActiveWorkoutDay(workoutOrder[0] || keys[0]);
     }
   }, [workouts, activeWorkoutDay, workoutOrder]);
-
-  const targetDayNutrition = nutritionLogs.filter(log => log.date === selectedDateStr);
-  const totals = targetDayNutrition.reduce((acc, log) => ({ 
-    calories: acc.calories + (Number(log.calories)||0), 
-    protein: acc.protein + (Number(log.protein)||0), 
-    carbs: acc.carbs + (Number(log.carbs)||0), 
-    fats: acc.fats + (Number(log.fats)||0) 
-  }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
-
-  const aiGoals = useMemo(() => {
-    const w = Number(userProfile.weight) || 70;
-    const h = Number(userProfile.height) || 175;
-    const a = Number(userProfile.age) || 25;
-    let bmr = (10 * w) + (6.25 * h) - (5 * a);
-    bmr = userProfile.gender === 'M' ? bmr + 5 : bmr - 161;
-    let tdee = bmr * 1.55; 
-    
-    if (userProfile.goal === 'Hipertrofia') tdee += 400;
-    if (userProfile.goal === 'Definição') tdee -= 400;
-    
-    const cal = Math.round(tdee);
-    const prot = Math.round(w * 2.2);
-    const fat = Math.round(w * 0.9);
-    const carb = Math.round((cal - (prot*4) - (fat*9))/4);
-    
-    return { calories: cal, protein: prot, fats: fat, carbs: carb };
-  }, [userProfile]);
 
   const bmi = useMemo(() => {
     const w = Number(userProfile.weight);
@@ -629,7 +567,6 @@ export default function App() {
            setWorkoutOrder(Object.keys(d.workouts));
         }
         
-        if (d.nutritionLogs) setNutritionLogs(d.nutritionLogs);
         if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
         if (d.dailyLogs) setDailyLogs(d.dailyLogs);
         if (d.anatomyTipsCache) setAnatomyTips(d.anatomyTipsCache);
@@ -725,7 +662,7 @@ export default function App() {
     if (!user || !db) return;
     setIsSyncing(true);
     try {
-      const dataToSave = overrideData || { workouts, workoutOrder, nutritionLogs, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
+      const dataToSave = overrideData || { workouts, workoutOrder, workoutHistory, userProfile, dailyLogs, measurements, weightHistory, anatomyTipsCache: anatomyTips };
       const cleanData = JSON.parse(JSON.stringify(dataToSave)); 
       await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'hypertrophy_v16'), cleanData, { merge: true });
     } catch (e) { 
@@ -954,7 +891,7 @@ export default function App() {
     let newDLogs = [...dailyLogs];
     const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
     if (idx >= 0) newDLogs[idx].workout = activeWorkoutDay;
-    else newDLogs.push({ date: selectedDateStr, workout: activeWorkoutDay, water: 0, calories: totals.calories });
+    else newDLogs.push({ date: selectedDateStr, workout: activeWorkoutDay, water: 0 });
 
     setWorkoutHistory(newHist); setDailyLogs(newDLogs);
     saveToCloud({ workouts: workouts, workoutOrder, workoutHistory: newHist, dailyLogs: newDLogs });
@@ -1017,7 +954,7 @@ export default function App() {
     if (idx >= 0 && !newDLogs[idx].workout) {
        newDLogs[idx].workout = 'Desafio Manual';
     } else if (idx < 0) {
-       newDLogs.push({ date: selectedDateStr, workout: 'Desafio Manual', water: 0, calories: totals.calories });
+       newDLogs.push({ date: selectedDateStr, workout: 'Desafio Manual', water: 0 });
     }
 
     setWorkoutHistory(newHist); 
@@ -1110,39 +1047,15 @@ export default function App() {
       const recentWorkouts = workoutHistory.slice(-7);
       const workoutCount = recentWorkouts.length;
       const totalVolume = recentWorkouts.reduce((acc, w) => acc + (w.volume || 0), 0);
-      
-      let totalCal = 0, totalPro = 0, totalCar = 0, totalFat = 0, daysWithFood = 0;
-      const uniqueDates = [...new Set(nutritionLogs.map(n => n.date))].slice(-7);
 
-      uniqueDates.forEach(date => {
-        const dayLogs = nutritionLogs.filter(n => n.date === date);
-        if (dayLogs.length > 0) {
-            daysWithFood++;
-            dayLogs.forEach(l => {
-                totalCal += (Number(l.calories) || 0);
-                totalPro += (Number(l.protein) || 0);
-                totalCar += (Number(l.carbs) || 0);
-                totalFat += (Number(l.fats) || 0);
-            });
-        }
-      });
-
-      const avgCal = daysWithFood > 0 ? Math.round(totalCal / daysWithFood) : 0;
-      const avgPro = daysWithFood > 0 ? Math.round(totalPro / daysWithFood) : 0;
-      const avgCar = daysWithFood > 0 ? Math.round(totalCar / daysWithFood) : 0;
-      const avgFat = daysWithFood > 0 ? Math.round(totalFat / daysWithFood) : 0;
-
-      const prompt = `Atue como o meu Treinador e Nutricionista de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
+      const prompt = `Atue como o meu Treinador de Alta Performance. O meu objetivo atual é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Alvo: ${userProfile.targetWeight}kg).
 
       RESUMO DOS ÚLTIMOS 7 DIAS:
       - Treino: ${workoutCount} sessões realizadas, movendo um volume de carga total de ${totalVolume} kg.
-      - Nutrição (média diária atual): ${avgCal} kcal, ${avgPro}g Prot, ${avgCar}g Carb, ${avgFat}g Gordura.
-      - Metas Diárias Recomendadas pela IA: ${aiGoals.calories} kcal, ${aiGoals.protein}g Prot, ${aiGoals.carbs}g Carb, ${aiGoals.fats}g Gordura.
 
       TAREFA:
       1. Verifique como o volume de treino registado impacta nos resultados para o meu objetivo e indique sugestões de melhorias.
-      2. Avalie como as macros registadas (consumo médio vs metas) me aproximam ou distanciam do resultado esperado.
-      3. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
+      2. Apresente um resumo muito claro, encorajador e estruturado com uma lista de "Pontos Fortes" e outra lista de "Pontos a Melhorar".
       IMPORTANTE: Responda obrigatoriamente em Português de Portugal.`;
 
       const res = await callGemini(prompt);
@@ -1178,25 +1091,6 @@ export default function App() {
       setWorkoutFeedback(`Erro ao avaliar: ${error.message}`);
     } finally {
       setIsWorkoutFeedbackLoading(false);
-    }
-  };
-
-  const handleEvaluateNutrition = async () => {
-    setIsNutritionFeedbackLoading(true); setNutritionFeedback('');
-    try {
-      const prompt = `Atue como um Nutricionista Desportivo. O meu objetivo é ${userProfile.goal} (Peso atual: ${userProfile.weight}kg, Desejado: ${userProfile.targetWeight}kg). 
-      A minha meta diária recomendada é: ${aiGoals.calories} kcal, ${aiGoals.protein}g Proteína, ${aiGoals.carbs}g Hidratos e ${aiGoals.fats}g Gordura. 
-      Até agora (hoje), já consumi: ${totals.calories} kcal, ${totals.protein}g Proteína, ${totals.carbs}g Hidratos e ${totals.fats}g Gordura.
-      
-      Avalie o meu alinhamento com a meta no dia de hoje. Estou a comer demais/de menos? O que me sugere comer na próxima refeição para corrigir possíveis défices (se faltar proteína, ou se já passei da gordura, etc.)?
-      IMPORTANTE: Responda em Português de Portugal. Seja rápido, direto e prático (máx 2 parágrafos curtos).`;
-
-      const res = await callGemini(prompt);
-      setNutritionFeedback(res);
-    } catch (error) {
-      setNutritionFeedback(`Erro ao avaliar: ${error.message}`);
-    } finally {
-      setIsNutritionFeedbackLoading(false);
     }
   };
 
@@ -1281,36 +1175,6 @@ export default function App() {
       console.error(error);
       setAnatomyTipState(p => ({ ...p, [tipKey]: 'error' })); 
       setAnatomyTipErrors(p => ({ ...p, [tipKey]: error.message })); 
-    }
-  };
-
-  const handleAnalyzeFood = async () => {
-    if (!chatInput.trim()) return;
-    const mealName = INITIAL_MEALS.find(m => m.id === selectedMealId)?.name || 'Refeição';
-    const userText = chatInput;
-    setChatInput(''); setIsAnalyzing(true);
-    try {
-      const macros = await callGemini(`Estime macros exatos para: "${userText}". Retorne estritamente um JSON.`, { type: "OBJECT", properties: { calories: { type: "INTEGER" }, protein: { type: "INTEGER" }, carbs: { type: "INTEGER" }, fats: { type: "INTEGER" }, name: { type: "STRING" } } });
-      
-      const newLog = {
-        id: Date.now(),
-        date: selectedDateStr,
-        mealId: selectedMealId,
-        text: macros.name || userText,
-        calories: macros.calories,
-        protein: macros.protein,
-        carbs: macros.carbs,
-        fats: macros.fats
-      };
-      
-      const updatedLogs = [...nutritionLogs, newLog];
-      setNutritionLogs(updatedLogs); 
-      saveToCloud({ nutritionLogs: updatedLogs });
-      showToast(`${mealName} adicionado! 🔥 ${macros.calories} kcal`, "success");
-    } catch (error) { 
-      showToast(`Erro ao analisar dieta: ${error.message}`, "error"); 
-    } finally { 
-      setIsAnalyzing(false); 
     }
   };
 
@@ -1670,7 +1534,6 @@ export default function App() {
           <SidebarBtn a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={20}/>} l="Painel" />
           <SidebarBtn a={activeTab==='treino'} o={()=>setActiveTab('treino')} i={<Dumbbell size={20}/>} l="Treino" />
           <SidebarBtn a={activeTab==='desafios'} o={()=>setActiveTab('desafios')} i={<Target size={20}/>} l="Desafios" />
-          <SidebarBtn a={activeTab==='nutricao'} o={()=>setActiveTab('nutricao')} i={<Utensils size={20}/>} l="Nutrição" />
           <SidebarBtn a={activeTab==='perfil'} o={()=>setActiveTab('perfil')} i={<UserCircle size={20}/>} l="Perfil" />
         </nav>
         <div className="text-xs text-zinc-500 font-bold">{isSyncing ? 'Salvando Nuvem...' : 'App OK'}</div>
@@ -1685,8 +1548,8 @@ export default function App() {
         
         <div className="max-w-4xl mx-auto p-5 md:p-8 w-full mt-2">
 
-          {/* NAVEGADOR DE DATA (VISÍVEL NO DASHBOARD, TREINO, NUTRIÇÃO E DESAFIOS) */}
-          {['dashboard', 'treino', 'nutricao', 'desafios'].includes(activeTab) && (
+          {/* NAVEGADOR DE DATA (VISÍVEL NO DASHBOARD, TREINO E DESAFIOS) */}
+          {['dashboard', 'treino', 'desafios'].includes(activeTab) && (
             <div className="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl mb-6 shadow-sm">
                <button onClick={() => handleDateChange(-1)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 bg-zinc-950 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
                <div className="flex flex-col items-center">
@@ -1703,7 +1566,6 @@ export default function App() {
               <header className="flex justify-between items-end mb-8">
                 <div>
                   <h1 className="text-3xl font-extrabold text-white">Painel</h1>
-                  <p className="text-zinc-400 font-medium">Meta Diária: {aiGoals.calories} kcal</p>
                 </div>
                 <div className="flex bg-zinc-900 border border-zinc-800 rounded-xl p-1">
                   <button onClick={()=>setDashTab('daily')} className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${dashTab==='daily'?'bg-zinc-800 text-white shadow-sm':'text-zinc-500 hover:text-zinc-300'}`}>Diário</button>
@@ -1762,27 +1624,17 @@ export default function App() {
                      </div>
                    </div>
 
-                   {/* Progresso Diário (Macros e Água) */}
-                   <div className="space-y-4">
-                     <div className="bg-blue-950/20 border border-blue-900/30 p-6 rounded-3xl relative overflow-hidden flex items-center justify-between">
-                       <div className="z-10">
-                         <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-1">Hidratação</h3>
-                         <p className="text-3xl font-black text-white">{targetDayLog.water} <span className="text-sm font-medium text-blue-200">/ {waterTarget}ml</span></p>
-                         <button onClick={addWater} className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center gap-2"><Plus size={14}/> Copo (250ml)</button>
-                       </div>
-                       <div className="w-16 h-24 border-4 border-blue-500/50 rounded-b-2xl rounded-t-lg relative z-10 bg-zinc-950 overflow-hidden">
-                         <div className="absolute bottom-0 w-full bg-blue-500 transition-all duration-700" style={{height: `${Math.min(100, (targetDayLog.water / waterTarget) * 100)}%`}}></div>
-                       </div>
+                   {/* Progresso Diário (Água) */}
+                   <div className="bg-blue-950/20 border border-blue-900/30 p-6 rounded-3xl relative overflow-hidden flex items-center justify-between h-full min-h-[300px]">
+                     <div className="z-10">
+                       <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-1">Hidratação</h3>
+                       <p className="text-4xl font-black text-white mt-4">{targetDayLog.water} <span className="text-lg font-medium text-blue-200">/ {waterTarget}ml</span></p>
+                       <button onClick={addWater} className="mt-6 bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2"><Plus size={16}/> Copo (250ml)</button>
                      </div>
-
-                     <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
-                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">Metas de IA Diárias</h3>
-                        <div className="space-y-4">
-                          <MacroBar label="Calorias" current={totals.calories} target={aiGoals.calories} color="bg-orange-500" />
-                          <MacroBar label="Proteína" current={totals.protein} target={aiGoals.protein} color="bg-emerald-500" />
-                          <MacroBar label="Carbos" current={totals.carbs} target={aiGoals.carbs} color="bg-blue-500" />
-                          <MacroBar label="Gordura" current={totals.fats} target={aiGoals.fats} color="bg-yellow-500" />
-                        </div>
+                     <div className="w-24 h-full absolute right-6 py-6 flex items-end">
+                       <div className="w-full h-full border-4 border-blue-500/50 rounded-b-3xl rounded-t-xl bg-zinc-950 overflow-hidden relative shadow-inner">
+                         <div className="absolute bottom-0 w-full bg-blue-500 transition-all duration-700 shadow-[0_0_15px_rgba(59,130,246,0.5)]" style={{height: `${Math.min(100, (targetDayLog.water / waterTarget) * 100)}%`}}></div>
+                       </div>
                      </div>
                    </div>
                 </div>
@@ -2399,125 +2251,6 @@ export default function App() {
              </div>
           )}
 
-          {/* ===================== TAB: NUTRIÇÃO ===================== */}
-          {activeTab === 'nutricao' && (
-             <div className="space-y-6 animate-fadeIn pb-12">
-               <h1 className="text-3xl font-extrabold">Nutrição</h1>
-               
-               <div className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
-                 <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 flex items-center gap-2"><Sparkles className="text-emerald-400" size={18}/> Registar Refeição (IA)</h3>
-                 <div className="flex flex-col md:flex-row gap-3 mb-6">
-                   <select value={selectedMealId} onChange={e=>setSelectedMealId(e.target.value)} className="bg-zinc-950 p-4 rounded-2xl outline-none border border-zinc-800 text-white font-bold flex-1 focus:border-emerald-500">
-                     {INITIAL_MEALS.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-                   </select>
-                   <div className="flex gap-2 flex-2">
-                     <input type="text" value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Ex: 2 ovos e 1 pão francês..." className="bg-zinc-950 p-4 rounded-2xl flex-1 border border-zinc-800 outline-none focus:border-emerald-500 text-white placeholder:text-zinc-600" />
-                     <button onClick={handleAnalyzeFood} disabled={isAnalyzing || !chatInput} className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white p-4 rounded-2xl transition-colors"><Send size={24}/></button>
-                   </div>
-                 </div>
-               </div>
-
-               <h3 className="text-xl font-bold mt-8 mb-4">Metas do Dia</h3>
-               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <div className="bg-zinc-900 p-5 rounded-3xl text-center border border-zinc-800 shadow-sm">
-                   <p className="text-xs text-orange-500/80 font-bold uppercase mb-1">Kcal</p>
-                   <p className="font-black text-2xl text-white mb-1">{totals.calories}</p>
-                   <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.calories}</p>
-                 </div>
-                 <div className="bg-zinc-900 p-5 rounded-3xl text-center border border-zinc-800 shadow-sm relative overflow-hidden">
-                   <div className="absolute bottom-0 left-0 w-full bg-emerald-500/10 z-0" style={{height: `${Math.min(100, (totals.protein/aiGoals.protein)*100)}%`}}></div>
-                   <div className="relative z-10">
-                     <p className="text-xs text-emerald-500 font-bold uppercase mb-1">Prot</p>
-                     <p className="font-black text-2xl text-white mb-1">{totals.protein}g</p>
-                     <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.protein}g</p>
-                   </div>
-                 </div>
-                 <div className="bg-zinc-900 p-5 rounded-3xl text-center border border-zinc-800 shadow-sm relative overflow-hidden">
-                   <div className="absolute bottom-0 left-0 w-full bg-blue-500/10 z-0" style={{height: `${Math.min(100, (totals.carbs/aiGoals.carbs)*100)}%`}}></div>
-                   <div className="relative z-10">
-                     <p className="text-xs text-blue-500 font-bold uppercase mb-1">Carb</p>
-                     <p className="font-black text-2xl text-white mb-1">{totals.carbs}g</p>
-                     <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.carbs}g</p>
-                   </div>
-                 </div>
-                 <div className="bg-zinc-900 p-5 rounded-3xl text-center border border-zinc-800 shadow-sm relative overflow-hidden">
-                   <div className="absolute bottom-0 left-0 w-full bg-yellow-500/10 z-0" style={{height: `${Math.min(100, (totals.fats/aiGoals.fats)*100)}%`}}></div>
-                   <div className="relative z-10">
-                     <p className="text-xs text-yellow-500 font-bold uppercase mb-1">Gord</p>
-                     <p className="font-black text-2xl text-white mb-1">{totals.fats}g</p>
-                     <p className="text-[10px] text-zinc-500 font-bold">META: {aiGoals.fats}g</p>
-                   </div>
-                 </div>
-               </div>
-
-               <div className="bg-emerald-950/20 border border-emerald-900/30 p-6 rounded-3xl mt-4">
-                 <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><MessageSquareQuote className="text-emerald-400" size={18} /> Avaliação de Ingestão Diária (IA)</h3>
-                 <p className="text-xs text-zinc-400 mb-4">Peça à IA para analisar como os seus macros estão hoje em relação ao objetivo e receber sugestões.</p>
-                 <button onClick={handleEvaluateNutrition} disabled={isNutritionFeedbackLoading} className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-all">
-                   {isNutritionFeedbackLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} Analisar Meus Macros
-                 </button>
-                 {nutritionFeedback && (
-                   <div className="mt-4 text-emerald-100/90 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4 py-2 italic font-medium whitespace-pre-line animate-fadeIn">
-                     {nutritionFeedback}
-                   </div>
-                 )}
-               </div>
-
-               <div className="mt-8 space-y-4">
-                 <h3 className="text-xl font-bold flex items-center gap-2"><Utensils size={20} className="text-emerald-500"/> Diário de Refeições</h3>
-                 {targetDayNutrition.length === 0 ? (
-                    <p className="text-sm text-zinc-500 italic bg-zinc-900/30 p-6 rounded-2xl text-center border border-zinc-800/50">Nenhuma refeição registada neste dia. Que tal adicionar a sua primeira refeição com a IA?</p>
-                 ) : (
-                    targetDayNutrition.map(log => (
-                       <div key={log.id} className="bg-zinc-900/50 p-5 rounded-3xl border border-zinc-800 transition-all hover:border-zinc-700">
-                          {editingNutritionId === log.id ? (
-                            <div className="space-y-4 animate-fadeIn">
-                              <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Descrição</label><input type="text" value={editNutritionData.text} onChange={e=>setEditNutritionData({...editNutritionData, text: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none" /></div>
-                              <div className="grid grid-cols-4 gap-3">
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Kcal</label><input type="number" value={editNutritionData.calories} onChange={e=>setEditNutritionData({...editNutritionData, calories: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Prot (g)</label><input type="number" value={editNutritionData.protein} onChange={e=>setEditNutritionData({...editNutritionData, protein: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Carb (g)</label><input type="number" value={editNutritionData.carbs} onChange={e=>setEditNutritionData({...editNutritionData, carbs: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
-                                <div><label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Gord (g)</label><input type="number" value={editNutritionData.fats} onChange={e=>setEditNutritionData({...editNutritionData, fats: e.target.value})} className="w-full bg-zinc-950 p-3 mt-1 rounded-xl text-sm border border-zinc-800 focus:border-emerald-500 outline-none text-center font-bold" /></div>
-                              </div>
-                              <div className="flex gap-2 pt-2">
-                                <button onClick={()=>{
-                                   const upd = nutritionLogs.map(n => n.id === log.id ? { ...n, ...editNutritionData } : n);
-                                   setNutritionLogs(upd); saveToCloud({ nutritionLogs: upd }); setEditingNutritionId(null);
-                                }} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl text-sm font-bold text-white flex-1 transition-colors">Salvar</button>
-                                <button onClick={()=>setEditingNutritionId(null)} className="bg-zinc-800 hover:bg-zinc-700 px-4 py-3 rounded-xl text-sm font-bold text-white flex-1 transition-colors">Cancelar</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex justify-between items-start gap-4">
-                              <div className="flex-1">
-                                <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">{INITIAL_MEALS.find(m=>m.id===log.mealId)?.name || 'Refeição'}</span>
-                                <p className="font-extrabold text-white mt-3 text-base leading-snug">{log.text}</p>
-                                <p className="text-[11px] text-zinc-400 mt-2 font-bold tracking-widest bg-zinc-950 inline-block px-3 py-1.5 rounded-lg border border-zinc-800/50">🔥 {log.calories} kcal • 🥩 {log.protein}g • 🍚 {log.carbs}g • 🥑 {log.fats}g</p>
-                              </div>
-                              <div className="flex gap-1 shrink-0 bg-zinc-950 p-1 rounded-xl border border-zinc-800/50">
-                                <button onClick={()=>{setEditingNutritionId(log.id); setEditNutritionData(log);}} className="text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all p-2 rounded-lg"><Pencil size={16}/></button>
-                                {confirmDeleteId === log.id ? (
-                                  <div className="flex items-center gap-1 bg-red-500/10 rounded-lg p-1 animate-fadeIn">
-                                    <button onClick={() => {
-                                      const upd = nutritionLogs.filter(n => n.id !== log.id);
-                                      setNutritionLogs(upd); saveToCloud({ nutritionLogs: upd });
-                                      setConfirmDeleteId(null);
-                                    }} className="text-red-400 font-bold text-[10px] px-2 py-1 hover:bg-red-500/20 rounded transition-colors">SIM</button>
-                                    <button onClick={() => setConfirmDeleteId(null)} className="text-zinc-400 font-bold text-[10px] px-2 py-1 hover:bg-zinc-800 rounded transition-colors">NÃO</button>
-                                  </div>
-                                ) : (
-                                  <button onClick={() => setConfirmDeleteId(log.id)} className="text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all p-2 rounded-lg"><Trash size={16}/></button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                       </div>
-                    ))
-                 )}
-               </div>
-             </div>
-          )}
-
           {/* ===================== TAB: DESAFIOS ===================== */}
           {activeTab === 'desafios' && (
              <div className="space-y-6 animate-fadeIn pb-12">
@@ -3018,7 +2751,6 @@ export default function App() {
            <SidebarBtn a={activeTab==='dashboard'} o={()=>{setActiveTab('dashboard'); setIsMobileMenuOpen(false);}} i={<LayoutDashboard size={20}/>} l="Painel" />
            <SidebarBtn a={activeTab==='treino'} o={()=>{setActiveTab('treino'); setIsMobileMenuOpen(false);}} i={<Dumbbell size={20}/>} l="Treino" />
            <SidebarBtn a={activeTab==='desafios'} o={()=>{setActiveTab('desafios'); setIsMobileMenuOpen(false);}} i={<Target size={20}/>} l="Desafios" />
-           <SidebarBtn a={activeTab==='nutricao'} o={()=>{setActiveTab('nutricao'); setIsMobileMenuOpen(false);}} i={<Utensils size={20}/>} l="Nutrição" />
            <SidebarBtn a={activeTab==='perfil'} o={()=>{setActiveTab('perfil'); setIsMobileMenuOpen(false);}} i={<UserCircle size={20}/>} l="Perfil" />
          </div>
       </div>
