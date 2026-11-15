@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, Dumbbell, UserCircle, 
-  Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
-  Smile, Frown, Lock, Flame, LogOut, Settings, 
-  RefreshCw, X, Save, Plus, Ruler, 
-  CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle,
-  Activity, Key, ChevronLeft, ChevronRight, Target, FlameKindling, Zap, Youtube, Square, Edit3, Settings2, Search
+  Loader2, Check, Play, Pause, Timer, 
+  Smile, Frown, Flame, LogOut, Settings, 
+  RefreshCw, X, Save, Plus, Trash, Cpu, 
+  Youtube, Square, Settings2, Search
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -85,7 +84,7 @@ const InlineStopwatch = ({ onSaveTime, onClose }) => {
   );
 };
 
-// --- DB EXERCÍCIOS DA PLANILHA (MISTURA CALISTENIA E CARGA) ---
+// --- DB EXERCÍCIOS DA PLANILHA ---
 const EXERCISE_DB = [
   { id: "ex_polichinelo", name: "Polichinelo", group: "Cardio", target: "Cardio", level: "Calistenia", videoUrl: "" },
   { id: "ex_agachamentolivrecombarra", name: "Agachamento Livre com Barra", group: "Pernas", target: "Pernas", level: "Híbrido", videoUrl: "" },
@@ -178,12 +177,10 @@ const EXERCISE_DB = [
   { id: "ex_tucklsit", name: "Tuck L-sit", group: "Core", target: "Core", level: "Calistenia", videoUrl: "" },
   { id: "ex_diamantepregular", name: "Diamante p/ regular", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "" },
   { id: "ex_passadawalkinglunges", name: "Passada (Walking Lunges)", group: "Pernas", target: "Pernas", level: "Híbrido", videoUrl: "" },
-  { id: "ex_flexãohold", name: "Flexão hold", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "" },
-  { id: "ex_flexaomilitar", name: "Flexão militar", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/57wPU6raKGY?si=8ULjVmLe2iLZHFxa" },
-  { id: "ex_handstandcostas", name: "Handstand costas na parede", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/jwebzlt7Zco?si=FbHiI5ooCxu_jT2T" }
+  { id: "ex_flexãohold", name: "Flexão hold", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "" }
 ].map(ex => ({
     ...ex,
-    videoUrl: ex.videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name.toLowerCase() + ' exercicio tutorial')}`
+    videoUrl: ex.videoUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent((ex.name || '') + ' tutorial')}`
 }));
 
 const DEFAULT_WORKOUT_DAYS = ['Treino 1 (Full Body)', 'Treino 2 (Lower Body)', 'Treino 3 (Upper Push)', 'Treino 4 (Upper Pull)', 'Treino 5 (Core/Push)', 'Treino 6 (Full Body)', 'Treino 7 (Lower Body)'];
@@ -246,13 +243,7 @@ export default function App() {
     onboardingCompleted: false, lastLoginDate: todayStr
   });
 
-  const ACHIEVEMENTS = [
-    { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => (h || []).length >= 1 },
-    { id: 'a3', title: 'Força Bruta', desc: '10.000 reps movidas', icon: <Trophy className="text-emerald-500" size={24}/>, condition: (h) => (h || []).reduce((a,b)=>a+(b.volume||0),0) >= 10000 },
-  ];
-  const unlockedAchievements = useMemo(() => ACHIEVEMENTS.filter(a => a.condition(workoutHistory)), [workoutHistory]);
-
-  const targetDayLog = dailyLogs.find(l => l.date === selectedDateStr) || { water: 0, workout: null };
+  const targetDayLog = (dailyLogs || []).find(l => l.date === selectedDateStr) || { water: 0, workout: null };
   const waterTarget = 2500; 
 
   const generateAIPlan = () => {
@@ -261,11 +252,12 @@ export default function App() {
     
     DEFAULT_WORKOUT_DAYS.forEach(day => {
        let planExercises = [];
-       if (day.includes('Push')) {
+       const dayStr = day || '';
+       if (dayStr.includes('Push')) {
            planExercises = activeDB.filter(e => e.group === 'Peito' || e.group === 'Ombros').slice(0, 6);
-       } else if (day.includes('Pull')) {
+       } else if (dayStr.includes('Pull')) {
            planExercises = activeDB.filter(e => e.group === 'Costas' || e.group === 'Braços').slice(0, 6);
-       } else if (day.includes('Lower') || day.includes('Legs')) {
+       } else if (dayStr.includes('Lower') || dayStr.includes('Legs')) {
            planExercises = activeDB.filter(e => e.group === 'Pernas').slice(0, 6);
        } else {
            planExercises = activeDB.filter(e => e.group === 'Core' || e.group === 'Cardio').slice(0, 6);
@@ -291,19 +283,20 @@ export default function App() {
 
   useEffect(() => {
     if (!user || !db || firebaseError) return;
-    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v2'); 
+    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v3'); 
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        if (d.workouts) setWorkouts(d.workouts || {});
-        if (d.workoutOrder) setWorkoutOrder(d.workoutOrder || DEFAULT_WORKOUT_DAYS);
-        if (d.workoutHistory) setWorkoutHistory(d.workoutHistory || []);
-        if (d.dailyLogs) setDailyLogs(d.dailyLogs || []);
+        
+        setWorkouts(d.workouts || {});
+        setWorkoutOrder(d.workoutOrder || DEFAULT_WORKOUT_DAYS);
+        setWorkoutHistory(d.workoutHistory || []);
+        setDailyLogs(d.dailyLogs || []);
         
         if (d.userProfile) {
           let prof = { targetWeight: '75', ...d.userProfile };
           if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
-             let updWorkouts = { ...(d.workouts || workouts) };
+             let updWorkouts = { ...(d.workouts || workouts || {}) };
              Object.keys(updWorkouts).forEach(day => {
                if (updWorkouts[day]?.exercises) {
                   updWorkouts[day].exercises.forEach(ex => ex.isCompleted = false);
@@ -329,7 +322,7 @@ export default function App() {
     if (!user || !db) return;
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, workoutHistory, userProfile, dailyLogs };
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v2'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v3'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
     } catch (e) { console.error(e); }
   };
 
@@ -344,14 +337,14 @@ export default function App() {
 
   const handleLogout = async () => { await signOut(auth); setUser(null); setAppScreen('login'); };
 
-  // --- GESTÃO DE DIAS DA SEMANA ---
   const handleAddDay = () => {
     if(!newDayName.trim()) return;
     const name = newDayName.trim();
-    if(workoutOrder.includes(name)) { showToast("Este dia já existe.", "error"); return; }
+    const currentOrder = workoutOrder || [];
+    if(currentOrder.includes(name)) { showToast("Este dia já existe.", "error"); return; }
     
-    const newOrder = [...workoutOrder, name];
-    const newWorkouts = { ...workouts, [name]: { name, exercises: [] } };
+    const newOrder = [...currentOrder, name];
+    const newWorkouts = { ...(workouts || {}), [name]: { name, exercises: [] } };
     
     setWorkoutOrder(newOrder);
     setWorkouts(newWorkouts);
@@ -360,8 +353,8 @@ export default function App() {
   };
 
   const handleRemoveDay = (dayToRemove) => {
-    const newOrder = workoutOrder.filter(d => d !== dayToRemove);
-    const newWorkouts = { ...workouts };
+    const newOrder = (workoutOrder || []).filter(d => d !== dayToRemove);
+    const newWorkouts = { ...(workouts || {}) };
     delete newWorkouts[dayToRemove];
     
     if(activeWorkoutDay === dayToRemove) setActiveWorkoutDay(newOrder[0] || '');
@@ -371,7 +364,6 @@ export default function App() {
     saveToCloud({ workoutOrder: newOrder, workouts: newWorkouts });
   };
 
-  // --- ADIÇÃO MANUAL E REMOÇÃO DE EXERCÍCIO ---
   const handleAddManualExercise = (ex) => {
     const newEx = {
       id: Date.now() + Math.random(),
@@ -386,7 +378,7 @@ export default function App() {
       videoUrl: ex.videoUrl
     };
 
-    const upd = { ...workouts };
+    const upd = { ...(workouts || {}) };
     if (!upd[activeWorkoutDay]) upd[activeWorkoutDay] = { name: activeWorkoutDay, exercises: [] };
     if (!upd[activeWorkoutDay].exercises) upd[activeWorkoutDay].exercises = [];
     
@@ -399,14 +391,16 @@ export default function App() {
   };
 
   const handleRemoveExercise = (exId) => {
-    const upd = { ...workouts };
-    upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.filter(x => x.id !== exId);
-    setWorkouts(upd);
-    saveToCloud({ workouts: upd });
+    const upd = { ...(workouts || {}) };
+    if (upd[activeWorkoutDay]?.exercises) {
+       upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.filter(x => x.id !== exId);
+       setWorkouts(upd);
+       saveToCloud({ workouts: upd });
+    }
   };
 
   const handleCompleteWorkout = () => {
-    const cur = workouts[activeWorkoutDay];
+    const cur = (workouts || {})[activeWorkoutDay];
     let vol = 0; 
     let completedExercises = [];
     
@@ -423,8 +417,8 @@ export default function App() {
       id: Date.now(), date: selectedDateStr, timestamp: selectedDateObj.getTime(), day: activeWorkoutDay, volume: vol, exercises: completedExercises 
     };
     
-    const newHist = [...workoutHistory, newLog];
-    let newDLogs = [...dailyLogs];
+    const newHist = [...(workoutHistory || []), newLog];
+    let newDLogs = [...(dailyLogs || [])];
     const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
     if (idx >= 0) newDLogs[idx].workout = activeWorkoutDay;
     else newDLogs.push({ date: selectedDateStr, workout: activeWorkoutDay, water: 0 });
@@ -436,7 +430,7 @@ export default function App() {
   };
 
   const addWater = () => {
-    let newDLogs = [...dailyLogs];
+    let newDLogs = [...(dailyLogs || [])];
     const idx = newDLogs.findIndex(l => l.date === selectedDateStr);
     if (idx >= 0) newDLogs[idx].water = (newDLogs[idx].water || 0) + 250;
     else newDLogs.push({ date: selectedDateStr, water: 250, workout: null });
@@ -467,13 +461,13 @@ export default function App() {
   const handleGenerateAIWorkout = async () => {
     setIsGeneratingWorkout(true);
     try {
-      const dayInfo = workouts[activeWorkoutDay];
+      const dayInfo = (workouts || {})[activeWorkoutDay];
       const dbContext = activeDB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}'`).join('\n');
 
       const prompt = `Atue como um treinador especialista em hipertrofia. 
       O treino de hoje chama-se: "${dayInfo?.name || activeWorkoutDay}".
       
-      Aqui estão os exercícios válidos na base de dados (providenciada via planilha):
+      Aqui estão os exercícios válidos na base de dados:
       ${dbContext}
 
       REGRAS:
@@ -493,7 +487,7 @@ export default function App() {
          }).filter(e => e !== null);
 
          if (newExercises.length > 0) {
-           const upd = {...workouts};
+           const upd = {...(workouts || {})};
            if (!upd[activeWorkoutDay]) upd[activeWorkoutDay] = { name: activeWorkoutDay, exercises: [] };
            upd[activeWorkoutDay].exercises = newExercises;
            setWorkouts(upd); saveToCloud({ workouts: upd });
@@ -509,7 +503,7 @@ export default function App() {
     let startDate = new Date(targetDate); startDate.setDate(targetDate.getDate() - 6);
     for(let i=0; i<7; i++) {
       const d = new Date(startDate); d.setDate(startDate.getDate() + i);
-      const log = dailyLogs.find(l => l.date === d.toLocaleDateString('pt-BR'));
+      const log = (dailyLogs || []).find(l => l.date === d.toLocaleDateString('pt-BR'));
       days.push({ dateNum: d.getDate(), dayStr: d.toLocaleDateString('pt-BR', {weekday:'short'}), hasWorkout: !!log?.workout });
     }
     return days;
@@ -538,7 +532,7 @@ export default function App() {
           <div className="max-w-md w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
              <Activity size={48} className="text-emerald-500 mx-auto mb-6" />
              <h1 className="text-2xl font-extrabold mb-4">Bem-vindo à nova Rotina</h1>
-             <p className="text-zinc-400 text-sm mb-6">A base de dados foi atualizada exclusivamente com os 87 exercícios únicos da sua planilha de treinos mesclados, garantindo compatibilidade com halteres, barras e anilhas.</p>
+             <p className="text-zinc-400 text-sm mb-6">A base de dados foi atualizada com os exercícios limpos da sua planilha, e a sua conta recomeçada com segurança.</p>
              <button onClick={() => {
                  const newProf = {...userProfile, onboardingCompleted:true};
                  setUserProfile(newProf); saveToCloud({ userProfile: newProf });
@@ -657,7 +651,7 @@ export default function App() {
                  <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl mb-6">
                     <h3 className="font-bold text-lg mb-4 text-emerald-400">Gerir Dias da Semana</h3>
                     <div className="space-y-3 mb-6">
-                      {workoutOrder.map(d => (
+                      {(workoutOrder || []).map(d => (
                         <div key={d} className="flex justify-between items-center bg-zinc-950 p-4 rounded-xl border border-zinc-800">
                           <span className="font-bold text-white">{d}</span>
                           <button onClick={()=>handleRemoveDay(d)} className="text-red-400 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20"><Trash size={18}/></button>
@@ -671,7 +665,7 @@ export default function App() {
                  </div>
                ) : (
                  <div className="flex gap-2 overflow-x-auto pb-4 px-1">
-                   {workoutOrder.length === 0 ? (
+                   {(!workoutOrder || workoutOrder.length === 0) ? (
                      <div className="text-zinc-500 italic p-4">Sem dias configurados. Clique em "Editar Dias".</div>
                    ) : (
                      workoutOrder.map((d) => (
@@ -687,17 +681,17 @@ export default function App() {
                  </div>
                )}
 
-               {(!isEditingDays && workoutOrder.length > 0) && (
+               {(!isEditingDays && (workoutOrder || []).length > 0) && (
                  <>
                    <div className="flex justify-between items-center mb-4 mt-6">
-                      <h2 className="font-bold text-lg text-white">{workouts[activeWorkoutDay]?.name}</h2>
+                      <h2 className="font-bold text-lg text-white">{(workouts || {})[activeWorkoutDay]?.name}</h2>
                       <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-sm flex gap-2 disabled:opacity-50 border border-emerald-500/30">
                         {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16}/>} Gerar Treino IA
                       </button>
                    </div>
                    
                    <div className="space-y-4">
-                     {workouts[activeWorkoutDay]?.exercises?.map((ex) => (
+                     {((workouts || {})[activeWorkoutDay]?.exercises || []).map((ex) => (
                         <div key={ex.id} className={`bg-zinc-900 p-5 rounded-3xl border transition-all ${ex.isCompleted ? 'border-emerald-500/50 bg-emerald-950/20 opacity-80' : 'border-zinc-800'}`}>
                            
                            <div className="flex justify-between items-start">
@@ -714,9 +708,11 @@ export default function App() {
                                    <Trash size={18}/>
                                 </button>
                                 <button onClick={()=>{
-                                    const upd = {...workouts};
-                                    upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, isCompleted: !x.isCompleted } : x);
-                                    setWorkouts(upd);
+                                    const upd = {...(workouts || {})};
+                                    if(upd[activeWorkoutDay]?.exercises) {
+                                       upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, isCompleted: !x.isCompleted } : x);
+                                       setWorkouts(upd);
+                                    }
                                  }} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${ex.isCompleted?'bg-emerald-500 text-zinc-950':'bg-zinc-950 text-zinc-600 border border-zinc-800 hover:text-white'}`} title="Marcar como concluído">
                                    <Check size={20} strokeWidth={3}/>
                                  </button>
@@ -726,26 +722,32 @@ export default function App() {
                            <div className="grid grid-cols-3 gap-4 mt-4 bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50">
                               <div>
                                 <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label>
-                                <input type="number" value={ex.sets} onChange={(e) => {
-                                   const upd = {...workouts};
-                                   upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, sets: e.target.value } : x);
-                                   setWorkouts(upd);
+                                <input type="number" value={ex.sets || ''} onChange={(e) => {
+                                   const upd = {...(workouts || {})};
+                                   if(upd[activeWorkoutDay]?.exercises) {
+                                      upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, sets: e.target.value } : x);
+                                      setWorkouts(upd);
+                                   }
                                 }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold text-white border border-zinc-800 focus:border-emerald-500" />
                               </div>
                               <div>
                                 <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label>
-                                <input type="text" value={ex.reps} onChange={(e) => {
-                                   const upd = {...workouts};
-                                   upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, reps: e.target.value } : x);
-                                   setWorkouts(upd);
+                                <input type="text" value={ex.reps || ''} onChange={(e) => {
+                                   const upd = {...(workouts || {})};
+                                   if(upd[activeWorkoutDay]?.exercises) {
+                                      upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, reps: e.target.value } : x);
+                                      setWorkouts(upd);
+                                   }
                                 }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold text-white border border-zinc-800 focus:border-emerald-500" />
                               </div>
                               <div>
                                 <label className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label>
                                 <input type="number" value={ex.weight || ''} onChange={(e) => {
-                                   const upd = {...workouts};
-                                   upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x);
-                                   setWorkouts(upd);
+                                   const upd = {...(workouts || {})};
+                                   if(upd[activeWorkoutDay]?.exercises) {
+                                      upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x);
+                                      setWorkouts(upd);
+                                   }
                                 }} placeholder="Livre" className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-black text-emerald-400 border border-emerald-900/30 focus:border-emerald-500" />
                               </div>
                            </div>
@@ -755,15 +757,17 @@ export default function App() {
                              <InlineStopwatch 
                                onClose={() => setActiveStopwatch(null)}
                                onSaveTime={(timeStr) => {
-                                 const upd = {...workouts};
-                                 upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, reps: timeStr } : x);
-                                 setWorkouts(upd);
-                                 setActiveStopwatch(null);
+                                 const upd = {...(workouts || {})};
+                                 if(upd[activeWorkoutDay]?.exercises) {
+                                    upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, reps: timeStr } : x);
+                                    setWorkouts(upd);
+                                    setActiveStopwatch(null);
+                                 }
                                }} 
                              />
                            )}
 
-                           {/* Link para YouTube */}
+                           {/* Link para YouTube via Planilha */}
                            {ex.videoUrl && (
                              <div className="mt-4 flex justify-end">
                                <a href={ex.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-red-400 bg-red-500/10 px-3 py-2 rounded-lg hover:bg-red-500/20 transition-colors border border-red-500/20">
@@ -792,8 +796,8 @@ export default function App() {
                <h1 className="text-3xl font-extrabold text-white mb-6">Perfil & Sistema</h1>
                <div className="bg-zinc-900 p-6 rounded-3xl border border-zinc-800 mt-6">
                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white"><Settings size={18}/> Integração IA (Gemini)</h3>
-                 <input type="password" value={userProfile.geminiApiKey || ''} onChange={e => {
-                    const newProf = {...userProfile, geminiApiKey: e.target.value};
+                 <input type="password" value={userProfile?.geminiApiKey || ''} onChange={e => {
+                    const newProf = {...(userProfile || {}), geminiApiKey: e.target.value};
                     setUserProfile(newProf); saveToCloud({ userProfile: newProf });
                  }} placeholder="Cole a sua chave API do AI Studio aqui..." className="w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 text-emerald-400 focus:border-emerald-500 outline-none font-mono text-sm" />
                </div>
@@ -818,6 +822,12 @@ export default function App() {
         </div>
       )}
 
+      {/* Navegação Mobile */}
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 p-4 rounded-full z-50 shadow-2xl flex gap-4 text-white">
+         <button onClick={() => setActiveTab('dashboard')} className={activeTab==='dashboard'?'text-emerald-500':''}><LayoutDashboard/></button>
+         <button onClick={() => setActiveTab('treino')} className={activeTab==='treino'?'text-emerald-500':''}><Dumbbell/></button>
+         <button onClick={() => setActiveTab('perfil')} className={activeTab==='perfil'?'text-emerald-500':''}><UserCircle/></button>
+      </div>
     </div>
   );
 }
