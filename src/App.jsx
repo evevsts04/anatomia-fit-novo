@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, Dumbbell, UserCircle, 
-  Loader2, Sparkles, Check, Play, Pause, Timer, AlertCircle, 
-  Smile, Frown, Lock, Flame, LogOut, Settings, 
-  RefreshCw, X, Save, Plus, Ruler, 
-  CalendarDays, Eye, EyeOff, Trash, Cpu, CheckCircle,
-  Activity, Key, ChevronLeft, ChevronRight, Target, FlameKindling, Zap, Youtube, Square, Edit3, Settings2, Search
+  Loader2, Sparkles, Check, Play, Pause, Timer, 
+  Smile, Frown, Flame, LogOut, Settings, 
+  RefreshCw, X, Save, Plus, 
+  Trash, Cpu, Activity, Target, Trophy, Zap, Youtube, Square, Settings2, Search
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, onAuthStateChanged, 
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, collection } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
@@ -52,9 +51,9 @@ const SidebarBtn = ({ a, o, i, l }) => (
   </button>
 );
 
-const InlineStopwatch = ({ onSaveTime }) => {
+const InlineStopwatch = ({ onSaveTime, onClose }) => {
   const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(true);
 
   useEffect(() => {
     let int;
@@ -65,457 +64,82 @@ const InlineStopwatch = ({ onSaveTime }) => {
   const formatSecs = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 mt-3">
+    <div className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 mt-3 animate-fadeIn">
       <Timer size={16} className={isRunning ? 'text-emerald-500 animate-pulse' : 'text-zinc-500'} />
       <span className="font-mono font-bold w-12 text-center text-sm">{formatSecs(time)}</span>
       <button onClick={() => setIsRunning(!isRunning)} className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white transition-colors">
         {isRunning ? <Pause size={14}/> : <Play size={14}/>}
       </button>
-      <button onClick={() => { setIsRunning(false); setTime(0); }} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+      <button onClick={() => { setIsRunning(false); setTime(0); }} className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors">
         <Square size={14}/>
       </button>
       <div className="flex-1"></div>
       <button onClick={() => onSaveTime(`${time}s`)} disabled={time === 0} className="px-3 py-1.5 bg-emerald-600/20 text-emerald-500 disabled:opacity-30 text-xs font-bold rounded-lg border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors">
         Gravar {time}s
       </button>
+      <button onClick={onClose} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+        <X size={14}/>
+      </button>
     </div>
   );
 };
 
-// --- DB EXERCÍCIOS: IMPORTADOS DIRETAMENTE DA PLANILHA ROTINA_CALISTENIA.xlsx ---
+// --- DB EXERCÍCIOS: PLANILHA ROTINA_CALISTENIA.xlsx ---
 const EXERCISE_DB = [
-  {
-    "id": "c_flexao_militar",
-    "name": "Flexão militar",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/57wPU6raKGY?si=8ULjVmLe2iLZHFxa",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_declinada",
-    "name": "Flexão declinada",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/75Z2axVU9TQ?si=0bC5u7KHnXmT4j3T",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_diamante",
-    "name": "Flexão diamante",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/5o3XHHeDvok?si=hzG5Ux_4AdkaCC_w",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_unilateral",
-    "name": "Flexão unilateral",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/VFUa_5Fu0AI?si=NZhqKho4A2owuG9k",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_arqueira",
-    "name": "Flexão arqueira",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/Y9ef9PLuNmY?si=Nt_UV0HOPGN1u3_s",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_hindu",
-    "name": "Flexão hindu",
-    "group": "Peito",
-    "videoUrl": "https://youtube.com/shorts/dB9Am11opAY?si=sTq5BgWhogD2n6ee",
-    "target": "Peito",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_desenvolvimento_aberto",
-    "name": "Desenvolvimento aberto",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/LyxdEor9AlM?si=4VdFdH_DllKBOwij",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_desenvolvimento_fechado",
-    "name": "Desenvolvimento fechado",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/Z4p9Vy0tErg?si=uUZEzGuHfPKsNeWQ",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_desenvolvimento_a_frente",
-    "name": "Desenvolvimento a frente",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/fxKLuV39J1A?si=iHjvdQ4JRyR4gHtL",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_falsa",
-    "name": "Flexão falsa",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/SxtkFRwjNgQ?si=OWcABG7WXnJ8gar2",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_handstand_costas_na_parede",
-    "name": "Handstand costas na parede",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/jwebzlt7Zco?si=FbHiI5ooCxu_jT2T",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_handstand_barrida_na_parede",
-    "name": "Handstand barrida na parede",
-    "group": "Ombros",
-    "videoUrl": "https://youtube.com/shorts/uV9nrwDsB-Q?si=3is4WVniedfhFpZj",
-    "target": "Ombros",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_rosca_direta",
-    "name": "Rosca direta",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/iUsgNIGT8l0?si=MAFJaIHgWPDoEmVA",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_rosca_direta_barra",
-    "name": "Rosca direta barra",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/LjUwbn2PvXk?si=hotCIIBB-NGhxBQk",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_rosca_martelo",
-    "name": "Rosca martelo",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/BQxR3Hb1Vsg?si=LmKLiOksCBmUMpnk",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_pegada_invertida",
-    "name": "Pegada invertida",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/C1zVYZdNdus?si=UmlagrsTUQqz_ulk",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_rosca_unilateral",
-    "name": "Rosca unilateral",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/FZVxBb9L8Xo?si=A6aRZLHuTwcie_gi",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_barra_pegada_invertida",
-    "name": "Barra pegada invertida",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/ZGKn__k263U?si=0s9hBC6O5K40zuD7",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_extensao_no_chao",
-    "name": "Extensão no chão",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/NGnurY2NojU?si=BoWOBxMR8wiPl6h3",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_extensao_punho_fechado",
-    "name": "Extensão punho fechado",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/StAdyq2ZXR0?si=OkFqzliXhcfDIERz",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_triceps_frances_no_chao",
-    "name": "Triceps francês no chão",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/TskE7otE83c?si=mZ-TUbX6yHZKc-8t",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_triceps_na_cadeira",
-    "name": "Triceps na cadeira",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/-Sgi8wo3ezo?si=zSYm2W6ehTb5VPe-",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_triceps_no_chao",
-    "name": "Triceps no chão",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/4Kj2-3GHDTA?si=szj1fbC7HTm7yomr",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_mergulho",
-    "name": "Mergulho",
-    "group": "Braços",
-    "videoUrl": "https://youtube.com/shorts/P0QhAU0IJnY?si=dn_Wg1sa53O4T7To",
-    "target": "Braços",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_agachamento_com_salto",
-    "name": "Agachamento com salto",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/wEPdzlzfkEM?si=RHGf5uMAbxhhTVn1",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_sumô",
-    "name": "Sumô",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/CG-kFCJk-Wg?si=Kd9muxMrPhYx5QPC",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_agachamento_pes_abduzidos",
-    "name": "Agachamento pés abduzidos",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/N9rhjTyOI3o?si=4o5fupQroX4iVokh",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_agachamento_bulgaro",
-    "name": "Agachamento bulgaro",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/NNlSiVjWPfQ?si=DO3W0LHpL87HKFPO",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_afundo",
-    "name": "Afundo",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/cw6-VSwkg9g?si=IkAJg0lr4PNTB5NB",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_sissy_squat",
-    "name": "Sissy squat",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/H3C3JbdwDEg?si=jkhRx0LWyZmCILTa",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_stiff",
-    "name": "Stiff",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/N9rhjTyOI3o?si=4o5fupQroX4iVokh",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_stiff_unilateral",
-    "name": "Stiff unilateral",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/CG-kFCJk-Wg?si=Kd9muxMrPhYx5QPC",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_posterior",
-    "name": "Flexão posterior",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/4rwqyJ4OmOw?si=kgGuspjwHCUH1YnK",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_flexao_posterior_unilateral",
-    "name": "Flexão posterior unilateral",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/Nlqj1yrMEBk?si=Y3w_jqkAgL9uOWJM",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_barra_fixa_aberta",
-    "name": "Barra fixa aberta",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/F1GQAgamNQo?si=2ei_QpIWCmOmAgat",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_barra_fixa",
-    "name": "Barra fixa",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/5etgsKXtPpA?si=WDsy4KenIfN7mGsi",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_barra_maos_juntas",
-    "name": "Barra mãos juntas",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/cSU0oGy1o8U?si=47qKp4gVuZQgakMR",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_remada",
-    "name": "Remada",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/kVIa74Gnh5o?si=-lYwJCxtyt3FBor3",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_remada_pegada_invertida",
-    "name": "Remada pegada invertida",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/oS-NxkxqBok?si=8OCBeswP6-Q9J8U3",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_remada_alta",
-    "name": "Remada alta",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/NkJUUvcnX_E?si=Co7HFdaYbN-ONr_G",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_superman_superior",
-    "name": "Superman superior",
-    "group": "Costas",
-    "videoUrl": "https://youtube.com/shorts/_Lu48nmsI0c?si=zari0xMPvXclnPGg",
-    "target": "Costas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_elevacao",
-    "name": "Elevação",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/kQBO-hlyWB0?si=qm7yzQpE3dsfTeVt",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_elevacao_pes_abduzidos",
-    "name": "Elevação pés abduzidos",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/_IpncSQq7G0?si=YTj_mVrtdwl7Mxue",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_elevacao_calcanhares_abduzidos",
-    "name": "Elevação calcanhares abduzidos",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/HcBdZlHo2G4?si=ca5nHpi0VVeMB98o",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_elevacao_unilateral",
-    "name": "Elevação unilateral",
-    "group": "Pernas",
-    "videoUrl": "https://youtube.com/shorts/XyZ4UUm-Mig?si=4AxJTnuH-hqLA2mL",
-    "target": "Pernas",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_burpee",
-    "name": "Burpee",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/go2sTleEdMY?si=Dudo4OT4qeWOGO58",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_polichinelos",
-    "name": "Polichinelos",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/BvJunlmBwTQ?si=5ero6tzSxLi1dFSc",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_joelhos_elevados",
-    "name": "Joelhos elevados",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/QLAJUNoxu_Q?si=3Ezaqbrk6a_6-Wv4",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_dupla_puxada",
-    "name": "Dupla puxada",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/IYwEt9bZGNY?si=hbPp-VR66kVG9tZA",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_abdominal_padrao",
-    "name": "Abdominal padrão",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/eEh6ubyH91U?si=HTBmKwsu9co-9S7R",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_abdominal_supra",
-    "name": "Abdominal supra",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/UIYvP02UEFQ?si=E5riBD1wNzMPTQ61",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_abdominal_infra",
-    "name": "Abdominal infra",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/JamlY4VTTv0?si=ZD3YKvL72ct3LSrh",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_abdominal_infra_flexionado",
-    "name": "Abdominal infra flexionado",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/ytcLgZA9GlI?si=YaJCcPL9R9cy6V-h",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  },
-  {
-    "id": "c_elevacao_esticada",
-    "name": "Elevação esticada",
-    "group": "Core/Cardio",
-    "videoUrl": "https://youtube.com/shorts/At2SlGJGm8k?si=UW0z7zaq1BJPZm4D",
-    "target": "Core/Cardio",
-    "level": "Calistenia"
-  }
+  { id: "c_flexao_militar", name: "Flexão militar", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/57wPU6raKGY?si=8ULjVmLe2iLZHFxa" },
+  { id: "c_flexao_declinada", name: "Flexão declinada", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/75Z2axVU9TQ?si=0bC5u7KHnXmT4j3T" },
+  { id: "c_flexao_diamante", name: "Flexão diamante", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/5o3XHHeDvok?si=hzG5Ux_4AdkaCC_w" },
+  { id: "c_flexao_unilateral", name: "Flexão unilateral", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/VFUa_5Fu0AI?si=NZhqKho4A2owuG9k" },
+  { id: "c_flexao_arqueira", name: "Flexão arqueira", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/Y9ef9PLuNmY?si=Nt_UV0HOPGN1u3_s" },
+  { id: "c_flexao_hindu", name: "Flexão hindu", group: "Peito", target: "Peito", level: "Calistenia", videoUrl: "https://youtube.com/shorts/dB9Am11opAY?si=sTq5BgWhogD2n6ee" },
+  { id: "c_desenvolvimento_aberto", name: "Desenvolvimento aberto", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/LyxdEor9AlM?si=4VdFdH_DllKBOwij" },
+  { id: "c_desenvolvimento_fechado", name: "Desenvolvimento fechado", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/Z4p9Vy0tErg?si=uUZEzGuHfPKsNeWQ" },
+  { id: "c_desenvolvimento_a_frente", name: "Desenvolvimento a frente", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/fxKLuV39J1A?si=iHjvdQ4JRyR4gHtL" },
+  { id: "c_flexao_falsa", name: "Flexão falsa", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/SxtkFRwjNgQ?si=OWcABG7WXnJ8gar2" },
+  { id: "c_handstand_costas_na_parede", name: "Handstand costas na parede", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/jwebzlt7Zco?si=FbHiI5ooCxu_jT2T" },
+  { id: "c_handstand_barrida_na_parede", name: "Handstand barrida na parede", group: "Ombros", target: "Ombros", level: "Calistenia", videoUrl: "https://youtube.com/shorts/uV9nrwDsB-Q?si=3is4WVniedfhFpZj" },
+  { id: "c_rosca_direta", name: "Rosca direta", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/iUsgNIGT8l0?si=MAFJaIHgWPDoEmVA" },
+  { id: "c_rosca_direta_barra", name: "Rosca direta barra", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/LjUwbn2PvXk?si=hotCIIBB-NGhxBQk" },
+  { id: "c_rosca_martelo", name: "Rosca martelo", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/BQxR3Hb1Vsg?si=LmKLiOksCBmUMpnk" },
+  { id: "c_pegada_invertida", name: "Pegada invertida", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/C1zVYZdNdus?si=UmlagrsTUQqz_ulk" },
+  { id: "c_rosca_unilateral", name: "Rosca unilateral", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/FZVxBb9L8Xo?si=A6aRZLHuTwcie_gi" },
+  { id: "c_barra_pegada_invertida", name: "Barra pegada invertida", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/ZGKn__k263U?si=0s9hBC6O5K40zuD7" },
+  { id: "c_extensao_no_chao", name: "Extensão no chão", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/NGnurY2NojU?si=BoWOBxMR8wiPl6h3" },
+  { id: "c_extensao_punho_fechado", name: "Extensão punho fechado", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/StAdyq2ZXR0?si=OkFqzliXhcfDIERz" },
+  { id: "c_triceps_frances_no_chao", name: "Triceps francês no chão", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/TskE7otE83c?si=mZ-TUbX6yHZKc-8t" },
+  { id: "c_triceps_na_cadeira", name: "Triceps na cadeira", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/-Sgi8wo3ezo?si=zSYm2W6ehTb5VPe-" },
+  { id: "c_triceps_no_chao", name: "Triceps no chão", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/4Kj2-3GHDTA?si=szj1fbC7HTm7yomr" },
+  { id: "c_mergulho", name: "Mergulho", group: "Braços", target: "Braços", level: "Calistenia", videoUrl: "https://youtube.com/shorts/P0QhAU0IJnY?si=dn_Wg1sa53O4T7To" },
+  { id: "c_agachamento_com_salto", name: "Agachamento com salto", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/wEPdzlzfkEM?si=RHGf5uMAbxhhTVn1" },
+  { id: "c_sumô", name: "Sumô", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/CG-kFCJk-Wg?si=Kd9muxMrPhYx5QPC" },
+  { id: "c_agachamento_pes_abduzidos", name: "Agachamento pés abduzidos", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/N9rhjTyOI3o?si=4o5fupQroX4iVokh" },
+  { id: "c_agachamento_bulgaro", name: "Agachamento bulgaro", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/NNlSiVjWPfQ?si=DO3W0LHpL87HKFPO" },
+  { id: "c_afundo", name: "Afundo", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/cw6-VSwkg9g?si=IkAJg0lr4PNTB5NB" },
+  { id: "c_sissy_squat", name: "Sissy squat", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/H3C3JbdwDEg?si=jkhRx0LWyZmCILTa" },
+  { id: "c_stiff", name: "Stiff", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/N9rhjTyOI3o?si=4o5fupQroX4iVokh" },
+  { id: "c_stiff_unilateral", name: "Stiff unilateral", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/CG-kFCJk-Wg?si=Kd9muxMrPhYx5QPC" },
+  { id: "c_flexao_posterior", name: "Flexão posterior", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/4rwqyJ4OmOw?si=kgGuspjwHCUH1YnK" },
+  { id: "c_flexao_posterior_unilateral", name: "Flexão posterior unilateral", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/Nlqj1yrMEBk?si=Y3w_jqkAgL9uOWJM" },
+  { id: "c_barra_fixa_aberta", name: "Barra fixa aberta", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/F1GQAgamNQo?si=2ei_QpIWCmOmAgat" },
+  { id: "c_barra_fixa", name: "Barra fixa", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/5etgsKXtPpA?si=WDsy4KenIfN7mGsi" },
+  { id: "c_barra_maos_juntas", name: "Barra mãos juntas", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/cSU0oGy1o8U?si=47qKp4gVuZQgakMR" },
+  { id: "c_remada", name: "Remada", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/kVIa74Gnh5o?si=-lYwJCxtyt3FBor3" },
+  { id: "c_remada_pegada_invertida", name: "Remada pegada invertida", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/oS-NxkxqBok?si=8OCBeswP6-Q9J8U3" },
+  { id: "c_remada_alta", name: "Remada alta", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/NkJUUvcnX_E?si=Co7HFdaYbN-ONr_G" },
+  { id: "c_superman_superior", name: "Superman superior", group: "Costas", target: "Costas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/_Lu48nmsI0c?si=zari0xMPvXclnPGg" },
+  { id: "c_elevacao", name: "Elevação", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/kQBO-hlyWB0?si=qm7yzQpE3dsfTeVt" },
+  { id: "c_elevacao_pes_abduzidos", name: "Elevação pés abduzidos", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/_IpncSQq7G0?si=YTj_mVrtdwl7Mxue" },
+  { id: "c_elevacao_calcanhares_abduzidos", name: "Elevação calcanhares abduzidos", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/HcBdZlHo2G4?si=ca5nHpi0VVeMB98o" },
+  { id: "c_elevacao_unilateral", name: "Elevação unilateral", group: "Pernas", target: "Pernas", level: "Calistenia", videoUrl: "https://youtube.com/shorts/XyZ4UUm-Mig?si=4AxJTnuH-hqLA2mL" },
+  { id: "c_burpee", name: "Burpee", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/go2sTleEdMY?si=Dudo4OT4qeWOGO58" },
+  { id: "c_polichinelos", name: "Polichinelos", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/BvJunlmBwTQ?si=5ero6tzSxLi1dFSc" },
+  { id: "c_joelhos_elevados", name: "Joelhos elevados", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/QLAJUNoxu_Q?si=3Ezaqbrk6a_6-Wv4" },
+  { id: "c_dupla_puxada", name: "Dupla puxada", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/IYwEt9bZGNY?si=hbPp-VR66kVG9tZA" },
+  { id: "c_abdominal_padrao", name: "Abdominal padrão", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/eEh6ubyH91U?si=HTBmKwsu9co-9S7R" },
+  { id: "c_abdominal_supra", name: "Abdominal supra", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/UIYvP02UEFQ?si=E5riBD1wNzMPTQ61" },
+  { id: "c_abdominal_infra", name: "Abdominal infra", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/JamlY4VTTv0?si=ZD3YKvL72ct3LSrh" },
+  { id: "c_abdominal_infra_flexionado", name: "Abdominal infra flexionado", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/ytcLgZA9GlI?si=YaJCcPL9R9cy6V-h" },
+  { id: "c_elevacao_esticada", name: "Elevação esticada", group: "Core/Cardio", target: "Core/Cardio", level: "Calistenia", videoUrl: "https://youtube.com/shorts/At2SlGJGm8k?si=UW0z7zaq1BJPZm4D" }
 ];
 
 const DEFAULT_WORKOUT_DAYS = ['Treino A (Push)', 'Treino B (Pull)', 'Treino C (Legs)', 'Treino D (Full/Core)'];
@@ -536,7 +160,6 @@ export default function App() {
   const [appScreen, setAppScreen] = useState('loading'); 
 
   const activeDB = EXERCISE_DB; 
-  const getEx = (id) => activeDB.find(e => e.id === id);
 
   const [toasts, setToasts] = useState([]);
   const showToast = (message, type = 'info') => {
@@ -546,7 +169,7 @@ export default function App() {
   };
 
   const todayStr = new Date().toLocaleDateString('pt-BR');
-  const [selectedDateObj, setSelectedDateObj] = useState(new Date());
+  const [selectedDateObj] = useState(new Date());
   const selectedDateStr = selectedDateObj.toLocaleDateString('pt-BR');
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -564,8 +187,9 @@ export default function App() {
   const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [isEditingDays, setIsEditingDays] = useState(false);
   const [newDayName, setNewDayName] = useState('');
+  const [activeStopwatch, setActiveStopwatch] = useState(null); // Guarda o ID do exercício que tem o cronómetro aberto
 
-  // CATÁLOGO MANUAL DE EXERCÍCIOS
+  // CATÁLOGO MANUAL
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
 
@@ -573,12 +197,8 @@ export default function App() {
   const [dailyLogs, setDailyLogs] = useState([]); 
   const [activeWorkoutDay, setActiveWorkoutDay] = useState(DEFAULT_WORKOUT_DAYS[0]);
   
-  const [isCardioMode, setIsCardioMode] = useState(false);
-  const [cardioDuration, setCardioDuration] = useState(30);
-  const [isRestMode, setIsRestMode] = useState(false);
-
   const [userProfile, setUserProfile] = useState({ 
-    name: '', level: 'Intermédio', weight: '65', targetWeight: '75', goal: 'Ganho de Massa',
+    name: '', targetWeight: '75', goal: 'Ganho de Massa',
     onboardingCompleted: false, lastLoginDate: todayStr
   });
 
@@ -589,18 +209,7 @@ export default function App() {
   const unlockedAchievements = useMemo(() => ACHIEVEMENTS.filter(a => a.condition(workoutHistory)), [workoutHistory]);
 
   const targetDayLog = dailyLogs.find(l => l.date === selectedDateStr) || { water: 0, workout: null };
-  const waterTarget = Number(userProfile.weight) * 35 || 2500; 
-
-  const completedWorkoutsThisWeek = useMemo(() => {
-    const startOfWeek = getStartOfWeekForDate(selectedDateObj);
-    const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000);
-    return workoutHistory
-      .filter(log => {
-        const logTime = log.timestamp || (log.date ? new Date(log.date.split('/').reverse().join('-')).getTime() : 0);
-        return logTime >= startOfWeek && logTime < endOfWeek;
-      })
-      .map(log => log.day);
-  }, [workoutHistory, selectedDateObj]);
+  const waterTarget = 2500; 
 
   const generateAIPlan = () => {
     const formatEx = (ex) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets: 3, reps: '10', weight: '', isCompleted: false, videoUrl: ex.videoUrl }) : null;
@@ -638,25 +247,30 @@ export default function App() {
 
   useEffect(() => {
     if (!user || !db || firebaseError) return;
-    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'calistenia_planilha_v1'); 
+    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'calistenia_planilha_clean_v1'); 
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        if (d.workouts) setWorkouts(d.workouts);
-        if (d.workoutOrder) setWorkoutOrder(d.workoutOrder);
-        if (d.workoutHistory) setWorkoutHistory(d.workoutHistory);
-        if (d.dailyLogs) setDailyLogs(d.dailyLogs);
+        if (d.workouts) setWorkouts(d.workouts || {});
+        if (d.workoutOrder) setWorkoutOrder(d.workoutOrder || DEFAULT_WORKOUT_DAYS);
+        if (d.workoutHistory) setWorkoutHistory(d.workoutHistory || []);
+        if (d.dailyLogs) setDailyLogs(d.dailyLogs || []);
+        
         if (d.userProfile) {
-          let prof = { level: 'Intermédio', targetWeight: '75', ...d.userProfile };
+          let prof = { targetWeight: '75', ...d.userProfile };
           if (prof.lastLoginDate !== todayStr && prof.onboardingCompleted) {
              let updWorkouts = { ...(d.workouts || workouts) };
              Object.keys(updWorkouts).forEach(day => {
-               if (updWorkouts[day].exercises) updWorkouts[day].exercises.forEach(ex => ex.isCompleted = false);
+               if (updWorkouts[day]?.exercises) {
+                  updWorkouts[day].exercises.forEach(ex => ex.isCompleted = false);
+               }
              });
              prof.lastLoginDate = todayStr;
              setUserProfile(prof);
-             setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'calistenia_planilha_v1'), { userProfile: prof, workouts: updWorkouts }, { merge: true });
-          } else { setUserProfile(prof); }
+             setDoc(docRef, { userProfile: prof, workouts: updWorkouts }, { merge: true });
+          } else { 
+             setUserProfile(prof); 
+          }
           setAppScreen(prof.onboardingCompleted ? 'main' : 'onboarding');
         }
       } else {
@@ -671,7 +285,7 @@ export default function App() {
     if (!user || !db) return;
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, workoutHistory, userProfile, dailyLogs };
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'calistenia_planilha_v1'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'calistenia_planilha_clean_v1'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
     } catch (e) { console.error(e); }
   };
 
@@ -685,11 +299,6 @@ export default function App() {
   };
 
   const handleLogout = async () => { await signOut(auth); setUser(null); setAppScreen('login'); };
-
-  const handleToggleMode = (mode) => {
-    if (mode === 'cardio') { setIsCardioMode(!isCardioMode); setIsRestMode(false); }
-    if (mode === 'rest') { setIsRestMode(!isRestMode); setIsCardioMode(false); }
-  };
 
   // --- GESTÃO DE DIAS DA SEMANA ---
   const handleAddDay = () => {
@@ -734,9 +343,9 @@ export default function App() {
     };
 
     const upd = { ...workouts };
-    if (!upd[activeWorkoutDay].exercises) {
-      upd[activeWorkoutDay].exercises = [];
-    }
+    if (!upd[activeWorkoutDay]) upd[activeWorkoutDay] = { name: activeWorkoutDay, exercises: [] };
+    if (!upd[activeWorkoutDay].exercises) upd[activeWorkoutDay].exercises = [];
+    
     upd[activeWorkoutDay].exercises.push(newEx);
     setWorkouts(upd);
     saveToCloud({ workouts: upd });
@@ -754,10 +363,10 @@ export default function App() {
 
   const handleCompleteWorkout = () => {
     const cur = workouts[activeWorkoutDay];
-    let vol = 0; let durationCardio = isCardioMode ? (Number(cardioDuration) || 30) : 0;
+    let vol = 0; 
     let completedExercises = [];
     
-    if (!isRestMode && !isCardioMode && cur && cur.exercises) {
+    if (cur && cur.exercises) {
       cur.exercises.forEach(ex => {
         const repsCalc = typeof ex.reps === 'string' && ex.reps.includes('s') ? parseInt(ex.reps)/2 : (Number(ex.reps)||10);
         vol += repsCalc * (Number(ex.sets)||1);
@@ -767,8 +376,7 @@ export default function App() {
     }
 
     const newLog = { 
-      id: Date.now(), date: selectedDateStr, timestamp: selectedDateObj.getTime(), day: activeWorkoutDay, volume: vol, 
-      isCardio: isCardioMode, cardioDuration: durationCardio, isRest: isRestMode, exercises: completedExercises 
+      id: Date.now(), date: selectedDateStr, timestamp: selectedDateObj.getTime(), day: activeWorkoutDay, volume: vol, exercises: completedExercises 
     };
     
     const newHist = [...workoutHistory, newLog];
@@ -780,7 +388,7 @@ export default function App() {
     setWorkoutHistory(newHist); setDailyLogs(newDLogs);
     saveToCloud({ workouts, workoutOrder, workoutHistory: newHist, dailyLogs: newDLogs });
     
-    setShowWorkoutSuccess(true); setIsCardioMode(false); setIsRestMode(false);
+    setShowWorkoutSuccess(true);
   };
 
   const addWater = () => {
@@ -819,14 +427,13 @@ export default function App() {
       const dbContext = activeDB.map(e => `ID:'${e.id}' | Nome:'${e.name}' | Grupo:'${e.group}'`).join('\n');
 
       const prompt = `Atue como um treinador especialista em calistenia. 
-      O meu objetivo: ${userProfile.goal} (Atual: ${userProfile.weight}kg -> Alvo: ${userProfile.targetWeight}kg).
-      O treino de hoje chama-se: "${dayInfo.name}".
+      O treino de hoje chama-se: "${dayInfo?.name || activeWorkoutDay}".
       
       Aqui estão os exercícios válidos na base de dados (providenciada via planilha):
       ${dbContext}
 
       REGRAS:
-      1. Escolha EXATAMENTE 6 exercícios coerentes com o foco do dia (${dayInfo.name}).
+      1. Escolha EXATAMENTE 6 exercícios coerentes com o foco do dia (${dayInfo?.name || activeWorkoutDay}).
       2. Retorne APENAS um JSON: {"exercises": ["id1", "id2", ...]} contendo os 6 IDs apropriados.`;
 
       const schema = { type: "OBJECT", properties: { exercises: { type: "ARRAY", items: { type: "STRING" } } } };
@@ -835,11 +442,16 @@ export default function App() {
 
       if (resultIds.length > 0) {
          const formatExLoc = (ex) => ex ? ({ ...ex, id: Date.now() + Math.random(), originalId: ex.id, sets: 3, reps: '10', weight: '', isCompleted: false, videoUrl: ex.videoUrl }) : null;
-         const newExercises = resultIds.map(id => formatExLoc(getEx(id))).filter(e => e !== null);
+         
+         const newExercises = resultIds.map(id => {
+             const baseEx = activeDB.find(e => e.id === id);
+             return formatExLoc(baseEx);
+         }).filter(e => e !== null);
 
          if (newExercises.length > 0) {
            const upd = {...workouts};
-           upd[activeWorkoutDay] = { ...upd[activeWorkoutDay], exercises: newExercises };
+           if (!upd[activeWorkoutDay]) upd[activeWorkoutDay] = { name: activeWorkoutDay, exercises: [] };
+           upd[activeWorkoutDay].exercises = newExercises;
            setWorkouts(upd); saveToCloud({ workouts: upd });
            showToast("Treino atualizado com sucesso pela IA!", "success");
          }
@@ -849,7 +461,7 @@ export default function App() {
   };
 
   const getCalendarDays = () => {
-    const days = []; const targetDate = new Date(selectedDateObj); targetDate.setHours(0,0,0,0);
+    const days = []; const targetDate = new Date(); targetDate.setHours(0,0,0,0);
     let startDate = new Date(targetDate); startDate.setDate(targetDate.getDate() - 6);
     for(let i=0; i<7; i++) {
       const d = new Date(startDate); d.setDate(startDate.getDate() + i);
@@ -882,12 +494,12 @@ export default function App() {
           <div className="max-w-md w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
              <Activity size={48} className="text-emerald-500 mx-auto mb-6" />
              <h1 className="text-2xl font-extrabold mb-4">Bem-vindo à nova Rotina</h1>
-             <p className="text-zinc-400 text-sm mb-6">A base de dados foi atualizada exclusivamente com os 60 exercícios da sua planilha original.</p>
+             <p className="text-zinc-400 text-sm mb-6">A base de dados foi atualizada exclusivamente com os 60 exercícios da sua planilha original e totalmente limpa de módulos antigos.</p>
              <button onClick={() => {
                  const newProf = {...userProfile, onboardingCompleted:true};
                  setUserProfile(newProf); saveToCloud({ userProfile: newProf });
                  setAppScreen('main');
-             }} className="w-full bg-emerald-600 p-4 rounded-xl font-bold">Iniciar Jornada aos 75kg</button>
+             }} className="w-full bg-emerald-600 p-4 rounded-xl font-bold">Iniciar Jornada</button>
           </div>
        </div>
     )
@@ -920,9 +532,9 @@ export default function App() {
             <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-700">
               {(() => {
                 const filtered = activeDB.filter(ex => 
-                  ex.name.toLowerCase().includes(exerciseSearch.toLowerCase()) || 
-                  ex.group.toLowerCase().includes(exerciseSearch.toLowerCase()) || 
-                  ex.target.toLowerCase().includes(exerciseSearch.toLowerCase())
+                  (ex.name || '').toLowerCase().includes(exerciseSearch.toLowerCase()) || 
+                  (ex.group || '').toLowerCase().includes(exerciseSearch.toLowerCase()) || 
+                  (ex.target || '').toLowerCase().includes(exerciseSearch.toLowerCase())
                 );
                 
                 if (filtered.length === 0) return <div className="text-center text-zinc-500 py-4 text-sm font-bold">Nenhum exercício encontrado.</div>;
@@ -1051,6 +663,9 @@ export default function App() {
                              </div>
                              
                              <div className="flex gap-2">
+                                <button onClick={() => setActiveStopwatch(activeStopwatch === ex.id ? null : ex.id)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${activeStopwatch === ex.id ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-zinc-950 text-zinc-500 border border-zinc-800 hover:text-white'}`} title="Cronometrar">
+                                   <Timer size={18}/>
+                                </button>
                                 <button onClick={() => handleRemoveExercise(ex.id)} className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all" title="Remover exercício">
                                    <Trash size={18}/>
                                 </button>
@@ -1064,7 +679,7 @@ export default function App() {
                              </div>
                            </div>
 
-                           <div className="grid grid-cols-2 gap-4 mt-4 bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50">
+                           <div className="grid grid-cols-3 gap-4 mt-4 bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50">
                               <div>
                                 <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Séries</label>
                                 <input type="number" value={ex.sets} onChange={(e) => {
@@ -1081,9 +696,30 @@ export default function App() {
                                    setWorkouts(upd);
                                 }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold text-white border border-zinc-800 focus:border-emerald-500" />
                               </div>
+                              <div>
+                                <label className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider block mb-2 text-center">Carga (kg)</label>
+                                <input type="number" value={ex.weight || ''} onChange={(e) => {
+                                   const upd = {...workouts};
+                                   upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, weight: e.target.value } : x);
+                                   setWorkouts(upd);
+                                }} placeholder="Livre" className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-black text-emerald-400 border border-emerald-900/30 focus:border-emerald-500" />
+                              </div>
                            </div>
 
-                           {/* Link para YouTube (agora vindo da planilha) */}
+                           {/* Timer Inline (Abre ao clicar no botão Timer) */}
+                           {activeStopwatch === ex.id && (
+                             <InlineStopwatch 
+                               onClose={() => setActiveStopwatch(null)}
+                               onSaveTime={(timeStr) => {
+                                 const upd = {...workouts};
+                                 upd[activeWorkoutDay].exercises = upd[activeWorkoutDay].exercises.map(x => x.id === ex.id ? { ...x, reps: timeStr } : x);
+                                 setWorkouts(upd);
+                                 setActiveStopwatch(null);
+                               }} 
+                             />
+                           )}
+
+                           {/* Link para YouTube via Planilha */}
                            {ex.videoUrl && (
                              <div className="mt-4 flex justify-end">
                                <a href={ex.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold text-red-400 bg-red-500/10 px-3 py-2 rounded-lg hover:bg-red-500/20 transition-colors border border-red-500/20">
@@ -1137,13 +773,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Navegação Mobile */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 p-4 rounded-full z-50 shadow-2xl flex gap-4 text-white">
-         <button onClick={() => setActiveTab('dashboard')} className={activeTab==='dashboard'?'text-emerald-500':''}><LayoutDashboard/></button>
-         <button onClick={() => setActiveTab('treino')} className={activeTab==='treino'?'text-emerald-500':''}><Dumbbell/></button>
-         <button onClick={() => setActiveTab('perfil')} className={activeTab==='perfil'?'text-emerald-500':''}><UserCircle/></button>
-      </div>
     </div>
   );
 }
