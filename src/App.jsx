@@ -3,8 +3,9 @@ import {
   LayoutDashboard, Dumbbell, UserCircle, 
   Loader2, Check, Play, Pause, Timer, 
   Smile, Frown, Flame, LogOut, Settings, 
-  RefreshCw, X, Save, Plus, Trash, Cpu, 
-  Youtube, Square, Settings2, Search
+  X, Save, Plus, Trash, Cpu, 
+  Youtube, Square, Settings2, Search,
+  Trophy, Activity
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -36,7 +37,7 @@ try {
 
 const ToastContainer = ({ toasts }) => (
   <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
-    {toasts.map(t => (
+    {(toasts || []).map(t => (
       <div key={t.id} className={`p-4 rounded-xl shadow-lg text-white text-sm font-bold animate-fadeIn ${t.type === 'error' ? 'bg-red-500' : t.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`}>
         {t.message}
       </div>
@@ -223,14 +224,12 @@ export default function App() {
 
   const [isGeneratingWorkout, setIsGeneratingWorkout] = useState(false);
   
-  // GESTÃO DA SEMANA DE TREINO
   const [workouts, setWorkouts] = useState({});
   const [workoutOrder, setWorkoutOrder] = useState(DEFAULT_WORKOUT_DAYS);
   const [isEditingDays, setIsEditingDays] = useState(false);
   const [newDayName, setNewDayName] = useState('');
   const [activeStopwatch, setActiveStopwatch] = useState(null); 
 
-  // CATÁLOGO MANUAL
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
 
@@ -242,6 +241,12 @@ export default function App() {
     name: '', targetWeight: '75', goal: 'Ganho de Massa', weight: '65',
     onboardingCompleted: false, lastLoginDate: todayStr
   });
+
+  const ACHIEVEMENTS = [
+    { id: 'a1', title: 'Primeiro Passo', desc: '1º Treino concluído', icon: <Flame className="text-orange-500" size={24}/>, condition: (h) => (h || []).length >= 1 },
+    { id: 'a3', title: 'Força Bruta', desc: '10.000 reps movidas', icon: <Trophy className="text-emerald-500" size={24}/>, condition: (h) => (h || []).reduce((a,b)=>a+(b.volume||0),0) >= 10000 },
+  ];
+  const unlockedAchievements = useMemo(() => ACHIEVEMENTS.filter(a => a.condition(workoutHistory)), [workoutHistory]);
 
   const targetDayLog = (dailyLogs || []).find(l => l.date === selectedDateStr) || { water: 0, workout: null };
   const waterTarget = 2500; 
@@ -283,7 +288,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user || !db || firebaseError) return;
-    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v3'); 
+    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v4'); 
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const d = snap.data();
@@ -322,7 +327,7 @@ export default function App() {
     if (!user || !db) return;
     try {
       const dataToSave = overrideData || { workouts, workoutOrder, workoutHistory, userProfile, dailyLogs };
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v3'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
+      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'appData', 'planilha_clean_v4'), JSON.parse(JSON.stringify(dataToSave)), { merge: true });
     } catch (e) { console.error(e); }
   };
 
@@ -516,7 +521,7 @@ export default function App() {
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-zinc-950 text-white">
         <div className="max-w-md w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
           <Dumbbell size={48} className="text-emerald-500 mx-auto mb-6" />
-          <h1 className="text-3xl font-extrabold mb-2">HíbridoFit</h1>
+          <h1 className="text-3xl font-extrabold mb-2">Rotina Calistenia</h1>
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 mb-4" placeholder="E-mail" />
           <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl p-4 mb-4" placeholder="Senha" />
           <button onClick={handleAuthAction} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl">{isLoginMode ? 'Entrar' : 'Registar'}</button>
@@ -532,7 +537,7 @@ export default function App() {
           <div className="max-w-md w-full bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
              <Activity size={48} className="text-emerald-500 mx-auto mb-6" />
              <h1 className="text-2xl font-extrabold mb-4">Bem-vindo à nova Rotina</h1>
-             <p className="text-zinc-400 text-sm mb-6">A base de dados foi atualizada com os exercícios limpos da sua planilha, e a sua conta recomeçada com segurança.</p>
+             <p className="text-zinc-400 text-sm mb-6">O seu banco de dados foi atualizado de forma 100% segura para os exercícios mais recentes.</p>
              <button onClick={() => {
                  const newProf = {...userProfile, onboardingCompleted:true};
                  setUserProfile(newProf); saveToCloud({ userProfile: newProf });
@@ -595,7 +600,7 @@ export default function App() {
       <aside className="hidden md:flex flex-col w-72 bg-zinc-900/40 border-r border-zinc-800/80 p-6 z-40">
         <div className="flex items-center gap-3 mb-10 pl-2">
           <Dumbbell className="text-emerald-500" size={28} />
-          <span className="font-extrabold text-2xl tracking-tight text-white">HíbridoFit</span>
+          <span className="font-extrabold text-2xl tracking-tight text-white">Rotina Calistenia</span>
         </div>
         <nav className="flex flex-col gap-2 flex-1">
           <SidebarBtn a={activeTab==='dashboard'} o={()=>setActiveTab('dashboard')} i={<LayoutDashboard size={20}/>} l="Painel" />
@@ -684,7 +689,7 @@ export default function App() {
                {(!isEditingDays && (workoutOrder || []).length > 0) && (
                  <>
                    <div className="flex justify-between items-center mb-4 mt-6">
-                      <h2 className="font-bold text-lg text-white">{(workouts || {})[activeWorkoutDay]?.name}</h2>
+                      <h2 className="font-bold text-lg text-white">{(workouts || {})[activeWorkoutDay]?.name || activeWorkoutDay}</h2>
                       <button onClick={handleGenerateAIWorkout} disabled={isGeneratingWorkout} className="bg-emerald-600/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-sm flex gap-2 disabled:opacity-50 border border-emerald-500/30">
                         {isGeneratingWorkout ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16}/>} Gerar Treino IA
                       </button>
@@ -731,7 +736,7 @@ export default function App() {
                                 }} className="w-full bg-zinc-900 py-3 rounded-xl outline-none text-center font-bold text-white border border-zinc-800 focus:border-emerald-500" />
                               </div>
                               <div>
-                                <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps</label>
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2 text-center">Reps / Tempo</label>
                                 <input type="text" value={ex.reps || ''} onChange={(e) => {
                                    const upd = {...(workouts || {})};
                                    if(upd[activeWorkoutDay]?.exercises) {
@@ -814,7 +819,7 @@ export default function App() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-sm p-8 text-center shadow-2xl">
             <Flame size={48} className="text-emerald-500 mx-auto mb-6" />
             <h2 className="text-3xl font-black text-white mb-2">Treino Salvo! 🎉</h2>
-            <p className="text-zinc-400 mb-8 text-sm">Mais um passo rumo aos 75kg de massa bruta.</p>
+            <p className="text-zinc-400 mb-8 text-sm">Mais um passo rumo aos 75kg.</p>
             <button onClick={() => { setShowWorkoutSuccess(false); setActiveTab('dashboard'); }} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-lg active:scale-95 transition-transform">
               Ver Consistência
             </button>
@@ -822,12 +827,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Navegação Mobile */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 p-4 rounded-full z-50 shadow-2xl flex gap-4 text-white">
-         <button onClick={() => setActiveTab('dashboard')} className={activeTab==='dashboard'?'text-emerald-500':''}><LayoutDashboard/></button>
-         <button onClick={() => setActiveTab('treino')} className={activeTab==='treino'?'text-emerald-500':''}><Dumbbell/></button>
-         <button onClick={() => setActiveTab('perfil')} className={activeTab==='perfil'?'text-emerald-500':''}><UserCircle/></button>
-      </div>
     </div>
   );
 }
